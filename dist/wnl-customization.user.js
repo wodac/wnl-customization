@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.10
+// @version      1.9.11
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/dist/wnl-customization.user.js
@@ -1050,7 +1050,6 @@ a.custom-script-slideshow-btn.wnl-rounded-button {
     height: 40px;
     justify-content: center;
     width: 40px;
-    /*box-shadow: 0 0 2px #333;*/
     transition: all 1s;
 }
 
@@ -1060,17 +1059,19 @@ span.custom-btn-caption {
 }
 
 a.wnl-rounded-button.bookmark {
-    top: 60px!important;
+    top: 60px;
     transition: all 1s;
 }
 
-a.custom-options-btn svg {transform: rotateX(180deg);transition: transform 1s;}
+a.custom-options-btn svg {
+    transform: rotateX(180deg);
+    transition: transform 1s;
+}
 
 a.custom-options-btn.active svg {transform: none;}
 
 .custom-script-invert-images img.iv-large-image, .logo-mobile {
-    filter: invert(1) hue-rotate(
-180deg) saturate(1.4);
+    filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`;
 const head = unsafeWindow.document.querySelector('head');
 const stylesheet = document.createElement('style');
