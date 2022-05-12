@@ -91,7 +91,7 @@ sub.small {
 .custom-script-page-number-container {
     position: absolute;
     top: 30px;
-    left: 10px;
+    left: 0;
     z-index: 10;
     font-size: 0.8rem;
     color: #7a7a7a;

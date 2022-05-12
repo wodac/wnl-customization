@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.12
+// @version      1.9.13
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/dist/wnl-customization.user.js
@@ -979,7 +979,7 @@ sub.small {
 .custom-script-page-number-container {
     position: absolute;
     top: 30px;
-    left: 10px;
+    left: 0;
     z-index: 10;
     font-size: 0.8rem;
     color: #7a7a7a;
