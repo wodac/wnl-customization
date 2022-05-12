@@ -205,7 +205,7 @@ a.custom-options-btn.active svg {transform: none;}
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.4
+// @version      1.9.5
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.user.js
