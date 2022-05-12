@@ -7,6 +7,7 @@
     },
     "lib": ["es2015"],
     "files": [
+      "packageMetadata.ts",
       "interfaces.d.ts", 
       "globals.d.ts", 
       "utils/common.ts",
