@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.8
+// @version      1.9.9
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
-// @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.user.js
+// @updateURL    https://github.com/wodac/wnl-customization/raw/dist/wnl-customization.user.js
 // @match        https://lek.wiecejnizlek.pl/app/*
 // @connect      https://lek.wiecejnizlek.pl/*
 // @icon         https://www.google.com/s2/favicons?domain=wiecejnizlek.pl
