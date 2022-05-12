@@ -1,5 +1,5 @@
 // @ts-check
-import './globals'
+// import './globals'
 
 const styles = `
 :root {

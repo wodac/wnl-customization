@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.5
+// @version      1.9.6
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.js
@@ -18,8 +18,8 @@
 // @run-at document-body
 // ==/UserScript==
 
-import { ParsedSearchResult, SearchResults, SlideshowChapterMetadata } from "./interfaces";
-import './globals'
+// import { ParsedSearchResult, SearchResults, SlideshowChapterMetadata } from "./interfaces";
+// import './globals'
 // import './style'
 
 (function() {

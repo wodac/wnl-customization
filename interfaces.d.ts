@@ -1,4 +1,4 @@
-export interface SearchResultSchema {
+interface SearchResultSchema {
     content: string;
     is_functional: boolean;
     snippet: {
@@ -57,18 +57,18 @@ export interface SearchResultSchema {
     [k: string]: unknown;
 }
 
-export interface SearchResults {
+interface SearchResults {
     [k: string]: SearchResultSchema
 }
 
-export interface ParsedSearchResult {
+interface ParsedSearchResult {
     highlight: SearchResultSchema["scout_metadata"]["highlight"],
     details: SearchResultSchema["snippet"],
     context: SearchResultSchema["context"],
     id: SearchResultSchema["id"]
 }
 
-export interface SlideshowChapterMetadata {
+interface SlideshowChapterMetadata {
     href?: string,
     name?: string,
     chapterLength?: number,

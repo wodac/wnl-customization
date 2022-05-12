@@ -2,10 +2,9 @@
     "compilerOptions": {
       "module": "None",
       "target": "ES6",
-      "moduleResolution": "node",
       "sourceMap": false,
-      "outDir": "dist",
+      "outFile": "dist/wnl-customization.js"
     },
     "lib": ["es2015"],
-    "files": ["wnl-customization.ts", "style.ts"]
+    "files": ["interfaces.d.ts", "globals.d.ts", "wnl-customization.ts", "style.ts"]
   }
