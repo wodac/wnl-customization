@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+      "module": "None",
+      "esModuleInterop": false,
+      "target": "ES6",
+      "moduleResolution": "node",
+      "sourceMap": false,
+      "outFile": "dist/wnl-customization.user.js",
+    },
+    "lib": ["es2015"],
+    "files": ["wnl-customization.ts"]
+  }

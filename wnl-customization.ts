@@ -4,7 +4,7 @@
 // @version      1.9.4
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
-// @updateURL    https://github.com/wodac/wnl-customization/raw/main/wnl-customization.user.js
+// @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.user.js
 // @match        https://lek.wiecejnizlek.pl/app/*
 // @connect      https://lek.wiecejnizlek.pl/*
 // @icon         https://www.google.com/s2/favicons?domain=wiecejnizlek.pl
@@ -17,6 +17,9 @@
 // @run-at document-body
 // ==/UserScript==
 
+import { ParsedSearchResult, SearchResults, SlideshowChapterMetadata } from "./interfaces";
+import './globals'
+import './style'
 
 (function() {
     'use strict';
@@ -24,198 +27,15 @@
     console.log('userscript loaded!')
     // Your code here...
     const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93
-    const root = unsafeWindow.document.querySelector(":root")
-    const updateFontSize = fontSize => {
+    const root = unsafeWindow.document.querySelector(":root") as HTMLElement
+    const updateFontSize = (fontSize: number) => {
         root.style.setProperty("--uniform-font-size", `${getUniformFontSize(fontSize)}em`)
         root.style.setProperty("--scaled-font-size", `${fontSize}%`)
     }
-    const getSearchURL = q => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
+    const getSearchURL = (q: string) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
     const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/'
-    const CSS = `
-:root {
-    --uniform-font-size: 0.93em;
-    --scaled-font-size: 110%;
-}
 
-html {
-    scroll-behavior: smooth;
-}
-
-.questionsList__paginationContainer {
-    /* position: absolute!important; */
-    top: 0;
-    left: 0;
-    z-index: 1000;
-    background: white;
-}
-
-.custom-script-increase-font-size .sl-block-content span[style*='21px'] {
-    font-size: 0.75em!important;
-}
-
-.custom-script-option-container {
-    padding: 5px 15px;
-}
-
-.custom-script-option-container:hover {
-    background-color: #f6f6f6
-}
-
-a.custom-script-option {
-    color: #0c1726
-}
-
-.custom-script-increase-annotations article.content.-styleguide p {
-    font-size: var(--scaled-font-size);
-    line-height: 150%;
-}
-
-.custom-script-increase-font-size .sl-block-content p {
-    font-size: var(--scaled-font-size)!important;
-}
-
-.custom-script-uniform-font-size .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
-    font-size: var(--uniform-font-size)!important;
-}
-
-@media screen and (orientation:landscape) {
-   section.stack.present section {
-       overflow-y: auto;
-       overflow-x: hidden;
-       padding-bottom: 1em;
-   }
-}
-
-
-.custom-script-increase-font-size .wnl-reference {
-    margin-left: 0.5em
-}
-
-.custom-script-increase-font-size .wnl-reference svg,
-.custom-script-uniform-font-size .wnl-reference svg {
-    transform: scale(1.6)!important;
-}
-
-sub.small {
-    margin-left: 0.5rem!important;
-    font-size: 1.5rem!important;
-}
-
-.m-imageFullscreenWrapper {
-    max-height: 80vh;
-    text-align: center;
-}
-
-.m-imageFullscreenWrapper img {
-    max-height: 80vh;
-    margin: auto!important;
-}
-
-.image-fullscreen-index {
-    margin: 0 0.3rem;
-    color: #8b8b8b;
-    padding: 0;
-    font-size: 0.8rem;
-}
-
-.custom-script-page-number-container {
-    position: absolute;
-    top: 30px;
-    left: 10px;
-    z-index: 10;
-    font-size: 0.8rem;
-    color: #7a7a7a;
-}
-
-body.custom-script-hide-cursor {
-    cursor: none;
-}
-
-.custom-script-hidden, .custom-script-hidden>* {
-    visibility: hidden;
-    top: -70vh!important;
-}
-
-.custom-script-summary-close {
-    text-align: center;
-    cursor: pointer;
-    background: #ffffff8c;
-    margin: 0.2rem;
-    border-radius: 5px;
-    height: 16px;
-}
-
-.custom-script-summary{
-    left: 10px;
-}
-.custom-script-search {
-    right: 10px;
-}
-.custom-script-summary, .custom-script-search {
-    position: absolute;
-    top: 50px;
-    left: 10px;
-    z-index: 10;
-    font-size: 0.8rem;
-    width: 11rem;
-    max-height: 70%;
-    overflow-y: auto;
-    background-color: rgb(247 247 247 / 90%);
-    border-radius: 5px;
-    box-shadow: 0px 1px 2px 2px #00000014;
-    transition: all 1s;
-}
-
-.custom-search-result {
-    margin: 0.2rem;
-    background: white;
-    border-radius: 5px;
-    padding: 5px;
-    display: block;
-    color: #222;
-}
-
-a.custom-script-summary-link {
-    display: block;
-    padding: 0.1rem 0.2rem;
-}
-
-a.custom-script-slideshow-btn.wnl-rounded-button {
-    align-items: center;
-    cursor: pointer;
-    flex-direction: column;
-    position: absolute;
-    right: 10px;
-    z-index: 5;
-    display: flex;background-color: #fafafabf;
-    border-radius: 5%;
-    height: 40px;
-    justify-content: center;
-    width: 40px;
-    /*box-shadow: 0 0 2px #333;*/
-    transition: all 1s;
-}
-
-span.custom-btn-caption {
-    font-size: 0.675rem;
-    line-height: 1.2rem;
-}
-
-a.wnl-rounded-button.bookmark {
-    top: 60px!important;
-    transition: all 1s;
-}
-
-a.custom-options-btn svg {transform: rotateX(180deg);transition: transform 1s;}
-
-a.custom-options-btn.active svg {transform: none;}
-
-.custom-script-invert-images img.iv-large-image, .logo-mobile {
-    filter: invert(1) hue-rotate(
-180deg) saturate(1.4);
-}`
-
-    const inSVG = s => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`
+    const inSVG = (s: TemplateStringsArray) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`
     const svgIcons = {
         chevronUp: inSVG`<path fill-rule="evenodd" d="M7.776 5.553a.5.5 0 0 1 .448 0l6 3a.5.5 0 1 1-.448.894L8 6.56 2.224 9.447a.5.5 0 1 1-.448-.894l6-3z"/>`,
         dots: inSVG`<path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>`,
@@ -282,13 +102,9 @@ function onRemove(element, callback) {
 }
 
     const document = unsafeWindow.document
-    let head = document.querySelector('head')
-    let stylesheet = document.createElement('style')
-    stylesheet.innerHTML = CSS
-    head.appendChild(stylesheet)
 
     function openMenu() {
-        const menuBtn = document.querySelector('.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint')
+        const menuBtn = document.querySelector('.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint') as HTMLElement
         if (menuBtn) menuBtn.click()
     }
 
@@ -322,7 +138,7 @@ function onRemove(element, callback) {
         })
     }
 
-    function getMetadata(cb, menuOpened) {
+    function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, menuOpened?: boolean) {
         const menu = document.querySelector('aside.sidenav-aside')
         if (!menu) {
             if (menuOpened) {
@@ -344,7 +160,7 @@ function onRemove(element, callback) {
             return
         }
         const list = Array.from(listParent.children)
-        if (menuOpened) document.querySelector('.topNavContainer__close').click()
+        if (menuOpened) (document.querySelector('.topNavContainer__close') as HTMLElement).click()
         if (list.length === 0) {
             cb(false)
             return
@@ -355,20 +171,20 @@ function onRemove(element, callback) {
             return
         }
         const links = wrappers.map(div => div.querySelector('a'))
-        const getLength = t => parseInt( t.slice(1, -1) )
+        const getLength = (t: string) => parseInt( t.slice(1, -1) )
         const linksMetadata = links.map(a => {
             if (!a.href) return {}
             return {
                 href: a.href,
-                name: a.querySelector('span span').innerText,
-                chapterLength: getLength(a.querySelector('span span.sidenav-item-meta').innerText),
+                name: (a.querySelector('span span') as HTMLSpanElement).innerText,
+                chapterLength: getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText),
                 startPage: parseInt( a.href.split('/').pop() )
             }
         })
         cb(linksMetadata)
     }
 
-    function addPageNumberContainer() {
+    function addPageNumberContainer(): HTMLSpanElement {
         const classNames = [ 'custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages' ]
         const spans = classNames.map(name => {
             const span = document.createElement('span')
@@ -384,13 +200,13 @@ function onRemove(element, callback) {
         return spans[0]
     }
 
-    function searchRequest(q) {
+    function searchRequest(q: string): Promise<ParsedSearchResult[]> {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 url: getSearchURL(q),
                 method: 'GET',
                 responseType: "json",
-                onload: ({ response }) => {
+                onload: ({ response }: { response: SearchResults }) => {
                     const entries = Object.entries(response)
                     const results = entries.filter( el => el[0].match(/^[0-9]+$/) ).map(el => el[1])
                     const parsed = results.map(el => {
@@ -407,7 +223,7 @@ function onRemove(element, callback) {
             })
         })
     }
-    async function getSearchResponseHTML(q) {
+    async function getSearchResponseHTML(q: string): Promise<string> {
         const response = await searchRequest(q)
         return response.map(el => `
             <a href='${WNL_DYNAMIC_SLIDES+el.id}' target='_blank' class='custom-search-result'>
@@ -419,7 +235,7 @@ function onRemove(element, callback) {
     }
     function performSearch() {
         if (!searchContainer) return
-        const q = searchContainer.querySelector('input.custom-search-result').value
+        const q = (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
         getSearchResponseHTML(q).then(resp => {
             if (searchResultsContainer) searchResultsContainer.innerHTML = resp
             toggleSearch(true)
@@ -427,7 +243,7 @@ function onRemove(element, callback) {
     }
 
 
-    let searchContainer, searchResultsContainer
+    let searchContainer: HTMLDivElement, searchResultsContainer: HTMLDivElement
     function addSearchContainer() {
         searchContainer = document.createElement('div')
         searchContainer.className = 'custom-script-search custom-script-hidden'
@@ -447,7 +263,7 @@ function onRemove(element, callback) {
         searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch())
     }
 
-    let summaryContainer
+    let summaryContainer: HTMLDivElement
     function addSummary(metadata) {
         const linksHTML = metadata.map((e, i) =>
            `<a class='custom-script-summary-link' href='${e.href}'
@@ -467,24 +283,24 @@ function onRemove(element, callback) {
         document.querySelector('.order-number-container').after(summaryContainer)
     }
 
-    function toggleSearch(visible) {
+    function toggleSearch(visible?: boolean) {
         if (!searchContainer) return
         if (typeof visible === 'undefined') visible = searchContainer.className.includes('custom-script-hidden')
         if (visible) {
             searchContainer.classList.remove('custom-script-hidden')
-            setTimeout(() => searchContainer.querySelector('input.custom-search-result').focus(), 100)
+            setTimeout(() => (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).focus(), 100)
         }
         else searchContainer.classList.add('custom-script-hidden')
     }
 
-    function toggleSummary(visible) {
+    function toggleSummary(visible?: boolean) {
         if (!summaryContainer) return
         if (typeof visible === 'undefined') visible = summaryContainer.className.includes('custom-script-hidden')
         if (visible) summaryContainer.classList.remove('custom-script-hidden')
         else summaryContainer.classList.add('custom-script-hidden')
     }
 
-    function toggleOptions(visible) {
+    function toggleOptions(visible?: boolean) {
         if (!additionalOptionsContainer) return
         const toggleBtn = document.querySelector('a.custom-options-btn')
         if (typeof visible === 'undefined') visible = additionalOptionsContainer.className.includes('custom-script-hidden')
@@ -517,7 +333,7 @@ function onRemove(element, callback) {
     let slideNumberObserver
     function observeSlideNumber(cb) {
         console.log('observe slide number')
-        const slideNumberSpan = document.querySelector('.order-number-container')
+        const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement
         slideNumberObserver = new MutationObserver(() => {
             const number = parseInt(slideNumberSpan.innerText)
             cb(number)
@@ -557,7 +373,7 @@ function onRemove(element, callback) {
 
     function scrollView(y) {
         const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto'
-        const options = { top: y, left: 0, behavior }
+        const options = { top: y, left: 0, behavior } as ScrollToOptions
         const views = [
             document.querySelector('.present .present'),
             document.querySelector('.m-modal__content'),
@@ -582,18 +398,18 @@ function onRemove(element, callback) {
 
     function showImage() {
         if (document.body.querySelector('.fullscreen-mode .wnl-comments')) return
-        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen')
+        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen') as HTMLElement
         if (fullscreenBtn) fullscreenBtn.click()
     }
     function hideImage() {
         if (document.body.querySelector('.fullscreen-mode .wnl-comments')) return
-        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close')
+        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close') as HTMLElement
         if (exitBtn) exitBtn.click()
-        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close')
+        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close') as HTMLElement
         if (exitBtn) exitBtn.click()
     }
     function hideModal() {
-        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`)
+        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`) as HTMLElement
         if (exitBtn) exitBtn.click()
     }
 
@@ -602,19 +418,19 @@ function onRemove(element, callback) {
         const quiz = document.querySelector('.o-referenceModal .quizQuestion')
         if (quiz) {
             const index = parseInt(key) - 1
-            const answers = quiz.querySelectorAll('.quizAnswer')
+            const answers = quiz.querySelectorAll('.quizAnswer') as NodeListOf<HTMLElement>
             if (index >= answers.length) return
             answers[index].click()
             return
         }
         if (annotationImages.length > 0) {
             const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`
-            const icon = document.querySelector(selector)
+            const icon = document.querySelector(selector) as HTMLElement
             console.log({selector, icon})
             if (icon) icon.click()
         } else {
             const selector = `.present .a-icon.sub-id-${key}`
-            const icon = document.querySelector(selector)
+            const icon = document.querySelector(selector) as HTMLElement
             console.log({selector, icon})
             if (icon) icon.click()
             setTimeout(() => {
@@ -624,7 +440,7 @@ function onRemove(element, callback) {
                     const btn = image.querySelector('.a-icon')
                     btn.classList.add(`sub-id-${counter}`)
                     const index = document.createElement('span')
-                    index.innerText = counter
+                    index.innerText = counter.toString()
                     index.className = 'image-fullscreen-index'
                     btn.appendChild(index)
                     counter++
@@ -633,14 +449,14 @@ function onRemove(element, callback) {
         }
     }
     let mouseVisible = true
-    function toggleMouseVisibility(visible) {
+    function toggleMouseVisibility(visible?: boolean) {
         mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible
         console.log({ mouseVisible, visible })
         toggleBodyClass('custom-script-hide-cursor', !mouseVisible)
         if (!mouseVisible) document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true })
     }
-    function shortcutListener (event) {
-        if (event.target.nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
+    function shortcutListener (event: KeyboardEvent) {
+        if ((event.target as HTMLElement).nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
             return
         }
         let quizVerifyBtn
@@ -745,7 +561,9 @@ function onRemove(element, callback) {
             sliderContainer.innerHTML = slider
             lessonView.appendChild(sliderContainer)
             sliderContainer.querySelector('input.custom-script-font-size-input')
-                .addEventListener('input', e => document.querySelector('label.custom-script-font-size-label').innerText = `${e.target.value}%`)
+                .addEventListener('input', e => 
+                    (document.querySelector('label.custom-script-font-size-label') as HTMLElement).innerText = `${(e.target as HTMLInputElement).value}%`
+                )
         }
 
         let sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
@@ -769,7 +587,7 @@ function onRemove(element, callback) {
             const pageNumberContainer = addPageNumberContainer()
             addSummary(metadata)
             const getChapterIndex = page => {
-                const i = metadata.findIndex(m => parseInt(m.startPage) > page) - 1
+                const i = metadata.findIndex(m => m.startPage > page) - 1
                 return i >=0 ? i : metadata.length - 1
             }
             const slideChanged = current => {
@@ -777,8 +595,10 @@ function onRemove(element, callback) {
                 const chapterMetadata = metadata[chapterIndex]
                 const relativeCurrent = current - chapterMetadata.startPage + 1
                 const chapterLength = chapterMetadata.chapterLength
-                pageNumberContainer.querySelector('.current-number').innerText = relativeCurrent
-                pageNumberContainer.querySelector('.n-of-pages').innerText = chapterLength
+                const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number') as HTMLSpanElement;
+                relativeCurrentContainer.innerText = relativeCurrent.toString()
+                const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages') as HTMLSpanElement
+                chapterLengthContainer.innerText = chapterLength.toString()
                 if (summaryContainer) {
                     summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
                     const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
@@ -786,7 +606,7 @@ function onRemove(element, callback) {
                 }
             }
             observeSlideNumber(slideChanged)
-            const slideNumberSpan = document.querySelector('.order-number-container')
+            const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement
             slideChanged( parseInt(slideNumberSpan.innerText) )
         })
 
@@ -873,8 +693,8 @@ function onRemove(element, callback) {
             this.rerender()
         }
 
-        this.storeState = function (optionName) {
-            const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value)
+        this.storeState = function (optionName: string) {
+            const saveOptionState = name => GM_setValue(`option_${name}` as keyof StoredValueType, this.state[name].value)
             if (typeof optionName === 'string') {
                 saveOptionState(optionName)
                 return
@@ -882,9 +702,9 @@ function onRemove(element, callback) {
             Object.keys(this.state).forEach( saveOptionState )
         }
 
-        this.restoreState = function (optionName) {
-            const restoreOptionState = name => {
-                this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value)
+        this.restoreState = function (optionName: string) {
+            const restoreOptionState = (name: string) => {
+                this.state[name].value = GM_getValue(`option_${name}` as keyof StoredValueType, this.state[name].value)
             }
             if (typeof optionName === 'string') {
                 restoreOptionState(optionName)
@@ -893,7 +713,7 @@ function onRemove(element, callback) {
             Object.keys(this.state).forEach( restoreOptionState )
         }
 
-        this._runOnAllOptions = function (functionName) {
+        this._runOnAllOptions = function (functionName: string) {
             Object.keys(this.state).forEach( optionName => {
                 const option = this.state[optionName]
                 const callback = option[functionName]
@@ -999,7 +819,7 @@ function onRemove(element, callback) {
             },
             init: state => {
                 state.originalTitle = unsafeWindow.document.title
-                let headerElem = document.querySelector('.o-lesson__title__left__header')
+                let headerElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
                 console.log({ headerElem })
                 if (headerElem !== null) state.newTitle = headerElem.innerText
                 console.log({ newTitle: state.newTitle })
@@ -1050,15 +870,15 @@ function onRemove(element, callback) {
             defaultValue: 110,
             update: state => {
                 updateFontSize(state.value)
-                const rangeInput = document.querySelector('input.custom-script-font-size-input')
-                const rangeLabel = document.querySelector('label.custom-script-font-size-label')
+                const rangeInput = document.querySelector('input.custom-script-font-size-input') as HTMLInputElement
+                const rangeLabel = document.querySelector('label.custom-script-font-size-label') as HTMLLabelElement
                 if (rangeInput) rangeInput.value = state.value
                 if (rangeLabel) rangeLabel.innerText = `${state.value}%`
             },
             init: function (state) {
-                function toRun() {
-                    const rangeInput = document.querySelector('input.custom-script-font-size-input')
-                    const rangeLabel = document.querySelector('label.custom-script-font-size-label')
+                function _toRun() {
+                    const rangeInput = document.querySelector('input.custom-script-font-size-input') as HTMLInputElement
+                    const rangeLabel = document.querySelector('label.custom-script-font-size-label') as HTMLLabelElement
                     if (rangeInput) {
                         rangeInput.value = state.value
                         rangeLabel.innerText = `${state.value}%`
@@ -1068,11 +888,11 @@ function onRemove(element, callback) {
                         })
                         rangeInput.addEventListener('input', event => {
                             const value = rangeInput.value
-                            updateFontSize(value)
+                            updateFontSize(parseInt(value))
                         })
                     }
                 }
-                toRun = toRun.bind(this)
+                const toRun = _toRun.bind(this)
                 toRunOnLoaded.push(toRun)
             },
             key: 'p'
