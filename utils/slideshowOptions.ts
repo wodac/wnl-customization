@@ -53,9 +53,7 @@ function addSlideOptions() {
     })
 }
 
-
-
-function addSummary(metadata) {
+function addSummary(metadata: SlideshowChapterMetadata[]) {
     const linksHTML = metadata.map((e, i) =>
        `<a class='custom-script-summary-link' href='${e.href}'
            data-start-page=${e.startPage} data-index=${i}>
@@ -72,6 +70,15 @@ function addSummary(metadata) {
     summaryContainer.prepend(closeBtn)
     closeBtn.addEventListener('click', () => toggleSummary(false))
     document.querySelector('.order-number-container').after(summaryContainer)
+    const links = summaryContainer.querySelectorAll('a.custom-script-summary-link') as NodeListOf<HTMLAnchorElement>
+    links.forEach(link => {
+        link.addEventListener('click', event => {
+            event.preventDefault()
+            const { startPage } = link.dataset
+            goToPage(parseInt(startPage))
+            return false
+        })
+    })
 }
 
 function addPageNumberContainer(): HTMLSpanElement {

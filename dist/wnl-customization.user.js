@@ -53,6 +53,11 @@ function toggleOptions(visible) {
         toggleBtn.classList.remove('active');
     }
 }
+function goToPage(page) {
+    const pageNumberInput = document.querySelector('.wnl-slideshow-controls input[type=number]');
+    pageNumberInput.value = page.toString();
+    pageNumberInput.dispatchEvent(new InputEvent('input'));
+}
 function Options(options, sidebarSettingsContainer) {
     const document = unsafeWindow.document;
     this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
@@ -683,6 +688,15 @@ function addSummary(metadata) {
     summaryContainer.prepend(closeBtn);
     closeBtn.addEventListener('click', () => toggleSummary(false));
     document.querySelector('.order-number-container').after(summaryContainer);
+    const links = summaryContainer.querySelectorAll('a.custom-script-summary-link');
+    links.forEach(link => {
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            const { startPage } = link.dataset;
+            goToPage(parseInt(startPage));
+            return false;
+        });
+    });
 }
 function addPageNumberContainer() {
     const classNames = ['custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages'];
@@ -754,7 +768,7 @@ function getMetadata(cb, menuOpened) {
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.7
+// @version      1.9.8
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.user.js

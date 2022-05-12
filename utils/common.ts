@@ -53,3 +53,8 @@ function toggleOptions(visible?: boolean) {
     }
 }
 
+function goToPage(page: number) {
+    const pageNumberInput = document.querySelector('.wnl-slideshow-controls input[type=number]') as HTMLInputElement
+    pageNumberInput.value = page.toString()
+    pageNumberInput.dispatchEvent(new InputEvent('input'))
+}
