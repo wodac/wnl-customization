@@ -3,7 +3,7 @@
       "module": "None",
       "target": "ES6",
       "sourceMap": false,
-      "outFile": "dist/wnl-customization.js"
+      "outFile": "dist/wnl-customization.user.js"
     },
     "lib": ["es2015"],
     "files": ["interfaces.d.ts", "globals.d.ts", "wnl-customization.ts", "style.ts"]
