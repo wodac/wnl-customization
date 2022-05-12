@@ -4,7 +4,8 @@
 // @version      1.9.5
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
-// @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.user.js
+// @updateURL    https://github.com/wodac/wnl-customization/raw/modular/dist/wnl-customization.js
+// @require      https://github.com/wodac/wnl-customization/raw/modular/dist/style.user.js
 // @match        https://lek.wiecejnizlek.pl/app/*
 // @connect      https://lek.wiecejnizlek.pl/*
 // @icon         https://www.google.com/s2/favicons?domain=wiecejnizlek.pl
@@ -19,11 +20,12 @@
 
 import { ParsedSearchResult, SearchResults, SlideshowChapterMetadata } from "./interfaces";
 import './globals'
-import './style'
+// import './style'
 
 (function() {
     'use strict';
 
+    const h = 'test'
     console.log('userscript loaded!')
     // Your code here...
     const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93

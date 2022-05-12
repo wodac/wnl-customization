@@ -1,11 +1,11 @@
 {
     "compilerOptions": {
-      "module": "AMD",
+      "module": "None",
       "target": "ES6",
       "moduleResolution": "node",
       "sourceMap": false,
-      "outFile": "dist/wnl-customization.user.js",
+      "outDir": "dist",
     },
     "lib": ["es2015"],
-    "files": ["wnl-customization.ts"]
+    "files": ["wnl-customization.ts", "style.ts"]
   }
