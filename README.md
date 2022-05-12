@@ -2,4 +2,4 @@
 
 NIEOFICJALNY asystent WnL
 
-[Zainstaluj](https://github.com/wodac/wnl-customization/raw/main/wnl-customization.user.js)
+[Zainstaluj](https://github.com/wodac/wnl-customization/raw/main/dist/wnl-customization.user.js)
