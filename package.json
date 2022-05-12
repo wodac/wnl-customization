@@ -4,7 +4,8 @@
   "description": "NIEOFICJALNY asystent WnL",
   "main": "wnl-customization.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc"
   },
   "repository": {
     "type": "git",
