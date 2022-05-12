@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
-      "module": "None",
-      "esModuleInterop": false,
+      "module": "AMD",
       "target": "ES6",
       "moduleResolution": "node",
       "sourceMap": false,
