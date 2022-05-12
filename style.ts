@@ -95,6 +95,10 @@ sub.small {
     z-index: 10;
     font-size: 0.8rem;
     color: #7a7a7a;
+    padding-left: 10px;
+    padding-bottom: 1rem;
+    padding-right: 1.5rem;
+    cursor: pointer;
 }
 
 body.custom-script-hide-cursor {
