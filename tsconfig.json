@@ -6,5 +6,15 @@
       "outFile": "dist/wnl-customization.user.js"
     },
     "lib": ["es2015"],
-    "files": ["interfaces.d.ts", "globals.d.ts", "wnl-customization.ts", "style.ts"]
+    "files": [
+      "interfaces.d.ts", 
+      "globals.d.ts", 
+      "utils/common.ts",
+      "utils/options.ts",
+      "utils/keyboard.ts",
+      "utils/search.ts",
+      "utils/slideshowOptions.ts",
+      "wnl-customization.ts", 
+      "style.ts"
+    ]
   }
