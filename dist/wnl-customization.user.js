@@ -807,7 +807,7 @@ function getMetadata(cb, menuOpened) {
         if (!a.href)
             return {};
         const startPage = getStartPage(a);
-        const chapterLength = getStartPage(links[i + 1]) - startPage - 1;
+        const chapterLength = getStartPage(links[i + 1]) - startPage;
         return {
             href: a.href,
             name: a.querySelector('span span').innerText,
