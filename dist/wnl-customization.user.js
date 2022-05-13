@@ -451,7 +451,7 @@ function addSubsToIcons(mutations) {
 function processIcon(icon, counter) {
     const genSub = (counter) => {
         const sub = document.createElement('sub');
-        sub.innerText = counter;
+        sub.innerText = counter.toString();
         sub.className = `small`;
         return sub;
     };
@@ -716,6 +716,38 @@ function addSummary(metadata) {
         });
     });
 }
+function addChapterInfo() {
+    getMetadata(metadata => {
+        console.log({ metadata });
+        if (!metadata)
+            return;
+        addPageNumberContainer();
+        addSummary(metadata);
+        observeSlideNumber(page => onSlideChanged(page, metadata));
+        const slideNumberSpan = document.querySelector('.order-number-container');
+        onSlideChanged(parseInt(slideNumberSpan.innerText), metadata);
+    });
+}
+function onSlideChanged(current, metadata) {
+    const pageNumberContainer = document.querySelector('.custom-script-page-number-container');
+    const getChapterIndex = page => {
+        const i = metadata.findIndex(m => m.startPage > page) - 1;
+        return i >= 0 ? i : metadata.length - 1;
+    };
+    const chapterIndex = getChapterIndex(current);
+    const chapterMetadata = metadata[chapterIndex];
+    const relativeCurrent = current - chapterMetadata.startPage + 1;
+    const chapterLength = chapterMetadata.chapterLength;
+    const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number');
+    relativeCurrentContainer.innerText = relativeCurrent.toString();
+    const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages');
+    chapterLengthContainer.innerText = chapterLength.toString();
+    if (summaryContainer) {
+        summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
+        const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`);
+        active.classList.add('is-active');
+    }
+}
 function addPageNumberContainer() {
     const classNames = ['custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages'];
     const spans = classNames.map(name => {
@@ -787,7 +819,6 @@ function getMetadata(cb, menuOpened) {
     'use strict';
     const h = 'test';
     console.log('userscript loaded!');
-    // Your code here...
     const slider = `<div style="margin-top: 2em;">
     <label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
     <input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
@@ -846,35 +877,7 @@ function getMetadata(cb, menuOpened) {
         }
         if (GM_getValue(`option_keyboardControl`))
             setupKeyboardControl();
-        getMetadata(metadata => {
-            console.log({ metadata });
-            if (!metadata)
-                return;
-            const pageNumberContainer = addPageNumberContainer();
-            addSummary(metadata);
-            const getChapterIndex = page => {
-                const i = metadata.findIndex(m => m.startPage > page) - 1;
-                return i >= 0 ? i : metadata.length - 1;
-            };
-            const slideChanged = current => {
-                const chapterIndex = getChapterIndex(current);
-                const chapterMetadata = metadata[chapterIndex];
-                const relativeCurrent = current - chapterMetadata.startPage + 1;
-                const chapterLength = chapterMetadata.chapterLength;
-                const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number');
-                relativeCurrentContainer.innerText = relativeCurrent.toString();
-                const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages');
-                chapterLengthContainer.innerText = chapterLength.toString();
-                if (summaryContainer) {
-                    summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
-                    const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`);
-                    active.classList.add('is-active');
-                }
-            };
-            observeSlideNumber(slideChanged);
-            const slideNumberSpan = document.querySelector('.order-number-container');
-            slideChanged(parseInt(slideNumberSpan.innerText));
-        });
+        addChapterInfo();
         addSlideOptions();
         toRunOnLoaded.forEach(cb => cb());
     }

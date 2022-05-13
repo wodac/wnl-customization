@@ -55,7 +55,7 @@ function addSlideOptions() {
 
 function addSummary(metadata: SlideshowChapterMetadata[]) {
     const linksHTML = metadata.map((e, i) =>
-       `<a class='custom-script-summary-link' href='${e.href}'
+        `<a class='custom-script-summary-link' href='${e.href}'
            data-start-page=${e.startPage} data-index=${i}>
                <span>${e.name} </span>
                <span class='small'>(${e.chapterLength})</span>
@@ -81,8 +81,44 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
     })
 }
 
+function addChapterInfo() {
+    getMetadata(metadata => {
+        console.log({ metadata });
+        if (!metadata)
+            return;
+
+        addPageNumberContainer();
+        addSummary(metadata);
+
+        observeSlideNumber(page => onSlideChanged(page, metadata));
+        const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement;
+        onSlideChanged(parseInt(slideNumberSpan.innerText), metadata);
+    });
+}
+
+function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
+    const pageNumberContainer: HTMLSpanElement = document.querySelector('.custom-script-page-number-container')
+    const getChapterIndex = page => {
+        const i = metadata.findIndex(m => m.startPage > page) - 1;
+        return i >= 0 ? i : metadata.length - 1;
+    };
+    const chapterIndex = getChapterIndex(current)
+    const chapterMetadata = metadata[chapterIndex]
+    const relativeCurrent = current - chapterMetadata.startPage + 1
+    const chapterLength = chapterMetadata.chapterLength
+    const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number') as HTMLSpanElement
+    relativeCurrentContainer.innerText = relativeCurrent.toString()
+    const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages') as HTMLSpanElement
+    chapterLengthContainer.innerText = chapterLength.toString()
+    if (summaryContainer) {
+        summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
+        const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
+        active.classList.add('is-active')
+    }
+}
+
 function addPageNumberContainer(): HTMLSpanElement {
-    const classNames = [ 'custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages' ]
+    const classNames = ['custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages']
     const spans = classNames.map(name => {
         const span = document.createElement('span')
         span.className = name
@@ -135,14 +171,14 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const links = wrappers.map(div => div.querySelector('a'))
-    const getLength = (t: string) => parseInt( t.slice(1, -1) )
+    const getLength = (t: string) => parseInt(t.slice(1, -1))
     const linksMetadata = links.map(a => {
         if (!a.href) return {}
         return {
             href: a.href,
             name: (a.querySelector('span span') as HTMLSpanElement).innerText,
             chapterLength: getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText),
-            startPage: parseInt( a.href.split('/').pop() )
+            startPage: parseInt(a.href.split('/').pop())
         }
     })
     cb(linksMetadata)

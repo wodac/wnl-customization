@@ -1,6 +1,6 @@
 document = unsafeWindow.document
 let toRunOnLoaded = []
-let sidebarSettingsContainer = null
+let sidebarSettingsContainer: HTMLDivElement = null
 let summaryContainer: HTMLDivElement
 let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement, options
 

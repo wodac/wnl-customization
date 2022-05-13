@@ -3,7 +3,7 @@ function shortcutListener(event: KeyboardEvent) {
     if ((event.target as HTMLElement).nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
         return
     }
-    let quizVerifyBtn
+    let quizVerifyBtn: HTMLElement
     switch (event.key) {
         case 'ArrowUp':
             showImage()
@@ -88,7 +88,7 @@ function setupKeyboardControl() {
     document.body.addEventListener('keyup', shortcutListener)
 }
 
-function observeSlides(cb) {
+function observeSlides(cb: MutationCallback) {
     console.log('observeSlides')
     slideObserver = new MutationObserver(cb)
     slideObserver.observe(document.querySelector('div.slides'), {
@@ -97,7 +97,7 @@ function observeSlides(cb) {
     });
 }
 
-function observeSlideNumber(cb) {
+function observeSlideNumber(cb: (page: number) => any) {
     console.log('observe slide number')
     const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement
     slideNumberObserver = new MutationObserver(() => {
@@ -110,13 +110,13 @@ function observeSlideNumber(cb) {
     });
 }
 
-function addSubsToIcons(mutations) {
+function addSubsToIcons(mutations: MutationRecord[]) {
     console.log('mutation observed')
     let counter = 1
     mutations.forEach(mutation => {
         if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
             console.log('node added')
-            let icon = mutation.addedNodes[0]
+            let icon = mutation.addedNodes[0] as HTMLElement
             if (icon.className.includes('a-icon')) {
                 processIcon(icon, counter)
                 counter++
@@ -126,10 +126,10 @@ function addSubsToIcons(mutations) {
 }
 
 
-function processIcon(icon, counter) {
-    const genSub = (counter) => {
+function processIcon(icon: Element, counter: number) {
+    const genSub = (counter: number) => {
         const sub = document.createElement('sub')
-        sub.innerText = counter
+        sub.innerText = counter.toString()
         sub.className = `small`
         return sub
     }
@@ -180,7 +180,7 @@ function hideModal() {
     if (exitBtn) exitBtn.click()
 }
 
-function numericKeyPressed(key) {
+function numericKeyPressed(key: string) {
     let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper')
     const quiz = document.querySelector('.o-referenceModal .quizQuestion')
     if (quiz) {

@@ -1,11 +1,9 @@
-(function() {
+(function () {
     'use strict';
 
     const h = 'test'
     console.log('userscript loaded!')
-    // Your code here...
-
-
+    
     const slider = `<div style="margin-top: 2em;">
     <label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
     <input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
@@ -15,24 +13,24 @@
     </div>`
 
     const sidebarSettings = `<span class="item-wrapper heading" style="padding: 15px;">Ustawienia</span>`
-function onRemove(element, callback) {
-  const parent = element.parentNode;
-  if (!parent) throw new Error("The node must already be attached");
+    function onRemove(element, callback) {
+        const parent = element.parentNode;
+        if (!parent) throw new Error("The node must already be attached");
 
-  const obs = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      for (const el of mutation.removedNodes) {
-        if (el === element) {
-          obs.disconnect();
-          callback();
-        }
-      }
+        const obs = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const el of mutation.removedNodes) {
+                    if (el === element) {
+                        obs.disconnect();
+                        callback();
+                    }
+                }
+            }
+        });
+        obs.observe(parent, {
+            childList: true,
+        });
     }
-  });
-  obs.observe(parent, {
-    childList: true,
-  });
-}
 
     function onLoaded() {
         console.log('loaded')
@@ -44,12 +42,12 @@ function onRemove(element, callback) {
 
         const lessonView = document.querySelector('.wnl-lesson-view')
         if (lessonView !== null) {
-            console.log({lessonView})
+            console.log({ lessonView })
             const sliderContainer = document.createElement('div')
             sliderContainer.innerHTML = slider
             lessonView.appendChild(sliderContainer)
             sliderContainer.querySelector('input.custom-script-font-size-input')
-                .addEventListener('input', e => 
+                .addEventListener('input', e =>
                     (document.querySelector('label.custom-script-font-size-label') as HTMLElement).innerText = `${(e.target as HTMLInputElement).value}%`
                 )
         }
@@ -69,34 +67,7 @@ function onRemove(element, callback) {
 
         if (GM_getValue(`option_keyboardControl`)) setupKeyboardControl()
 
-        getMetadata(metadata => {
-            console.log({ metadata })
-            if (!metadata) return
-            const pageNumberContainer = addPageNumberContainer()
-            addSummary(metadata)
-            const getChapterIndex = page => {
-                const i = metadata.findIndex(m => m.startPage > page) - 1
-                return i >=0 ? i : metadata.length - 1
-            }
-            const slideChanged = current => {
-                const chapterIndex = getChapterIndex(current)
-                const chapterMetadata = metadata[chapterIndex]
-                const relativeCurrent = current - chapterMetadata.startPage + 1
-                const chapterLength = chapterMetadata.chapterLength
-                const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number') as HTMLSpanElement;
-                relativeCurrentContainer.innerText = relativeCurrent.toString()
-                const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages') as HTMLSpanElement
-                chapterLengthContainer.innerText = chapterLength.toString()
-                if (summaryContainer) {
-                    summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
-                    const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
-                    active.classList.add('is-active')
-                }
-            }
-            observeSlideNumber(slideChanged)
-            const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement
-            slideChanged( parseInt(slideNumberSpan.innerText) )
-        })
+        addChapterInfo();
 
         addSlideOptions()
 
@@ -113,4 +84,3 @@ function onRemove(element, callback) {
 
     console.log('end!')
 })();
-
