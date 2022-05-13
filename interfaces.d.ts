@@ -72,5 +72,6 @@ interface SlideshowChapterMetadata {
     href?: string,
     name?: string,
     chapterLength?: number,
-    startPage?: number
+    startPage?: number,
+    subchapters?: SlideshowChapterMetadata[]
 }

@@ -54,13 +54,7 @@ function addSlideOptions() {
 }
 
 function addSummary(metadata: SlideshowChapterMetadata[]) {
-    const linksHTML = metadata.map((e, i) =>
-        `<a class='custom-script-summary-link' href='${e.href}'
-           data-start-page=${e.startPage} data-index=${i}>
-               <span>${e.name} </span>
-               <span class='small'>(${e.chapterLength})</span>
-       </a>`
-    ).join('')
+    const linksHTML = generateSummaryLinks(metadata)
     summaryContainer = document.createElement('div')
     summaryContainer.className = 'custom-script-summary custom-script-hidden'
     summaryContainer.innerHTML = linksHTML
@@ -79,6 +73,18 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
             return false
         })
     })
+}
+
+function generateSummaryLinks(metadata: SlideshowChapterMetadata[]) {
+    return metadata.map((e, i) => `<a class='custom-script-summary-link' href='${e.href}'
+           data-start-page=${e.startPage} data-index=${i}>
+               <span>${e.name} </span>
+               <span class='small'>(${e.chapterLength})</span>
+               <div class='custom-script-summary-subchapters'>
+                    ${generateSummaryLinks(e.subchapters)}
+               </div>
+       </a>`
+    ).join('')
 }
 
 function addChapterInfo() {
@@ -178,17 +184,30 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         else return NaN
     }
     const links = wrappers.map(div => div.querySelector('a'))
-    const linksMetadata = links.map((a, i) => {
-        if (!a.href) return {}
-        const startPage = getStartPage(a)
-        const endPage = getStartPage(links[i + 1])
-        const chapterLength = endPage > 0 ? endPage - startPage : slideshowLength - startPage
-        return {
-            href: a.href,
-            name: (a.querySelector('span span') as HTMLSpanElement).innerText,
-            chapterLength,
-            startPage
-        }
+    const items = wrappers.map(div => div.querySelector('div'))
+    const linksMetadata = getMetadataFromLinks(links, slideshowLength).map(metadata => {
+        metadata.subchapters = getMetadataFromLinks(
+            items.map(div => div.querySelector('a')), 
+            metadata.chapterLength
+        )
+        return metadata
     })
+    console.log({linksMetadata})
     cb(linksMetadata)
+
+    function getMetadataFromLinks(links: HTMLAnchorElement[], unitLength: number): SlideshowChapterMetadata[] {
+        return links.map((a, i) => {
+            if (!a.href)
+                return {}
+            const startPage = getStartPage(a)
+            const endPage = getStartPage(links[i + 1])
+            const chapterLength = endPage > 0 ? endPage - startPage : unitLength - startPage
+            return {
+                href: a.href,
+                name: (a.querySelector('span span') as HTMLSpanElement).innerText,
+                chapterLength,
+                startPage
+            }
+        })
+    }
 }
