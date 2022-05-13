@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.16
+// @version      1.9.17
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -789,6 +789,9 @@ function getMetadata(cb, menuOpened) {
         return;
     }
     const list = Array.from(listParent.children);
+    const slideshowLink = list[0];
+    const slideshowLengthText = slideshowLink.querySelector('span .sidenav-item-meta').innerText;
+    const slideshowLength = parseInt(slideshowLengthText.match(/[0-9]+/)[0]);
     if (menuOpened)
         document.querySelector('.topNavContainer__close').click();
     if (list.length === 0) {
@@ -800,14 +803,19 @@ function getMetadata(cb, menuOpened) {
         cb(false);
         return;
     }
-    const getStartPage = a => parseInt(a.href.split('/').pop());
+    const getStartPage = (a) => {
+        if (a)
+            return parseInt(a.href.split('/').pop());
+        else
+            return NaN;
+    };
     const links = wrappers.map(div => div.querySelector('a'));
-    let lastStartPage;
     const linksMetadata = links.map((a, i) => {
         if (!a.href)
             return {};
         const startPage = getStartPage(a);
-        const chapterLength = getStartPage(links[i + 1]) - startPage;
+        const endPage = getStartPage(links[i + 1]);
+        const chapterLength = endPage > 0 ? endPage - startPage : slideshowLength - startPage;
         return {
             href: a.href,
             name: a.querySelector('span span').innerText,
