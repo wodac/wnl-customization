@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.18
+// @version      1.9.19
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -818,7 +818,8 @@ function getMetadata(cb, menuOpened) {
     const links = wrappers.map(div => div.querySelector('a'));
     const items = wrappers.map(div => div.querySelector('div'));
     const linksMetadata = getMetadataFromLinks(links, slideshowLength).map(metadata => {
-        metadata.subchapters = getMetadataFromLinks(items.map(div => div.querySelector('a')), metadata.chapterLength);
+        metadata.subchapters = getMetadataFromLinks(items.filter(div => div)
+            .map(div => div.querySelector('a')), metadata.chapterLength);
         return metadata;
     });
     console.log({ linksMetadata });
