@@ -160,6 +160,9 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const list = Array.from(listParent.children)
+    const slideshowLink = list[0] as HTMLAnchorElement
+    const slideshowLengthText = (slideshowLink.querySelector('span .sidenav-item-meta') as HTMLSpanElement).innerText
+    const slideshowLength = parseInt(slideshowLengthText.match(/[0-9]+/)[0])
     if (menuOpened) (document.querySelector('.topNavContainer__close') as HTMLElement).click()
     if (list.length === 0) {
         cb(false)
@@ -170,13 +173,16 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         cb(false)
         return
     }
-    const getStartPage = a => parseInt(a.href.split('/').pop())
+    const getStartPage = (a: HTMLAnchorElement) => {
+        if (a) return parseInt(a.href.split('/').pop())
+        else return NaN
+    }
     const links = wrappers.map(div => div.querySelector('a'))
-    let lastStartPage
     const linksMetadata = links.map((a, i) => {
         if (!a.href) return {}
         const startPage = getStartPage(a)
-        const chapterLength = getStartPage(links[i+1]) - startPage
+        const endPage = getStartPage(links[i + 1])
+        const chapterLength = endPage > 0 ? endPage - startPage : slideshowLength - startPage
         return {
             href: a.href,
             name: (a.querySelector('span span') as HTMLSpanElement).innerText,
