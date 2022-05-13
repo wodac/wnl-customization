@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.22
+// @version      1.9.23
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js

@@ -165,21 +165,33 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         cb(false)
         return
     }
-    const wrappers = list.filter(el => el.nodeName === 'DIV')
+    const wrappers = list.filter(el => el.nodeName === 'DIV') as HTMLElement[]
     if (wrappers.length === 0) {
         cb(false)
         return
     }
-    const links = wrappers.map(div => div.querySelector('a'))
+    const linksMetadata = getMetadataFromLinks(wrappers)
+    cb(linksMetadata)
+}
+
+function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {     
+    const links = wrappers.map(div => div.querySelector('a'))   
     const getLength = (t: string) => parseInt(t.slice(1, -1))
-    const linksMetadata = links.map(a => {
-        if (!a.href) return {}
+    return links.map( (a, i) => {
+        if (!a.href)
+            return {}
+        const chapterLength = getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText)
+        if (chapterLength > 50) {
+            const subwrappers: NodeListOf<HTMLDivElement> = wrappers[i].querySelectorAll('div')
+            if (subwrappers.length) {
+                return getMetadataFromLinks(Array.from(subwrappers))
+            }
+        }
         return {
             href: a.href,
             name: (a.querySelector('span span') as HTMLSpanElement).innerText,
-            chapterLength: getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText),
+            chapterLength,
             startPage: parseInt(a.href.split('/').pop())
         }
-    })
-    cb(linksMetadata)
+    }).flat(1)
 }
