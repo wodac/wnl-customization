@@ -52,8 +52,13 @@ function toggleSummary(visible) {
         return;
     if (typeof visible === 'undefined')
         visible = summaryContainer.className.includes('custom-script-hidden');
-    if (visible)
+    if (visible) {
         summaryContainer.classList.remove('custom-script-hidden');
+        const activeLink = summaryContainer.querySelector('.active');
+        if (activeLink) {
+            activeLink.scrollIntoView();
+        }
+    }
     else
         summaryContainer.classList.add('custom-script-hidden');
 }
