@@ -170,15 +170,18 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         cb(false)
         return
     }
+    const getStartPage = a => parseInt(a.href.split('/').pop())
     const links = wrappers.map(div => div.querySelector('a'))
-    const getLength = (t: string) => parseInt(t.slice(1, -1))
-    const linksMetadata = links.map(a => {
+    let lastStartPage
+    const linksMetadata = links.map((a, i) => {
         if (!a.href) return {}
+        const startPage = getStartPage(a)
+        const chapterLength = getStartPage(links[i+1]) - startPage - 1
         return {
             href: a.href,
             name: (a.querySelector('span span') as HTMLSpanElement).innerText,
-            chapterLength: getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText),
-            startPage: parseInt(a.href.split('/').pop())
+            chapterLength,
+            startPage
         }
     })
     cb(linksMetadata)
