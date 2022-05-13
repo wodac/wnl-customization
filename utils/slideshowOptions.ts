@@ -81,7 +81,7 @@ function generateSummaryLinks(metadata: SlideshowChapterMetadata[]) {
                <span>${e.name} </span>
                <span class='small'>(${e.chapterLength})</span>
                <div class='custom-script-summary-subchapters'>
-                    ${generateSummaryLinks(e.subchapters)}
+                    ${e.subchapters ? generateSummaryLinks(e.subchapters) : ''}
                </div>
        </a>`
     ).join('')
@@ -189,7 +189,7 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         metadata.subchapters = getMetadataFromLinks(
             items.filter(div => div)
                 .map(div => div.querySelector('a')), 
-                
+
             metadata.chapterLength
         )
         return metadata
