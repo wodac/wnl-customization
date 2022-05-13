@@ -187,7 +187,9 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
     const items = wrappers.map(div => div.querySelector('div'))
     const linksMetadata = getMetadataFromLinks(links, slideshowLength).map(metadata => {
         metadata.subchapters = getMetadataFromLinks(
-            items.map(div => div.querySelector('a')), 
+            items.filter(div => div)
+                .map(div => div.querySelector('a')), 
+                
             metadata.chapterLength
         )
         return metadata
