@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.22
+// @version      1.9.23
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -800,19 +800,29 @@ function getMetadata(cb, menuOpened) {
         cb(false);
         return;
     }
+    const linksMetadata = getMetadataFromLinks(wrappers);
+    cb(linksMetadata);
+}
+function getMetadataFromLinks(wrappers) {
     const links = wrappers.map(div => div.querySelector('a'));
     const getLength = (t) => parseInt(t.slice(1, -1));
-    const linksMetadata = links.map(a => {
+    return links.map((a, i) => {
         if (!a.href)
             return {};
+        const chapterLength = getLength(a.querySelector('span span.sidenav-item-meta').innerText);
+        if (chapterLength > 50) {
+            const subwrappers = wrappers[i].querySelectorAll('div');
+            if (subwrappers.length) {
+                return getMetadataFromLinks(Array.from(subwrappers));
+            }
+        }
         return {
             href: a.href,
             name: a.querySelector('span span').innerText,
-            chapterLength: getLength(a.querySelector('span span.sidenav-item-meta').innerText),
+            chapterLength,
             startPage: parseInt(a.href.split('/').pop())
         };
-    });
-    cb(linksMetadata);
+    }).flat(1);
 }
 (function () {
     'use strict';
