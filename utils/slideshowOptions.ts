@@ -181,7 +181,7 @@ function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata
         if (!a.href)
             return {}
         const chapterLength = getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText)
-        if (chapterLength > 50) {
+        if (chapterLength > 75) {
             const subwrappers: NodeListOf<HTMLDivElement> = wrappers[i].querySelectorAll('div')
             if (subwrappers.length) {
                 return getMetadataFromLinks(Array.from(subwrappers))
