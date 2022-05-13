@@ -810,7 +810,7 @@ function getMetadataFromLinks(wrappers) {
         if (!a.href)
             return {};
         const chapterLength = getLength(a.querySelector('span span.sidenav-item-meta').innerText);
-        if (chapterLength > 50) {
+        if (chapterLength > 75) {
             const subwrappers = wrappers[i].querySelectorAll('div');
             if (subwrappers.length) {
                 return getMetadataFromLinks(Array.from(subwrappers));
