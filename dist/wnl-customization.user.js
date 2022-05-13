@@ -717,7 +717,7 @@ function generateSummaryLinks(metadata) {
                <span>${e.name} </span>
                <span class='small'>(${e.chapterLength})</span>
                <div class='custom-script-summary-subchapters'>
-                    ${generateSummaryLinks(e.subchapters)}
+                    ${e.subchapters ? generateSummaryLinks(e.subchapters) : ''}
                </div>
        </a>`).join('');
 }
