@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.20
+// @version      1.9.21
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -701,10 +701,11 @@ function addSummary(metadata) {
     summaryContainer.prepend(closeBtn);
     closeBtn.addEventListener('click', () => toggleSummary(false));
     document.querySelector('.order-number-container').after(summaryContainer);
-    const links = summaryContainer.querySelectorAll('a.custom-script-summary-link');
+    const links = summaryContainer.querySelectorAll('.custom-script-summary-link');
     links.forEach(link => {
         link.addEventListener('click', event => {
             event.preventDefault();
+            event.stopPropagation();
             const { startPage } = link.dataset;
             goToPage(parseInt(startPage));
             return false;
@@ -712,14 +713,17 @@ function addSummary(metadata) {
     });
 }
 function generateSummaryLinks(metadata) {
-    return metadata.map((e, i) => `<a class='custom-script-summary-link' href='${e.href}'
-           data-start-page=${e.startPage} data-index=${i}>
-               <span>${e.name} </span>
-               <span class='small'>(${e.chapterLength})</span>
-               <div class='custom-script-summary-subchapters'>
+    return metadata.map((e, i) => `    
+        <div class='custom-script-summary-link'
+            data-start-page=${e.startPage} data-index=${i}>
+            <a class='custom-script-summary-link' href='${e.href}' click='return false;'>
+                <span>${e.name} </span>
+                <span class='small'>(${e.chapterLength})</span>
+            </a>
+            <div class='custom-script-summary-subchapters'>
                     ${e.subchapters ? generateSummaryLinks(e.subchapters) : ''}
-               </div>
-       </a>`).join('');
+            </div>
+        </div>`).join('');
 }
 function addChapterInfo() {
     getMetadata(metadata => {
