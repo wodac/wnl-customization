@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.21
+// @version      1.9.22
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -691,7 +691,11 @@ function addSlideOptions() {
     });
 }
 function addSummary(metadata) {
-    const linksHTML = generateSummaryLinks(metadata);
+    const linksHTML = metadata.map((e, i) => `<a class='custom-script-summary-link' href='${e.href}'
+           data-start-page=${e.startPage} data-index=${i}>
+               <span>${e.name} </span>
+               <span class='small'>(${e.chapterLength})</span>
+       </a>`).join('');
     summaryContainer = document.createElement('div');
     summaryContainer.className = 'custom-script-summary custom-script-hidden';
     summaryContainer.innerHTML = linksHTML;
@@ -701,29 +705,15 @@ function addSummary(metadata) {
     summaryContainer.prepend(closeBtn);
     closeBtn.addEventListener('click', () => toggleSummary(false));
     document.querySelector('.order-number-container').after(summaryContainer);
-    const links = summaryContainer.querySelectorAll('.custom-script-summary-link');
+    const links = summaryContainer.querySelectorAll('a.custom-script-summary-link');
     links.forEach(link => {
         link.addEventListener('click', event => {
             event.preventDefault();
-            event.stopPropagation();
             const { startPage } = link.dataset;
             goToPage(parseInt(startPage));
             return false;
         });
     });
-}
-function generateSummaryLinks(metadata) {
-    return metadata.map((e, i) => `    
-        <div class='custom-script-summary-link'
-            data-start-page=${e.startPage} data-index=${i}>
-            <a class='custom-script-summary-link' href='${e.href}' click='return false;'>
-                <span>${e.name} </span>
-                <span class='small'>(${e.chapterLength})</span>
-            </a>
-            <div class='custom-script-summary-subchapters'>
-                    ${e.subchapters ? generateSummaryLinks(e.subchapters) : ''}
-            </div>
-        </div>`).join('');
 }
 function addChapterInfo() {
     getMetadata(metadata => {
@@ -799,9 +789,6 @@ function getMetadata(cb, menuOpened) {
         return;
     }
     const list = Array.from(listParent.children);
-    const slideshowLink = list[0];
-    const slideshowLengthText = slideshowLink.querySelector('span .sidenav-item-meta').innerText;
-    const slideshowLength = parseInt(slideshowLengthText.match(/[0-9]+/)[0]);
     if (menuOpened)
         document.querySelector('.topNavContainer__close').click();
     if (list.length === 0) {
@@ -813,37 +800,19 @@ function getMetadata(cb, menuOpened) {
         cb(false);
         return;
     }
-    const getStartPage = (a) => {
-        if (a)
-            return parseInt(a.href.split('/').pop());
-        else
-            return NaN;
-    };
     const links = wrappers.map(div => div.querySelector('a'));
-    const linksMetadata = getMetadataFromLinks(links, slideshowLength).map((metadata, i) => {
-        const subchapterDivsCollection = wrappers[i].querySelectorAll('div');
-        const subchapterDivs = Array.from(subchapterDivsCollection);
-        const subchapterLinks = subchapterDivs.map(div => div.querySelector('a'));
-        metadata.subchapters = getMetadataFromLinks(subchapterLinks, metadata.chapterLength);
-        return metadata;
+    const getLength = (t) => parseInt(t.slice(1, -1));
+    const linksMetadata = links.map(a => {
+        if (!a.href)
+            return {};
+        return {
+            href: a.href,
+            name: a.querySelector('span span').innerText,
+            chapterLength: getLength(a.querySelector('span span.sidenav-item-meta').innerText),
+            startPage: parseInt(a.href.split('/').pop())
+        };
     });
-    console.log({ linksMetadata });
     cb(linksMetadata);
-    function getMetadataFromLinks(links, unitLength) {
-        return links.map((a, i) => {
-            if (!a.href)
-                return {};
-            const startPage = getStartPage(a);
-            const endPage = getStartPage(links[i + 1]);
-            const chapterLength = endPage > 0 ? endPage - startPage : unitLength - startPage;
-            return {
-                href: a.href,
-                name: a.querySelector('span span').innerText,
-                chapterLength,
-                startPage
-            };
-        });
-    }
 }
 (function () {
     'use strict';
