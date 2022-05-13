@@ -184,12 +184,12 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         else return NaN
     }
     const links = wrappers.map(div => div.querySelector('a'))
-    const items = wrappers.map(div => div.querySelector('div'))
-    const linksMetadata = getMetadataFromLinks(links, slideshowLength).map(metadata => {
+    const linksMetadata = getMetadataFromLinks(links, slideshowLength).map((metadata, i) => {
+        const subchapterDivsCollection = wrappers[i].querySelectorAll('div')
+        const subchapterDivs = Array.from(subchapterDivsCollection)
+        const subchapterLinks = subchapterDivs.map(div => div.querySelector('a'))
         metadata.subchapters = getMetadataFromLinks(
-            items.filter(div => div)
-                .map(div => div.querySelector('a')), 
-
+            subchapterLinks, 
             metadata.chapterLength
         )
         return metadata
