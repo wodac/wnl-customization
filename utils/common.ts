@@ -2,7 +2,9 @@ document = unsafeWindow.document
 let toRunOnLoaded = []
 let sidebarSettingsContainer = null
 let summaryContainer: HTMLDivElement
-let slideOptionsContainer, additionalOptionsContainer, options
+let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement, options
+
+let slideNumberObserver: MutationObserver, slideObserver: MutationObserver
 
 const inSVG = (s: TemplateStringsArray) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`
 const svgIcons = {

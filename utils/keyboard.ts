@@ -88,8 +88,6 @@ function setupKeyboardControl() {
     document.body.addEventListener('keyup', shortcutListener)
 }
 
-
-let slideObserver
 function observeSlides(cb) {
     console.log('observeSlides')
     slideObserver = new MutationObserver(cb)
@@ -99,8 +97,6 @@ function observeSlides(cb) {
     });
 }
 
-
-let slideNumberObserver
 function observeSlideNumber(cb) {
     console.log('observe slide number')
     const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement

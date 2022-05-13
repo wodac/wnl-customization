@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.13
+// @version      1.9.14
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://github.com/wodac/wnl-customization/raw/dist/wnl-customization.user.js
@@ -16,11 +16,13 @@
 // @grant        GM_xmlhttpRequest
 // @run-at document-body
 // ==/UserScript==
+// test github actions
 document = unsafeWindow.document;
 let toRunOnLoaded = [];
 let sidebarSettingsContainer = null;
 let summaryContainer;
 let slideOptionsContainer, additionalOptionsContainer, options;
+let slideNumberObserver, slideObserver;
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
 const svgIcons = {
     chevronUp: inSVG `<path fill-rule="evenodd" d="M7.776 5.553a.5.5 0 0 1 .448 0l6 3a.5.5 0 1 1-.448.894L8 6.56 2.224 9.447a.5.5 0 1 1-.448-.894l6-3z"/>`,
@@ -412,7 +414,6 @@ function setupKeyboardControl() {
     });
     document.body.addEventListener('keyup', shortcutListener);
 }
-let slideObserver;
 function observeSlides(cb) {
     console.log('observeSlides');
     slideObserver = new MutationObserver(cb);
@@ -421,7 +422,6 @@ function observeSlides(cb) {
         subtree: true
     });
 }
-let slideNumberObserver;
 function observeSlideNumber(cb) {
     console.log('observe slide number');
     const slideNumberSpan = document.querySelector('.order-number-container');
