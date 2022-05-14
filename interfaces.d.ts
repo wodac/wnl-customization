@@ -1,3 +1,19 @@
+interface OptionState<T> extends OptionConstructorOption<any> {
+    value: T
+    [k: string]: any
+}
+
+interface OptionConstructorOption<T> {
+    name: string
+    desc: string | ((state: OptionState<T>) => string)
+    type?: "button" | string
+    callback?: (state: OptionState<T>) => (Partial<OptionState<T>> | void)
+    update?: (state: OptionState<T>) => any
+    init?: (state: OptionState<T>) => any
+    defaultValue?: T
+    key?: string
+}
+
 interface SearchResultSchema {
     content: string;
     is_functional: boolean;
