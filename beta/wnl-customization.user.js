@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.23
+// @version      1.9.23b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -82,20 +82,27 @@ function goToPage(page) {
     pageNumberInput.value = page.toString();
     pageNumberInput.dispatchEvent(new InputEvent('input'));
 }
-function Options(options, sidebarSettingsContainer) {
-    const document = unsafeWindow.document;
-    this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
-    this._rerenderSidebar = function () {
+class Options {
+    constructor(options, sidebarSettingsContainer) {
+        const document = unsafeWindow.document;
+        this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
+        this.restoreState();
+        this.init();
+        this.update();
+        this.storeState();
+        this.rerender();
+    }
+    _rerenderSidebar() {
         if (sidebarSettingsContainer) {
             const optionDivs = sidebarSettingsContainer.querySelectorAll('div.custom-script-option-container');
             optionDivs.forEach(el => el.remove());
             Object.values(this.state).forEach(option => sidebarSettingsContainer.appendChild(this._getSidebarOption(option)));
         }
-    };
-    this._getSidebarOption = function (option) {
+    }
+    _getSidebarOption(option) {
         const optionContainer = document.createElement('div');
         optionContainer.classList.add('custom-script-option-container');
-        const getOption = desc => `<a class="custom-script-option" href="#">${desc}</a>`;
+        const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
         const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
         optionContainer.innerHTML = getOption(desc);
         const optionLink = optionContainer.querySelector('a');
@@ -104,8 +111,8 @@ function Options(options, sidebarSettingsContainer) {
             this._runCallback(option);
         });
         return optionContainer;
-    };
-    this.rerender = function () {
+    }
+    rerender() {
         let rerender = name => {
             const state = this.state[name];
             GM_unregisterMenuCommand(state.handle);
@@ -115,36 +122,36 @@ function Options(options, sidebarSettingsContainer) {
         rerender = rerender.bind(this);
         Object.keys(this.state).forEach(rerender);
         this._rerenderSidebar();
-    };
-    this._runCallback = function (option) {
+    }
+    _runCallback(option) {
         const result = option.callback.apply(this, [option, this.state]);
         if (typeof result === 'object')
             this.setOptionState(Object.assign({ name: option.name }, result));
-    };
-    this.setOptionState = function (state, name) {
+    }
+    setOptionState(state, name) {
         if (typeof state === 'function') {
             const result = state.apply(this, [this.state[name]]);
             this._setOptionState(Object.assign(Object.assign({}, this.state[name]), result));
         }
         else
             this._setOptionState(state);
-    };
-    this._setOptionState = function (state) {
+    }
+    _setOptionState(state) {
         const name = state.name;
         this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
         this.storeState(name);
         this.state[name].update.apply(this, [state, this.state]);
         this.rerender();
-    };
-    this.storeState = function (optionName) {
+    }
+    storeState(optionName) {
         const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value);
         if (typeof optionName === 'string') {
             saveOptionState(optionName);
             return;
         }
         Object.keys(this.state).forEach(saveOptionState);
-    };
-    this.restoreState = function (optionName) {
+    }
+    restoreState(optionName) {
         const restoreOptionState = (name) => {
             this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value);
         };
@@ -153,37 +160,20 @@ function Options(options, sidebarSettingsContainer) {
             return;
         }
         Object.keys(this.state).forEach(restoreOptionState);
-    };
-    this._runOnAllOptions = function (functionName) {
+    }
+    _runOnAllOptions(functionName) {
         Object.keys(this.state).forEach(optionName => {
             const option = this.state[optionName];
             const callback = option[functionName];
             if (typeof callback === 'function')
                 callback.apply(this, [option, this.state]);
         });
-    };
-    this.update = function () { this._runOnAllOptions('update'); };
-    this.init = function () {
+    }
+    update() { this._runOnAllOptions('update'); }
+    init() {
         this._runOnAllOptions('init');
         this._rerenderSidebar();
-    };
-    this.rerender = this.rerender.bind(this);
-    this._runCallback = this._runCallback.bind(this);
-    this._getSidebarOption = this._getSidebarOption.bind(this);
-    this._rerenderSidebar = this._rerenderSidebar.bind(this);
-    this.restoreState = this.restoreState.bind(this);
-    this.storeState = this.storeState.bind(this);
-    this.setOptionState = this.setOptionState.bind(this);
-    this._setOptionState = this._setOptionState.bind(this);
-    this._runOnAllOptions = this._runOnAllOptions.bind(this);
-    this.update = this.update.bind(this);
-    this.init = this.init.bind(this);
-    this.restoreState();
-    this.init();
-    this.update();
-    this.storeState();
-    this.rerender();
-    // options.forEach(option => { if (option.type === 'boolean') this.setOption[option.name](option.defaultValue) })
+    }
 }
 const getCheckbox = isOn => isOn ? "☑️ " : "🔲 ";
 options = new Options([
