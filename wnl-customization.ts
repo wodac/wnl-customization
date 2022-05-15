@@ -57,25 +57,31 @@
         toRunOnLoaded.forEach(cb => cb())
     }
 
+    let isAwaiting = false
     awaitLoad()
+    const appDiv = document.querySelector(SELECTORS.appDiv)
+    if (appDiv) onAttributeChange(appDiv, 'screenid', checkUnloaded)
 
     function awaitLoad() {
         let checkLoadedInterval: NodeJS.Timer
+        isAwaiting = true
         checkLoadedInterval = setInterval(() => {
             const testElement = document.querySelector('.order-number-container')
             if (testElement) {
+                isAwaiting = false
                 clearInterval(checkLoadedInterval)
                 onLoaded()
-                const appDiv = document.querySelector(SELECTORS.appDiv)
-                onAttributeChange(appDiv, 'screenid', checkUnloaded)
             }
-        }, 100)
+        }, 300)
     }
 
     function checkUnloaded() {
         console.log('unloaded??')
         const testElement = document.querySelector('input.custom-script-font-size-input')
-        if (testElement) awaitLoad()
+        if (!isAwaiting && !testElement) {
+            console.log('unloaded!!!')
+            awaitLoad()
+        }
     }
 
 })();
