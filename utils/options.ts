@@ -43,7 +43,7 @@ class Options {
     }
 
     rerender() {
-        let rerender = name => {
+        let rerender = (name: string) => {
             const state = this.state[name]
             GM_unregisterMenuCommand(state.handle)
             const desc = typeof state.desc === 'function' ? state.desc(state) : state.desc
