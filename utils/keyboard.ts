@@ -220,6 +220,6 @@ let mouseVisible = true
 function toggleMouseVisibility(visible?: boolean) {
     mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible
     console.log({ mouseVisible, visible })
-    toggleBodyClass('custom-script-hide-cursor', !mouseVisible)
+    toggleBodyClass(BODY_CLASS_NAMES.hideCursor, !mouseVisible)
     if (!mouseVisible) document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true })
 }

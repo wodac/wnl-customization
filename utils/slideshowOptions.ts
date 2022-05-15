@@ -97,7 +97,7 @@ function addChapterInfo() {
 }
 
 function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
-    const pageNumberContainer: HTMLSpanElement = document.querySelector('.custom-script-page-number-container')
+    const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
         return i >= 0 ? i : metadata.length - 1;
@@ -119,7 +119,7 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
 }
 
 function addPageNumberContainer(): HTMLSpanElement {
-    const classNames = ['custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages']
+    const classNames = [CLASS_NAMES.pageNumberContainer, 'current-number', 'number-divider', 'n-of-pages']
     const spans = classNames.map(name => {
         const span = document.createElement('span')
         span.className = name

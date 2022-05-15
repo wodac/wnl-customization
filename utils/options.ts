@@ -20,7 +20,7 @@ class Options {
 
     _rerenderSidebar() {
         if (sidebarSettingsContainer) {
-            const optionDivs = sidebarSettingsContainer.querySelectorAll('div.custom-script-option-container')
+            const optionDivs = sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
             optionDivs.forEach(el => el.remove())
             Object.values(this.state).forEach(
                 option => sidebarSettingsContainer.appendChild(this._getSidebarOption(option))
@@ -30,7 +30,7 @@ class Options {
 
     _getSidebarOption(option: OptionState<any>) {
         const optionContainer = document.createElement('div')
-        optionContainer.classList.add('custom-script-option-container')
+        optionContainer.classList.add(CLASS_NAMES.optionContainer)
         const getOption = (desc: string) => `<a class="custom-script-option" href="#">${desc}</a>`
         const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc
         optionContainer.innerHTML = getOption(desc)
@@ -130,7 +130,7 @@ options = new Options([
             }
             return { value: !state.value }
         },
-        update: state => toggleBodyClass("custom-script-increase-font-size", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseFontSize, state.value),
         defaultValue: true,
         key: 'f'
     },
@@ -140,7 +140,7 @@ options = new Options([
         callback: function (state) {
             return { value: !state.value }
         },
-        update: state => toggleBodyClass("custom-script-increase-annotations", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseAnnotations, state.value),
         defaultValue: false,
         key: 'a'
     },
@@ -206,7 +206,7 @@ options = new Options([
             }
             return { value: !state.value }
         },
-        update: state => toggleBodyClass("custom-script-uniform-font-size", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.uniformFontSize, state.value),
         defaultValue: false,
         key: 'u'
     },
@@ -217,7 +217,7 @@ options = new Options([
             return { value: !state.value }
         },
         defaultValue: false,
-        update: state => toggleBodyClass("custom-script-invert-images", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
         key: 'i'
     },
     {
