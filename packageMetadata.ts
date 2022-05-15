@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         WnL customization
+// @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
 // @version      1.9.23b
 // @description  NIEOFICJALNY asystent WnL
