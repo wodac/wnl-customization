@@ -24,7 +24,8 @@ const CLASS_NAMES = {
     fontSizeLabel: 'custom-script-font-size-label',
     fontSizeInput: 'custom-script-font-size-input',
     zoomSliderContainer: 'custom-script-zoom-slider-container',
-    settingsContainer: 'custom-script-settings-container'
+    settingsContainer: 'custom-script-settings-container',
+    toolsContainer: 'custom-script-tools-container'
 };
 const BODY_CLASS_NAMES = {
     increaseFontSize: 'custom-script-increase-font-size',
@@ -43,7 +44,7 @@ const SELECTORS = {
 document = unsafeWindow.document;
 let toRunOnLoaded = [], summaryContainer;
 let slideOptionsContainer, additionalOptionsContainer;
-let options;
+let options, tools;
 let slideNumberObserver, slideObserver;
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
 const svgIcons = {
@@ -117,6 +118,19 @@ function goToPage(page) {
     pageNumberInput.value = page.toString();
     pageNumberInput.dispatchEvent(new InputEvent('input'));
 }
+function onAttributeChange(element, attributeName, callback) {
+    const obs = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (mutation.attributeName === attributeName)
+                callback();
+            // console.log({mutation})
+        }
+    });
+    obs.observe(element, {
+        attributes: true
+    });
+    return obs;
+}
 class Options {
     constructor(options, settingsContainerSelector) {
         const document = unsafeWindow.document;
@@ -181,7 +195,9 @@ class Options {
         const name = state.name;
         this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
         this.storeState(name);
-        this.state[name].update.apply(this, [state, this.state]);
+        const updateCb = this.state[name].update;
+        if (updateCb)
+            updateCb.apply(this, [state, this.state]);
         this.rerender();
     }
     storeState(optionName) {
@@ -216,11 +232,11 @@ class Options {
         this._rerenderSidebar();
     }
 }
-const getCheckbox = isOn => isOn ? "☑️ " : "🔲 ";
+const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 ";
 options = new Options([
     {
         name: "increaseFontSize",
-        desc: state => getCheckbox(state.value) + "🔎 Zwiększ wielkość czcionki",
+        desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
         callback: function (state) {
             if (!state.value) {
                 this.setOptionState({
@@ -236,7 +252,7 @@ options = new Options([
     },
     {
         name: "increaseAnnotations",
-        desc: state => getCheckbox(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
+        desc: state => getCheckboxEmoji(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
         callback: function (state) {
             return { value: !state.value };
         },
@@ -246,7 +262,7 @@ options = new Options([
     },
     {
         name: "smoothScroll",
-        desc: state => getCheckbox(state.value) + "↕️ Płynne przewijanie strzałkami",
+        desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
         callback: function (state) {
             return { value: !state.value };
         },
@@ -256,7 +272,7 @@ options = new Options([
     },
     {
         name: "keyboardControl",
-        desc: state => getCheckbox(state.value) + "⌨️ Sterowanie klawiaturą",
+        desc: state => getCheckboxEmoji(state.value) + "⌨️ Sterowanie klawiaturą",
         callback: function (state) {
             return { value: !state.value };
         },
@@ -276,7 +292,7 @@ options = new Options([
     },
     {
         name: "changeTitle",
-        desc: state => getCheckbox(state.value) + "🆎 Zmień tytuł karty",
+        desc: state => getCheckboxEmoji(state.value) + "🆎 Zmień tytuł karty",
         callback: function (state) {
             return Object.assign(Object.assign({}, state), { value: !state.value });
         },
@@ -299,7 +315,7 @@ options = new Options([
     },
     {
         name: "uniformFontSize",
-        desc: state => getCheckbox(state.value) + "🔤 Ujednolicona wielkość czcionki",
+        desc: state => getCheckboxEmoji(state.value) + "🔤 Ujednolicona wielkość czcionki",
         callback: function (state) {
             if (!state.value) {
                 this.setOptionState({
@@ -315,7 +331,7 @@ options = new Options([
     },
     {
         name: "invertImages",
-        desc: state => getCheckbox(state.value) + "🔃 Odwróć kolory obrazów",
+        desc: state => getCheckboxEmoji(state.value) + "🔃 Odwróć kolory obrazów",
         callback: function (state) {
             return { value: !state.value };
         },
@@ -371,6 +387,49 @@ options = new Options([
         key: 'p'
     }
 ], `.${CLASS_NAMES.settingsContainer}>div`);
+// interface ToolInterface {
+//     render(): string
+// }
+// class TimeoutTool implements ToolInterface {
+//     constructor(public name: string, public option: ToolOptions) {}
+//     render () {
+//         return ''
+//     }
+// }
+// interface ToolOptions {
+// }
+let suggestBreakTimer, obs;
+function startBreakTimer() {
+    clearTimeout(suggestBreakTimer);
+    suggestBreakTimer = setTimeout(() => {
+        alert('Pora na przerwę 🔔');
+    }, 1000 * 60 * 7);
+}
+toRunOnLoaded.push(() => {
+    obs = onAttributeChange(document.querySelector(SELECTORS.appDiv), 'slide', () => {
+        startBreakTimer();
+    });
+});
+tools = new Options([
+    {
+        name: "suggestBreak",
+        desc: state => `${getCheckboxEmoji(state.value)}🔔 Sugeruj przerwę przy dłuższym braku aktywności`,
+        defaultValue: false,
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: state => {
+            if (!obs)
+                return;
+            if (state.value) {
+                obs.observe(document.querySelector(SELECTORS.appDiv), { attributes: true });
+            }
+            else {
+                obs.disconnect();
+            }
+        }
+    }
+], `.${CLASS_NAMES.toolsContainer}`);
 function shortcutListener(event) {
     if (event.target.nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
         return;
@@ -870,19 +929,6 @@ function getMetadataFromLinks(wrappers) {
 }
 (function () {
     'use strict';
-    function onAttributeChange(element, attributeName, callback) {
-        const obs = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                if (mutation.attributeName === 'screenid')
-                    callback();
-                // console.log({mutation})
-            }
-        });
-        obs.observe(element, {
-            attributes: true
-        });
-        return obs;
-    }
     function onLoaded() {
         console.log('loaded');
         if (!appDiv) {
@@ -896,45 +942,61 @@ function getMetadataFromLinks(wrappers) {
             background.classList.add("white-custom-background");
         }
         const lessonView = document.querySelector(SELECTORS.lessonView);
-        const sidebarSettingsContainer = document.createElement('div');
-        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer);
-        sidebarSettingsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
-            <div></div>`;
         if (lessonView !== null) {
-            console.log({ lessonView });
-            const sliderContainer = document.createElement('div');
-            sliderContainer.innerHTML = zoomSliderHTML;
-            lessonView.appendChild(sliderContainer);
-            lessonView.appendChild(sidebarSettingsContainer);
-            options.rerender();
-            sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
-                .addEventListener('input', e => document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`).innerText = `${e.target.value}%`);
-            sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`)
-                .addEventListener('click', () => {
-                options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
-            });
-            sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`)
-                .addEventListener('click', () => {
-                options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
-            });
+            addSliderContainer();
+            addSettingsContainer();
+            addToolsContainer();
         }
-        // let sidebar = document.querySelector(SELECTORS.sidebar)
-        // if (sidebar !== null) sidebar.prepend(sidebarSettingsContainer)
-        // else {
-        //     const sidebarToggle = document.querySelector(SELECTORS.menuBtn)
-        //     if (sidebarToggle) {
-        //         sidebarToggle.addEventListener('click', event => {
-        //             sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
-        //             if (sidebar) sidebar.prepend(sidebarSettingsContainer)
-        //         })
-        //     }
-        // }
         if (GM_getValue(`option_keyboardControl`))
             setupKeyboardControl();
         addChapterInfo();
         addSlideOptions();
         toRunOnLoaded.forEach(cb => cb());
+    }
+    function addSliderContainer() {
+        const test = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const sliderContainer = document.createElement('div');
+        sliderContainer.innerHTML = zoomSliderHTML;
+        lessonView.appendChild(sliderContainer);
+        sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
+            .addEventListener('input', e => document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`).innerText = `${e.target.value}%`);
+        sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`)
+            .addEventListener('click', () => {
+            options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
+        });
+        sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`)
+            .addEventListener('click', () => {
+            options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
+        });
+    }
+    function addToolsContainer() {
+        const test = document.querySelector(`.${CLASS_NAMES.toolsContainer}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const toolsContainer = document.createElement('div');
+        toolsContainer.classList.add(CLASS_NAMES.toolsContainer);
+        toolsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
+            <div></div>`;
+        lessonView.appendChild(toolsContainer);
+        tools.rerender();
+    }
+    function addSettingsContainer() {
+        const test = document.querySelector(`.${CLASS_NAMES.settingsContainer}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const sidebarSettingsContainer = document.createElement('div');
+        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer);
+        sidebarSettingsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <div></div>`;
+        lessonView.appendChild(sidebarSettingsContainer);
+        options.rerender();
     }
     let isAwaiting = false;
     awaitLoad();
@@ -945,8 +1007,14 @@ function getMetadataFromLinks(wrappers) {
         let checkLoadedInterval;
         isAwaiting = true;
         checkLoadedInterval = setInterval(() => {
-            const testElement = document.querySelector('.order-number-container');
-            if (testElement) {
+            const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
+            if (testExtensionLoaded) {
+                isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                return;
+            }
+            const testSlideshowLoaded = document.querySelector('.order-number-container');
+            if (testSlideshowLoaded) {
                 isAwaiting = false;
                 clearInterval(checkLoadedInterval);
                 onLoaded();
@@ -955,15 +1023,13 @@ function getMetadataFromLinks(wrappers) {
     }
     function checkUnloaded() {
         console.log('unloaded??');
-        const testElement = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
-        if (!isAwaiting && !testElement) {
+        const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
+        if (!isAwaiting && !testExtensionLoaded) {
             console.log('unloaded!!!');
             awaitLoad();
         }
     }
 })();
-// @ts-check
-// import './globals'
 const styles = `
 :root {
     --uniform-font-size: 0.93em;
@@ -1160,7 +1226,8 @@ a.custom-options-btn.active svg {transform: none;}
     margin-right: 0.9em
 }
 
-.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer} {
+.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 
+.${CLASS_NAMES.toolsContainer} {
     margin-top: 1rem; 
     border: 1px solid rgb(239, 240, 243); 
     padding: 15px; 
