@@ -19,6 +19,13 @@ const svgIcons = {
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
 }
 
+const zoomSliderHTML = `<div style="margin-top: 2em;">
+<label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
+<input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
+<a class="button is-primary is-small">-</a>
+<label class="custom-script-font-size-label">120%</label>
+<a class="button is-primary is-small">+</a>
+</div>`
 
 function toggleBodyClass(className, isOn) {
     let body = document.body
