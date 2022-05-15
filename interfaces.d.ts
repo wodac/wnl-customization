@@ -81,6 +81,7 @@ interface ParsedSearchResult {
     highlight: SearchResultSchema["scout_metadata"]["highlight"],
     details: SearchResultSchema["snippet"],
     context: SearchResultSchema["context"],
+    /** used for dynamic links */
     id: SearchResultSchema["id"]
 }
 
