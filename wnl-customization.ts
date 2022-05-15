@@ -63,18 +63,20 @@
         toRunOnLoaded.forEach(cb => cb())
     }
 
-    setTimeout(() => {
+    let checkLoadedInterval: NodeJS.Timer
+    checkLoadedInterval = setInterval(() => {
         const lessonView = document.querySelector(SELECTORS.lessonView)
         if (lessonView) {
+            clearInterval(checkLoadedInterval)
             onLoaded()
             return
         }
-        const loaderOverlay = document.querySelector('.app__overlayLoader')
-        if (loaderOverlay !== null) {
-            console.log('overlay detected')
-            onRemove(loaderOverlay, onLoaded)
-        }
-    }, 1000)
+        // const loaderOverlay = document.querySelector('.app__overlayLoader')
+        // if (loaderOverlay !== null) {
+        //     console.log('overlay detected')
+        //     onRemove(loaderOverlay, onLoaded)
+        // }
+    }, 100)
 
     console.log('end!')
 })();
