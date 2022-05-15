@@ -1,6 +1,3 @@
-// @ts-check
-// import './globals'
-
 const styles = `
 :root {
     --uniform-font-size: 0.93em;
@@ -197,7 +194,8 @@ a.custom-options-btn.active svg {transform: none;}
     margin-right: 0.9em
 }
 
-.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer} {
+.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 
+.${CLASS_NAMES.toolsContainer} {
     margin-top: 1rem; 
     border: 1px solid rgb(239, 240, 243); 
     padding: 15px; 

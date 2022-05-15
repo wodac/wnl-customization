@@ -6,7 +6,8 @@ const CLASS_NAMES = {
     fontSizeLabel: 'custom-script-font-size-label',
     fontSizeInput: 'custom-script-font-size-input',
     zoomSliderContainer: 'custom-script-zoom-slider-container',
-    settingsContainer: 'custom-script-settings-container'
+    settingsContainer: 'custom-script-settings-container',    
+    toolsContainer: 'custom-script-tools-container'
 }
 
 const BODY_CLASS_NAMES = {
