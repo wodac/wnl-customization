@@ -19,15 +19,15 @@ html {
     background: white;
 }
 
-.custom-script-increase-font-size .sl-block-content span[style*='21px'] {
+.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content span[style*='21px'] {
     font-size: 0.75em!important;
 }
 
-.custom-script-option-container {
+.${CLASS_NAMES.optionContainer} {
     padding: 5px 15px;
 }
 
-.custom-script-option-container:hover {
+.${CLASS_NAMES.optionContainer}:hover {
     background-color: #f6f6f6
 }
 
@@ -35,16 +35,16 @@ a.custom-script-option {
     color: #0c1726
 }
 
-.custom-script-increase-annotations article.content.-styleguide p {
+.${BODY_CLASS_NAMES.increaseAnnotations} article.content.-styleguide p {
     font-size: var(--scaled-font-size);
     line-height: 150%;
 }
 
-.custom-script-increase-font-size .sl-block-content p {
+.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content p {
     font-size: var(--scaled-font-size)!important;
 }
 
-.custom-script-uniform-font-size .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
+.${BODY_CLASS_NAMES.uniformFontSize} .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
     font-size: var(--uniform-font-size)!important;
 }
 
@@ -57,12 +57,12 @@ a.custom-script-option {
 }
 
 
-.custom-script-increase-font-size .wnl-reference {
+.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference {
     margin-left: 0.5em
 }
 
-.custom-script-increase-font-size .wnl-reference svg,
-.custom-script-uniform-font-size .wnl-reference svg {
+.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference svg,
+.${BODY_CLASS_NAMES.uniformFontSize} .wnl-reference svg {
     transform: scale(1.6)!important;
 }
 
@@ -88,7 +88,7 @@ sub.small {
     font-size: 0.8rem;
 }
 
-.custom-script-page-number-container {
+.${CLASS_NAMES.pageNumberContainer} {
     position: absolute;
     top: 30px;
     left: 0;
@@ -101,7 +101,7 @@ sub.small {
     cursor: pointer;
 }
 
-body.custom-script-hide-cursor {
+body.${BODY_CLASS_NAMES.hideCursor} {
     cursor: none;
 }
 
@@ -186,7 +186,7 @@ a.custom-options-btn svg {
 
 a.custom-options-btn.active svg {transform: none;}
 
-.custom-script-invert-images img.iv-large-image, .logo-mobile {
+.${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`
 
