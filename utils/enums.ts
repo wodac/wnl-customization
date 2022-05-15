@@ -17,5 +17,6 @@ const SELECTORS = {
     background: ".image-custom-background",
     lessonView: '.wnl-lesson-view',
     sidebar: 'aside.sidenav-aside.course-sidenav',
-    menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint'
+    menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
+    appDiv: '.wnl-app-layout.wnl-course-layout'
 }
