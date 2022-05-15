@@ -2,14 +2,16 @@ class Options {
     state: {
         [k: string]: OptionState<any>
     }
+    settingsContainerSelector: string
 
-    constructor(options: OptionConstructorOption<any>[], sidebarSettingsContainer) {
+    constructor(options: OptionConstructorOption<any>[], settingsContainerSelector: string) {
         const document = unsafeWindow.document
         this.state = Object.fromEntries(
             options.map(
                 option => [option.name, { ...option, value: option.defaultValue, handle: null }]
             )
         )
+        this.settingsContainerSelector = settingsContainerSelector
 
         this.restoreState()
         this.init()
@@ -18,12 +20,18 @@ class Options {
         this.rerender()
     }
 
+    get sidebarSettingsContainer() {
+        return document.querySelector(this.settingsContainerSelector)
+    }
+
     _rerenderSidebar() {
-        if (sidebarSettingsContainer) {
-            const optionDivs = sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
+        console.log('trying to render sidebar', this.sidebarSettingsContainer)
+        if (this.sidebarSettingsContainer) {
+            console.log('rendering sidebar', this.sidebarSettingsContainer)
+            const optionDivs = this.sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
             optionDivs.forEach(el => el.remove())
             Object.values(this.state).forEach(
-                option => sidebarSettingsContainer.appendChild(this._getSidebarOption(option))
+                option => this.sidebarSettingsContainer.appendChild(this._getSidebarOption(option))
             )
         }
     }
@@ -236,15 +244,18 @@ options = new Options([
         defaultValue: 110,
         update: state => {
             updateFontSize(state.value)
-            const rangeInput = document.querySelector('input.custom-script-font-size-input') as HTMLInputElement
-            const rangeLabel = document.querySelector('label.custom-script-font-size-label') as HTMLLabelElement
-            if (rangeInput) rangeInput.value = state.value
+            const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`) as HTMLInputElement
+            const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLLabelElement
+            if (rangeInput) {
+                rangeInput.value = state.value
+                rangeInput.title = state.value
+            }
             if (rangeLabel) rangeLabel.innerText = `${state.value}%`
         },
         init: function (state) {
             function _toRun() {
-                const rangeInput = document.querySelector('input.custom-script-font-size-input') as HTMLInputElement
-                const rangeLabel = document.querySelector('label.custom-script-font-size-label') as HTMLLabelElement
+                const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`) as HTMLInputElement
+                const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLLabelElement
                 if (rangeInput) {
                     rangeInput.value = state.value
                     rangeLabel.innerText = `${state.value}%`
@@ -263,4 +274,4 @@ options = new Options([
         },
         key: 'p'
     }
-], sidebarSettingsContainer)
+], `.${CLASS_NAMES.settingsContainer}>div`)

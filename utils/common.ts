@@ -1,8 +1,7 @@
 document = unsafeWindow.document
-let toRunOnLoaded = []
-let sidebarSettingsContainer: HTMLDivElement = null
-let summaryContainer: HTMLDivElement
-let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement, options
+let toRunOnLoaded = [], summaryContainer: HTMLDivElement
+let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement
+let options: Options
 
 let slideNumberObserver: MutationObserver, slideObserver: MutationObserver
 
@@ -19,13 +18,18 @@ const svgIcons = {
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
 }
 
-const zoomSliderHTML = `<div style="margin-top: 2em;">
-<label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
-<input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
-<a class="button is-primary is-small">-</a>
-<label class="custom-script-font-size-label">120%</label>
-<a class="button is-primary is-small">+</a>
-</div>`
+const zoomSliderHTML = `
+    <div class='${CLASS_NAMES.zoomSliderContainer}'>
+        <label class="metadata">POWIĘKSZENIE</label>
+        <div style="text-align: right;">
+            <input class="${CLASS_NAMES.fontSizeInput}" 
+                type="range" size="3" maxlength="3" min="70" max="200" 
+                step="5">
+            <a class="${CLASS_NAMES.fontSizeInput}-decrease">${svgIcons.zoomOut}</a>
+            <span class="${CLASS_NAMES.fontSizeLabel}">120%</span>
+            <a class="${CLASS_NAMES.fontSizeInput}-increase">${svgIcons.zoomIn}</a>
+        </div>
+    </div>`
 
 function toggleBodyClass(className, isOn) {
     let body = document.body
