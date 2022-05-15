@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.9.23
+// @version      1.9.26
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -16,6 +16,26 @@
 // @grant        GM_xmlhttpRequest
 // @run-at document-body
 // ==/UserScript==
+const CLASS_NAMES = {
+    optionContainer: 'custom-script-option-container',
+    pageNumberContainer: 'custom-script-page-number-container',
+    currentChapterPage: 'current-number',
+    chapterLength: 'n-of-pages'
+};
+const BODY_CLASS_NAMES = {
+    increaseFontSize: 'custom-script-increase-font-size',
+    increaseAnnotations: 'custom-script-increase-annotations',
+    uniformFontSize: 'custom-script-uniform-font-size',
+    hideCursor: 'custom-script-hide-cursor',
+    invertImages: 'custom-script-invert-images',
+};
+const SELECTORS = {
+    background: ".image-custom-background",
+    lessonView: '.wnl-lesson-view',
+    sidebar: 'aside.sidenav-aside.course-sidenav',
+    menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
+    appDiv: '.wnl-app-layout.wnl-course-layout'
+};
 document = unsafeWindow.document;
 let toRunOnLoaded = [];
 let sidebarSettingsContainer = null;
@@ -34,6 +54,13 @@ const svgIcons = {
               <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
 };
+const zoomSliderHTML = `<div style="margin-top: 2em;">
+<label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
+<input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
+<a class="button is-primary is-small">-</a>
+<label class="custom-script-font-size-label">120%</label>
+<a class="button is-primary is-small">+</a>
+</div>`;
 function toggleBodyClass(className, isOn) {
     let body = document.body;
     if (isOn)
@@ -82,20 +109,27 @@ function goToPage(page) {
     pageNumberInput.value = page.toString();
     pageNumberInput.dispatchEvent(new InputEvent('input'));
 }
-function Options(options, sidebarSettingsContainer) {
-    const document = unsafeWindow.document;
-    this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
-    this._rerenderSidebar = function () {
+class Options {
+    constructor(options, sidebarSettingsContainer) {
+        const document = unsafeWindow.document;
+        this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
+        this.restoreState();
+        this.init();
+        this.update();
+        this.storeState();
+        this.rerender();
+    }
+    _rerenderSidebar() {
         if (sidebarSettingsContainer) {
-            const optionDivs = sidebarSettingsContainer.querySelectorAll('div.custom-script-option-container');
+            const optionDivs = sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
             optionDivs.forEach(el => el.remove());
             Object.values(this.state).forEach(option => sidebarSettingsContainer.appendChild(this._getSidebarOption(option)));
         }
-    };
-    this._getSidebarOption = function (option) {
+    }
+    _getSidebarOption(option) {
         const optionContainer = document.createElement('div');
-        optionContainer.classList.add('custom-script-option-container');
-        const getOption = desc => `<a class="custom-script-option" href="#">${desc}</a>`;
+        optionContainer.classList.add(CLASS_NAMES.optionContainer);
+        const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
         const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
         optionContainer.innerHTML = getOption(desc);
         const optionLink = optionContainer.querySelector('a');
@@ -104,9 +138,9 @@ function Options(options, sidebarSettingsContainer) {
             this._runCallback(option);
         });
         return optionContainer;
-    };
-    this.rerender = function () {
-        let rerender = name => {
+    }
+    rerender() {
+        let rerender = (name) => {
             const state = this.state[name];
             GM_unregisterMenuCommand(state.handle);
             const desc = typeof state.desc === 'function' ? state.desc(state) : state.desc;
@@ -115,36 +149,36 @@ function Options(options, sidebarSettingsContainer) {
         rerender = rerender.bind(this);
         Object.keys(this.state).forEach(rerender);
         this._rerenderSidebar();
-    };
-    this._runCallback = function (option) {
+    }
+    _runCallback(option) {
         const result = option.callback.apply(this, [option, this.state]);
         if (typeof result === 'object')
             this.setOptionState(Object.assign({ name: option.name }, result));
-    };
-    this.setOptionState = function (state, name) {
+    }
+    setOptionState(state, name) {
         if (typeof state === 'function') {
             const result = state.apply(this, [this.state[name]]);
             this._setOptionState(Object.assign(Object.assign({}, this.state[name]), result));
         }
         else
             this._setOptionState(state);
-    };
-    this._setOptionState = function (state) {
+    }
+    _setOptionState(state) {
         const name = state.name;
         this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
         this.storeState(name);
         this.state[name].update.apply(this, [state, this.state]);
         this.rerender();
-    };
-    this.storeState = function (optionName) {
+    }
+    storeState(optionName) {
         const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value);
         if (typeof optionName === 'string') {
             saveOptionState(optionName);
             return;
         }
         Object.keys(this.state).forEach(saveOptionState);
-    };
-    this.restoreState = function (optionName) {
+    }
+    restoreState(optionName) {
         const restoreOptionState = (name) => {
             this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value);
         };
@@ -153,37 +187,20 @@ function Options(options, sidebarSettingsContainer) {
             return;
         }
         Object.keys(this.state).forEach(restoreOptionState);
-    };
-    this._runOnAllOptions = function (functionName) {
+    }
+    _runOnAllOptions(functionName) {
         Object.keys(this.state).forEach(optionName => {
             const option = this.state[optionName];
             const callback = option[functionName];
             if (typeof callback === 'function')
                 callback.apply(this, [option, this.state]);
         });
-    };
-    this.update = function () { this._runOnAllOptions('update'); };
-    this.init = function () {
+    }
+    update() { this._runOnAllOptions('update'); }
+    init() {
         this._runOnAllOptions('init');
         this._rerenderSidebar();
-    };
-    this.rerender = this.rerender.bind(this);
-    this._runCallback = this._runCallback.bind(this);
-    this._getSidebarOption = this._getSidebarOption.bind(this);
-    this._rerenderSidebar = this._rerenderSidebar.bind(this);
-    this.restoreState = this.restoreState.bind(this);
-    this.storeState = this.storeState.bind(this);
-    this.setOptionState = this.setOptionState.bind(this);
-    this._setOptionState = this._setOptionState.bind(this);
-    this._runOnAllOptions = this._runOnAllOptions.bind(this);
-    this.update = this.update.bind(this);
-    this.init = this.init.bind(this);
-    this.restoreState();
-    this.init();
-    this.update();
-    this.storeState();
-    this.rerender();
-    // options.forEach(option => { if (option.type === 'boolean') this.setOption[option.name](option.defaultValue) })
+    }
 }
 const getCheckbox = isOn => isOn ? "☑️ " : "🔲 ";
 options = new Options([
@@ -199,7 +216,7 @@ options = new Options([
             }
             return { value: !state.value };
         },
-        update: state => toggleBodyClass("custom-script-increase-font-size", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseFontSize, state.value),
         defaultValue: true,
         key: 'f'
     },
@@ -209,7 +226,7 @@ options = new Options([
         callback: function (state) {
             return { value: !state.value };
         },
-        update: state => toggleBodyClass("custom-script-increase-annotations", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseAnnotations, state.value),
         defaultValue: false,
         key: 'a'
     },
@@ -278,7 +295,7 @@ options = new Options([
             }
             return { value: !state.value };
         },
-        update: state => toggleBodyClass("custom-script-uniform-font-size", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.uniformFontSize, state.value),
         defaultValue: false,
         key: 'u'
     },
@@ -289,7 +306,7 @@ options = new Options([
             return { value: !state.value };
         },
         defaultValue: false,
-        update: state => toggleBodyClass("custom-script-invert-images", state.value),
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
         key: 'i'
     },
     {
@@ -552,7 +569,7 @@ let mouseVisible = true;
 function toggleMouseVisibility(visible) {
     mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
     console.log({ mouseVisible, visible });
-    toggleBodyClass('custom-script-hide-cursor', !mouseVisible);
+    toggleBodyClass(BODY_CLASS_NAMES.hideCursor, !mouseVisible);
     if (!mouseVisible)
         document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
 }
@@ -733,7 +750,7 @@ function addChapterInfo() {
     });
 }
 function onSlideChanged(current, metadata) {
-    const pageNumberContainer = document.querySelector('.custom-script-page-number-container');
+    const pageNumberContainer = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
         return i >= 0 ? i : metadata.length - 1;
@@ -742,18 +759,19 @@ function onSlideChanged(current, metadata) {
     const chapterMetadata = metadata[chapterIndex];
     const relativeCurrent = current - chapterMetadata.startPage + 1;
     const chapterLength = chapterMetadata.chapterLength;
-    const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number');
+    const relativeCurrentContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.currentChapterPage}`);
     relativeCurrentContainer.innerText = relativeCurrent.toString();
-    const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages');
+    const chapterLengthContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.chapterLength}`);
     chapterLengthContainer.innerText = chapterLength.toString();
     if (summaryContainer) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`);
         active.classList.add('is-active');
+        active.scrollIntoView({ behavior: "smooth" });
     }
 }
 function addPageNumberContainer() {
-    const classNames = ['custom-script-page-number-container', 'current-number', 'number-divider', 'n-of-pages'];
+    const classNames = [CLASS_NAMES.pageNumberContainer, CLASS_NAMES.currentChapterPage, '', CLASS_NAMES.chapterLength];
     const spans = classNames.map(name => {
         const span = document.createElement('span');
         span.className = name;
@@ -768,9 +786,11 @@ function addPageNumberContainer() {
     return spans[0];
 }
 function openMenu() {
-    const menuBtn = document.querySelector('.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint');
-    if (menuBtn)
+    const menuBtn = document.querySelector(SELECTORS.menuBtn);
+    if (menuBtn) {
         menuBtn.click();
+        return true;
+    }
 }
 function getMetadata(cb, menuOpened) {
     const menu = document.querySelector('aside.sidenav-aside');
@@ -795,7 +815,7 @@ function getMetadata(cb, menuOpened) {
     }
     const list = Array.from(listParent.children);
     if (menuOpened)
-        document.querySelector('.topNavContainer__close').click();
+        closeMenu();
     if (list.length === 0) {
         cb(false);
         return;
@@ -807,6 +827,9 @@ function getMetadata(cb, menuOpened) {
     }
     const linksMetadata = getMetadataFromLinks(wrappers);
     cb(linksMetadata);
+}
+function closeMenu() {
+    document.querySelector('.topNavContainer__close').click();
 }
 function getMetadataFromLinks(wrappers) {
     const links = wrappers.map(div => div.querySelector('a'));
@@ -831,56 +854,46 @@ function getMetadataFromLinks(wrappers) {
 }
 (function () {
     'use strict';
-    const h = 'test';
-    console.log('userscript loaded!');
-    const slider = `<div style="margin-top: 2em;">
-    <label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
-    <input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
-    <a class="button is-primary is-small">-</a>
-    <label class="custom-script-font-size-label">120%</label>
-    <a class="button is-primary is-small">+</a>
-    </div>`;
-    const sidebarSettings = `<span class="item-wrapper heading" style="padding: 15px;">Ustawienia</span>`;
-    function onRemove(element, callback) {
-        const parent = element.parentNode;
-        if (!parent)
-            throw new Error("The node must already be attached");
+    function onAttributeChange(element, attributeName, callback) {
         const obs = new MutationObserver(mutations => {
             for (const mutation of mutations) {
-                for (const el of mutation.removedNodes) {
-                    if (el === element) {
-                        obs.disconnect();
-                        callback();
-                    }
-                }
+                if (mutation.attributeName === 'screenid')
+                    callback();
+                // console.log({mutation})
             }
         });
-        obs.observe(parent, {
-            childList: true,
+        obs.observe(element, {
+            attributes: true
         });
+        return obs;
     }
     function onLoaded() {
         console.log('loaded');
-        let background = document.querySelector(".image-custom-background");
+        if (!appDiv) {
+            appDiv = document.querySelector(SELECTORS.appDiv);
+            if (appDiv)
+                onAttributeChange(appDiv, 'screenid', checkUnloaded);
+        }
+        let background = document.querySelector(SELECTORS.background);
         if (background !== null) {
             background.classList.remove("image-custom-background");
             background.classList.add("white-custom-background");
         }
-        const lessonView = document.querySelector('.wnl-lesson-view');
+        const lessonView = document.querySelector(SELECTORS.lessonView);
         if (lessonView !== null) {
             console.log({ lessonView });
             const sliderContainer = document.createElement('div');
-            sliderContainer.innerHTML = slider;
+            sliderContainer.innerHTML = zoomSliderHTML;
             lessonView.appendChild(sliderContainer);
             sliderContainer.querySelector('input.custom-script-font-size-input')
                 .addEventListener('input', e => document.querySelector('label.custom-script-font-size-label').innerText = `${e.target.value}%`);
         }
-        let sidebar = document.querySelector('aside.sidenav-aside.course-sidenav');
+        let sidebar = document.querySelector(SELECTORS.sidebar);
         sidebarSettingsContainer = document.createElement('div');
         if (sidebar !== null)
             sidebar.prepend(sidebarSettingsContainer);
         else {
-            const sidebarToggle = document.querySelector('.wnl-navbar-item.wnl-navbar-sidenav-toggle');
+            const sidebarToggle = document.querySelector(SELECTORS.menuBtn);
             if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', event => {
                     sidebar = document.querySelector('aside.sidenav-aside.course-sidenav');
@@ -895,14 +908,31 @@ function getMetadataFromLinks(wrappers) {
         addSlideOptions();
         toRunOnLoaded.forEach(cb => cb());
     }
-    setTimeout(() => {
-        let loaderOverlay = document.querySelector('.app__overlayLoader');
-        if (loaderOverlay !== null) {
-            console.log('overlay detected');
-            onRemove(loaderOverlay, onLoaded);
+    let isAwaiting = false;
+    awaitLoad();
+    let appDiv = document.querySelector(SELECTORS.appDiv);
+    if (appDiv)
+        onAttributeChange(appDiv, 'screenid', checkUnloaded);
+    function awaitLoad() {
+        let checkLoadedInterval;
+        isAwaiting = true;
+        checkLoadedInterval = setInterval(() => {
+            const testElement = document.querySelector('.order-number-container');
+            if (testElement) {
+                isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                onLoaded();
+            }
+        }, 300);
+    }
+    function checkUnloaded() {
+        console.log('unloaded??');
+        const testElement = document.querySelector('input.custom-script-font-size-input');
+        if (!isAwaiting && !testElement) {
+            console.log('unloaded!!!');
+            awaitLoad();
         }
-    }, 1000);
-    console.log('end!');
+    }
 })();
 // @ts-check
 // import './globals'
@@ -924,15 +954,15 @@ html {
     background: white;
 }
 
-.custom-script-increase-font-size .sl-block-content span[style*='21px'] {
+.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content span[style*='21px'] {
     font-size: 0.75em!important;
 }
 
-.custom-script-option-container {
+.${CLASS_NAMES.optionContainer} {
     padding: 5px 15px;
 }
 
-.custom-script-option-container:hover {
+.${CLASS_NAMES.optionContainer}:hover {
     background-color: #f6f6f6
 }
 
@@ -940,16 +970,16 @@ a.custom-script-option {
     color: #0c1726
 }
 
-.custom-script-increase-annotations article.content.-styleguide p {
+.${BODY_CLASS_NAMES.increaseAnnotations} article.content.-styleguide p {
     font-size: var(--scaled-font-size);
     line-height: 150%;
 }
 
-.custom-script-increase-font-size .sl-block-content p {
+.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content p {
     font-size: var(--scaled-font-size)!important;
 }
 
-.custom-script-uniform-font-size .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
+.${BODY_CLASS_NAMES.uniformFontSize} .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
     font-size: var(--uniform-font-size)!important;
 }
 
@@ -962,12 +992,12 @@ a.custom-script-option {
 }
 
 
-.custom-script-increase-font-size .wnl-reference {
+.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference {
     margin-left: 0.5em
 }
 
-.custom-script-increase-font-size .wnl-reference svg,
-.custom-script-uniform-font-size .wnl-reference svg {
+.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference svg,
+.${BODY_CLASS_NAMES.uniformFontSize} .wnl-reference svg {
     transform: scale(1.6)!important;
 }
 
@@ -993,7 +1023,7 @@ sub.small {
     font-size: 0.8rem;
 }
 
-.custom-script-page-number-container {
+.${CLASS_NAMES.pageNumberContainer} {
     position: absolute;
     top: 30px;
     left: 0;
@@ -1006,7 +1036,7 @@ sub.small {
     cursor: pointer;
 }
 
-body.custom-script-hide-cursor {
+body.${BODY_CLASS_NAMES.hideCursor} {
     cursor: none;
 }
 
@@ -1091,7 +1121,7 @@ a.custom-options-btn svg {
 
 a.custom-options-btn.active svg {transform: none;}
 
-.custom-script-invert-images img.iv-large-image, .logo-mobile {
+.${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`;
 const head = unsafeWindow.document.querySelector('head');
