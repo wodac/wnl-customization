@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.9.24b
+// @version      1.9.25b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -907,18 +907,20 @@ function getMetadataFromLinks(wrappers) {
         addSlideOptions();
         toRunOnLoaded.forEach(cb => cb());
     }
-    setTimeout(() => {
+    let checkLoadedInterval;
+    checkLoadedInterval = setInterval(() => {
         const lessonView = document.querySelector(SELECTORS.lessonView);
         if (lessonView) {
+            clearInterval(checkLoadedInterval);
             onLoaded();
             return;
         }
-        const loaderOverlay = document.querySelector('.app__overlayLoader');
-        if (loaderOverlay !== null) {
-            console.log('overlay detected');
-            onRemove(loaderOverlay, onLoaded);
-        }
-    }, 1000);
+        // const loaderOverlay = document.querySelector('.app__overlayLoader')
+        // if (loaderOverlay !== null) {
+        //     console.log('overlay detected')
+        //     onRemove(loaderOverlay, onLoaded)
+        // }
+    }, 100);
     console.log('end!');
 })();
 // @ts-check
