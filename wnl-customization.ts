@@ -2,24 +2,24 @@
     'use strict';
 
 
-    function onRemove(element: Node, callback: () => any) {
-        const parent = element.parentNode;
-        if (!parent) throw new Error("The node must already be attached");
+    // function onRemove(element: Node, callback: () => any) {
+    //     const parent = element.parentNode;
+    //     if (!parent) throw new Error("The node must already be attached");
 
-        const obs = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                for (const el of mutation.removedNodes) {
-                    if (el === element) {
-                        obs.disconnect();
-                        callback();
-                    }
-                }
-            }
-        });
-        obs.observe(parent, {
-            childList: true,
-        });
-    }
+    //     const obs = new MutationObserver(mutations => {
+    //         for (const mutation of mutations) {
+    //             for (const el of mutation.removedNodes) {
+    //                 if (el === element) {
+    //                     obs.disconnect();
+    //                     callback();
+    //                 }
+    //             }
+    //         }
+    //     });
+    //     obs.observe(parent, {
+    //         childList: true,
+    //     });
+    // }
 
     function onLoaded() {
         console.log('loaded')
@@ -65,8 +65,8 @@
 
     let checkLoadedInterval: NodeJS.Timer
     checkLoadedInterval = setInterval(() => {
-        const lessonView = document.querySelector(SELECTORS.lessonView)
-        if (lessonView) {
+        const testElement = document.querySelector('.order-number-container')
+        if (testElement) {
             clearInterval(checkLoadedInterval)
             onLoaded()
             return
