@@ -2,24 +2,18 @@
     'use strict';
 
 
-    // function onRemove(element: Node, callback: () => any) {
-    //     const parent = element.parentNode;
-    //     if (!parent) throw new Error("The node must already be attached");
-
-    //     const obs = new MutationObserver(mutations => {
-    //         for (const mutation of mutations) {
-    //             for (const el of mutation.removedNodes) {
-    //                 if (el === element) {
-    //                     obs.disconnect();
-    //                     callback();
-    //                 }
-    //             }
-    //         }
-    //     });
-    //     obs.observe(parent, {
-    //         childList: true,
-    //     });
-    // }
+    function onAttributeChange(element: Node, attributeName: string, callback: () => any) {
+        const obs = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                if (mutation.attributeName === 'screenid') callback()
+                // console.log({mutation})
+            }
+        });
+        obs.observe(element, {
+            attributes: true
+        });
+        return obs
+    }
 
     function onLoaded() {
         console.log('loaded')
@@ -63,20 +57,25 @@
         toRunOnLoaded.forEach(cb => cb())
     }
 
-    let checkLoadedInterval: NodeJS.Timer
-    checkLoadedInterval = setInterval(() => {
-        const testElement = document.querySelector('.order-number-container')
-        if (testElement) {
-            clearInterval(checkLoadedInterval)
-            onLoaded()
-            return
-        }
-        // const loaderOverlay = document.querySelector('.app__overlayLoader')
-        // if (loaderOverlay !== null) {
-        //     console.log('overlay detected')
-        //     onRemove(loaderOverlay, onLoaded)
-        // }
-    }, 100)
+    awaitLoad()
 
-    console.log('end!')
+    function awaitLoad() {
+        let checkLoadedInterval: NodeJS.Timer
+        checkLoadedInterval = setInterval(() => {
+            const testElement = document.querySelector('.order-number-container')
+            if (testElement) {
+                clearInterval(checkLoadedInterval)
+                onLoaded()
+                const appDiv = document.querySelector(SELECTORS.appDiv)
+                onAttributeChange(appDiv, 'screenid', checkUnloaded)
+            }
+        }, 100)
+    }
+
+    function checkUnloaded() {
+        console.log('unloaded??')
+        const testElement = document.querySelector('input.custom-script-font-size-input')
+        if (testElement) awaitLoad()
+    }
+
 })();
