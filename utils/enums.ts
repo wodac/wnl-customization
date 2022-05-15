@@ -2,7 +2,11 @@ const CLASS_NAMES = {
     optionContainer: 'custom-script-option-container',
     pageNumberContainer: 'custom-script-page-number-container',
     currentChapterPage: 'current-number', 
-    chapterLength: 'n-of-pages'
+    chapterLength: 'n-of-pages',
+    fontSizeLabel: 'custom-script-font-size-label',
+    fontSizeInput: 'custom-script-font-size-input',
+    zoomSliderContainer: 'custom-script-zoom-slider-container',
+    settingsContainer: 'custom-script-settings-container'
 }
 
 const BODY_CLASS_NAMES = {

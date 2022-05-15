@@ -5,7 +5,8 @@
   "main": "wnl-customization.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "start": "npx tsc && cd .. && http-server wnl-customization/dist -S -C cert.pem -o wnl-customization.user.js"
   },
   "repository": {
     "type": "git",
@@ -16,7 +17,7 @@
   "bugs": {
     "url": "https://github.com/wodac/wnl-customization/issues"
   },
-  "homepage": "https://github.com/wodac/wnl-customization#readme",
+  "homepage": "https://wodac.github.io/wnl-customization/",
   "devDependencies": {
     "typescript": "^4.6.4"
   },

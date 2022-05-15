@@ -186,6 +186,23 @@ a.custom-options-btn svg {
 
 a.custom-options-btn.active svg {transform: none;}
 
+.${CLASS_NAMES.fontSizeLabel} {
+    margin: 0 0.5rem;
+    height: 16px;
+    font-size: 24px; 
+}
+
+.${CLASS_NAMES.fontSizeInput} {
+    height: 16px;
+    margin-right: 0.9em
+}
+
+.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer} {
+    margin-top: 1rem; 
+    border: 1px solid rgb(239, 240, 243); 
+    padding: 15px; 
+}
+
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`

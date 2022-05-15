@@ -30,29 +30,43 @@
         }
 
         const lessonView = document.querySelector(SELECTORS.lessonView)
+        const sidebarSettingsContainer = document.createElement('div')
+        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer)
+        sidebarSettingsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <div></div>`
         if (lessonView !== null) {
             console.log({ lessonView })
             const sliderContainer = document.createElement('div')
             sliderContainer.innerHTML = zoomSliderHTML
             lessonView.appendChild(sliderContainer)
-            sliderContainer.querySelector('input.custom-script-font-size-input')
+            lessonView.appendChild(sidebarSettingsContainer)
+            options.rerender()
+            sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
                 .addEventListener('input', e =>
-                    (document.querySelector('label.custom-script-font-size-label') as HTMLElement).innerText = `${(e.target as HTMLInputElement).value}%`
-                )
+                    (document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLElement).innerText = `${(e.target as HTMLInputElement).value}%`
+                );
+            (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`) as HTMLAnchorElement)
+                    .addEventListener('click', () => {
+                        options.setOptionState(state => { return { value: state.value + 5 } }, 'percentIncrease')
+                    });
+            (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`) as HTMLAnchorElement)
+                    .addEventListener('click', () => {
+                        options.setOptionState(state => { return { value: state.value - 5 } }, 'percentIncrease')
+                    })
         }
 
-        let sidebar = document.querySelector(SELECTORS.sidebar)
-        sidebarSettingsContainer = document.createElement('div')
-        if (sidebar !== null) sidebar.prepend(sidebarSettingsContainer)
-        else {
-            const sidebarToggle = document.querySelector(SELECTORS.menuBtn)
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', event => {
-                    sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
-                    if (sidebar) sidebar.prepend(sidebarSettingsContainer)
-                })
-            }
-        }
+        // let sidebar = document.querySelector(SELECTORS.sidebar)
+        // if (sidebar !== null) sidebar.prepend(sidebarSettingsContainer)
+        // else {
+        //     const sidebarToggle = document.querySelector(SELECTORS.menuBtn)
+        //     if (sidebarToggle) {
+        //         sidebarToggle.addEventListener('click', event => {
+        //             sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
+        //             if (sidebar) sidebar.prepend(sidebarSettingsContainer)
+        //         })
+        //     }
+        // }
 
         if (GM_getValue(`option_keyboardControl`)) setupKeyboardControl()
 
@@ -83,7 +97,7 @@
 
     function checkUnloaded() {
         console.log('unloaded??')
-        const testElement = document.querySelector('input.custom-script-font-size-input')
+        const testElement = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
         if (!isAwaiting && !testElement) {
             console.log('unloaded!!!')
             awaitLoad()

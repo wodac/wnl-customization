@@ -5,7 +5,7 @@
       "sourceMap": false,
       "outFile": "dist/wnl-customization.user.js"
     },
-    "lib": ["es2015"],
+    "lib": ["es2017"],
     "files": [
       "packageMetadata.ts",
       "utils/enums.ts",
