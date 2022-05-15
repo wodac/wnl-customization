@@ -1,7 +1,7 @@
 document = unsafeWindow.document
-let toRunOnLoaded = [], summaryContainer: HTMLDivElement
+let toRunOnLoaded: Function[] = [], summaryContainer: HTMLDivElement
 let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement
-let options: Options
+let options: Options, tools: Options
 
 let slideNumberObserver: MutationObserver, slideObserver: MutationObserver
 
@@ -76,4 +76,17 @@ function goToPage(page: number) {
     const pageNumberInput = document.querySelector('.wnl-slideshow-controls input[type=number]') as HTMLInputElement
     pageNumberInput.value = page.toString()
     pageNumberInput.dispatchEvent(new InputEvent('input'))
+}
+
+function onAttributeChange(element: Node, attributeName: string, callback: () => any) {
+    const obs = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (mutation.attributeName === attributeName) callback()
+            // console.log({mutation})
+        }
+    });
+    obs.observe(element, {
+        attributes: true
+    });
+    return obs
 }

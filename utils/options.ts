@@ -78,11 +78,12 @@ class Options {
         }
         else this._setOptionState(state)
     }
-    _setOptionState(state) {
+    _setOptionState(state: OptionState<any>) {
         const name = state.name
         this.state[name] = { ...this.state[state.name], ...state }
         this.storeState(name)
-        this.state[name].update.apply(this, [state, this.state])
+        const updateCb = this.state[name].update
+        if (updateCb) updateCb.apply(this, [state, this.state])
         this.rerender()
     }
 
@@ -123,12 +124,12 @@ class Options {
     // options.forEach(option => { if (option.type === 'boolean') this.setOption[option.name](option.defaultValue) })
 }
 
-const getCheckbox = isOn => isOn ? "☑️ " : "🔲 "
+const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 "
 
 options = new Options([
     {
         name: "increaseFontSize",
-        desc: state => getCheckbox(state.value) + "🔎 Zwiększ wielkość czcionki",
+        desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
         callback: function (state) {
             if (!state.value) {
                 this.setOptionState({
@@ -144,7 +145,7 @@ options = new Options([
     },
     {
         name: "increaseAnnotations",
-        desc: state => getCheckbox(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
+        desc: state => getCheckboxEmoji(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
         callback: function (state) {
             return { value: !state.value }
         },
@@ -154,7 +155,7 @@ options = new Options([
     },
     {
         name: "smoothScroll",
-        desc: state => getCheckbox(state.value) + "↕️ Płynne przewijanie strzałkami",
+        desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
         callback: function (state) {
             return { value: !state.value }
         },
@@ -164,7 +165,7 @@ options = new Options([
     },
     {
         name: "keyboardControl",
-        desc: state => getCheckbox(state.value) + "⌨️ Sterowanie klawiaturą",
+        desc: state => getCheckboxEmoji(state.value) + "⌨️ Sterowanie klawiaturą",
         callback: function (state) {
             return { value: !state.value }
         },
@@ -183,7 +184,7 @@ options = new Options([
     },
     {
         name: "changeTitle",
-        desc: state => getCheckbox(state.value) + "🆎 Zmień tytuł karty",
+        desc: state => getCheckboxEmoji(state.value) + "🆎 Zmień tytuł karty",
         callback: function (state) {
             return { ...state, value: !state.value }
         },
@@ -204,7 +205,7 @@ options = new Options([
     },
     {
         name: "uniformFontSize",
-        desc: state => getCheckbox(state.value) + "🔤 Ujednolicona wielkość czcionki",
+        desc: state => getCheckboxEmoji(state.value) + "🔤 Ujednolicona wielkość czcionki",
         callback: function (state) {
             if (!state.value) {
                 this.setOptionState({
@@ -220,7 +221,7 @@ options = new Options([
     },
     {
         name: "invertImages",
-        desc: state => getCheckbox(state.value) + "🔃 Odwróć kolory obrazów",
+        desc: state => getCheckboxEmoji(state.value) + "🔃 Odwróć kolory obrazów",
         callback: function (state) {
             return { value: !state.value }
         },

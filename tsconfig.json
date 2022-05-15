@@ -13,6 +13,7 @@
       "globals.d.ts", 
       "utils/common.ts",
       "utils/options.ts",
+      "utils/tools.ts",
       "utils/keyboard.ts",
       "utils/search.ts",
       "utils/slideshowOptions.ts",

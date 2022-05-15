@@ -1,20 +1,6 @@
 (function () {
     'use strict';
 
-
-    function onAttributeChange(element: Node, attributeName: string, callback: () => any) {
-        const obs = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                if (mutation.attributeName === 'screenid') callback()
-                // console.log({mutation})
-            }
-        });
-        obs.observe(element, {
-            attributes: true
-        });
-        return obs
-    }
-
     function onLoaded() {
         console.log('loaded')
 
@@ -75,6 +61,7 @@
             <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
             <div></div>`;
         lessonView.appendChild(toolsContainer);
+        tools.rerender()
     }
 
     function addSettingsContainer() {
