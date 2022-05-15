@@ -1,19 +1,8 @@
 (function () {
     'use strict';
 
-    const h = 'test'
-    console.log('userscript loaded!')
-    
-    const slider = `<div style="margin-top: 2em;">
-    <label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
-    <input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
-    <a class="button is-primary is-small">-</a>
-    <label class="custom-script-font-size-label">120%</label>
-    <a class="button is-primary is-small">+</a>
-    </div>`
 
-    const sidebarSettings = `<span class="item-wrapper heading" style="padding: 15px;">Ustawienia</span>`
-    function onRemove(element, callback) {
+    function onRemove(element: Node, callback: () => any) {
         const parent = element.parentNode;
         if (!parent) throw new Error("The node must already be attached");
 
@@ -34,17 +23,17 @@
 
     function onLoaded() {
         console.log('loaded')
-        let background = document.querySelector(".image-custom-background")
+        let background = document.querySelector(SELECTORS.background)
         if (background !== null) {
             background.classList.remove("image-custom-background")
             background.classList.add("white-custom-background")
         }
 
-        const lessonView = document.querySelector('.wnl-lesson-view')
+        const lessonView = document.querySelector(SELECTORS.lessonView)
         if (lessonView !== null) {
             console.log({ lessonView })
             const sliderContainer = document.createElement('div')
-            sliderContainer.innerHTML = slider
+            sliderContainer.innerHTML = zoomSliderHTML
             lessonView.appendChild(sliderContainer)
             sliderContainer.querySelector('input.custom-script-font-size-input')
                 .addEventListener('input', e =>
@@ -52,11 +41,11 @@
                 )
         }
 
-        let sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
+        let sidebar = document.querySelector(SELECTORS.sidebar)
         sidebarSettingsContainer = document.createElement('div')
         if (sidebar !== null) sidebar.prepend(sidebarSettingsContainer)
         else {
-            const sidebarToggle = document.querySelector('.wnl-navbar-item.wnl-navbar-sidenav-toggle')
+            const sidebarToggle = document.querySelector(SELECTORS.menuBtn)
             if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', event => {
                     sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
@@ -75,7 +64,12 @@
     }
 
     setTimeout(() => {
-        let loaderOverlay = document.querySelector('.app__overlayLoader')
+        const lessonView = document.querySelector(SELECTORS.lessonView)
+        if (lessonView) {
+            onLoaded()
+            return
+        }
+        const loaderOverlay = document.querySelector('.app__overlayLoader')
         if (loaderOverlay !== null) {
             console.log('overlay detected')
             onRemove(loaderOverlay, onLoaded)

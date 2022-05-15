@@ -1,6 +1,8 @@
 const CLASS_NAMES = {
     optionContainer: 'custom-script-option-container',
     pageNumberContainer: 'custom-script-page-number-container',
+    currentChapterPage: 'current-number', 
+    chapterLength: 'n-of-pages'
 }
 
 const BODY_CLASS_NAMES = {
@@ -8,5 +10,12 @@ const BODY_CLASS_NAMES = {
     increaseAnnotations: 'custom-script-increase-annotations',
     uniformFontSize: 'custom-script-uniform-font-size',
     hideCursor: 'custom-script-hide-cursor',
-    invertImages: 'custom-script-invert-images'
+    invertImages: 'custom-script-invert-images',
+}
+
+const SELECTORS = {
+    background: ".image-custom-background",
+    lessonView: '.wnl-lesson-view',
+    sidebar: 'aside.sidenav-aside.course-sidenav',
+    menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint'
 }

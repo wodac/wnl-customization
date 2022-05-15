@@ -106,9 +106,9 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
     const chapterMetadata = metadata[chapterIndex]
     const relativeCurrent = current - chapterMetadata.startPage + 1
     const chapterLength = chapterMetadata.chapterLength
-    const relativeCurrentContainer = pageNumberContainer.querySelector('.current-number') as HTMLSpanElement
+    const relativeCurrentContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.currentChapterPage}`) as HTMLSpanElement
     relativeCurrentContainer.innerText = relativeCurrent.toString()
-    const chapterLengthContainer = pageNumberContainer.querySelector('.n-of-pages') as HTMLSpanElement
+    const chapterLengthContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.chapterLength}`) as HTMLSpanElement
     chapterLengthContainer.innerText = chapterLength.toString()
     if (summaryContainer) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
@@ -119,7 +119,7 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
 }
 
 function addPageNumberContainer(): HTMLSpanElement {
-    const classNames = [CLASS_NAMES.pageNumberContainer, 'current-number', 'number-divider', 'n-of-pages']
+    const classNames = [CLASS_NAMES.pageNumberContainer, CLASS_NAMES.currentChapterPage, '', CLASS_NAMES.chapterLength]
     const spans = classNames.map(name => {
         const span = document.createElement('span')
         span.className = name
@@ -135,8 +135,11 @@ function addPageNumberContainer(): HTMLSpanElement {
 }
 
 function openMenu() {
-    const menuBtn = document.querySelector('.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint') as HTMLElement
-    if (menuBtn) menuBtn.click()
+    const menuBtn = document.querySelector(SELECTORS.menuBtn) as HTMLElement
+    if (menuBtn) {
+        menuBtn.click()
+        return true
+    }
 }
 
 function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, menuOpened?: boolean) {
@@ -161,7 +164,7 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const list = Array.from(listParent.children)
-    if (menuOpened) (document.querySelector('.topNavContainer__close') as HTMLElement).click()
+    if (menuOpened) closeMenu()
     if (list.length === 0) {
         cb(false)
         return
@@ -173,6 +176,10 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
     }
     const linksMetadata = getMetadataFromLinks(wrappers)
     cb(linksMetadata)
+}
+
+function closeMenu() {
+    (document.querySelector('.topNavContainer__close') as HTMLElement).click()
 }
 
 function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {     
