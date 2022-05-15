@@ -49,7 +49,6 @@
             (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`) as HTMLAnchorElement)
                     .addEventListener('click', () => {
                         options.setOptionState(state => { return { value: state.value + 5 } }, 'percentIncrease')
-
                     });
             (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`) as HTMLAnchorElement)
                     .addEventListener('click', () => {
