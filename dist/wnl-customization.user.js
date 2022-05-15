@@ -20,7 +20,11 @@ const CLASS_NAMES = {
     optionContainer: 'custom-script-option-container',
     pageNumberContainer: 'custom-script-page-number-container',
     currentChapterPage: 'current-number',
-    chapterLength: 'n-of-pages'
+    chapterLength: 'n-of-pages',
+    fontSizeLabel: 'custom-script-font-size-label',
+    fontSizeInput: 'custom-script-font-size-input',
+    zoomSliderContainer: 'custom-script-zoom-slider-container',
+    settingsContainer: 'custom-script-settings-container'
 };
 const BODY_CLASS_NAMES = {
     increaseFontSize: 'custom-script-increase-font-size',
@@ -37,10 +41,9 @@ const SELECTORS = {
     appDiv: '.wnl-app-layout.wnl-course-layout'
 };
 document = unsafeWindow.document;
-let toRunOnLoaded = [];
-let sidebarSettingsContainer = null;
-let summaryContainer;
-let slideOptionsContainer, additionalOptionsContainer, options;
+let toRunOnLoaded = [], summaryContainer;
+let slideOptionsContainer, additionalOptionsContainer;
+let options;
 let slideNumberObserver, slideObserver;
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
 const svgIcons = {
@@ -54,13 +57,18 @@ const svgIcons = {
               <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
 };
-const zoomSliderHTML = `<div style="margin-top: 2em;">
-<label style="margin-right: 0.9em;">POWIĘKSZENIE</label>
-<input class="custom-script-font-size-input" type="range" size="3" maxlength="3" min="70" class="" max="200" step="5" style="height: 0.8em;margin-right: 0.9em;">
-<a class="button is-primary is-small">-</a>
-<label class="custom-script-font-size-label">120%</label>
-<a class="button is-primary is-small">+</a>
-</div>`;
+const zoomSliderHTML = `
+    <div class='${CLASS_NAMES.zoomSliderContainer}'>
+        <label class="metadata">POWIĘKSZENIE</label>
+        <div style="text-align: right;">
+            <input class="${CLASS_NAMES.fontSizeInput}" 
+                type="range" size="3" maxlength="3" min="70" max="200" 
+                step="5">
+            <a class="${CLASS_NAMES.fontSizeInput}-decrease">${svgIcons.zoomOut}</a>
+            <span class="${CLASS_NAMES.fontSizeLabel}">120%</span>
+            <a class="${CLASS_NAMES.fontSizeInput}-increase">${svgIcons.zoomIn}</a>
+        </div>
+    </div>`;
 function toggleBodyClass(className, isOn) {
     let body = document.body;
     if (isOn)
@@ -110,20 +118,26 @@ function goToPage(page) {
     pageNumberInput.dispatchEvent(new InputEvent('input'));
 }
 class Options {
-    constructor(options, sidebarSettingsContainer) {
+    constructor(options, settingsContainerSelector) {
         const document = unsafeWindow.document;
         this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
+        this.settingsContainerSelector = settingsContainerSelector;
         this.restoreState();
         this.init();
         this.update();
         this.storeState();
         this.rerender();
     }
+    get sidebarSettingsContainer() {
+        return document.querySelector(this.settingsContainerSelector);
+    }
     _rerenderSidebar() {
-        if (sidebarSettingsContainer) {
-            const optionDivs = sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
+        console.log('trying to render sidebar', this.sidebarSettingsContainer);
+        if (this.sidebarSettingsContainer) {
+            console.log('rendering sidebar', this.sidebarSettingsContainer);
+            const optionDivs = this.sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
             optionDivs.forEach(el => el.remove());
-            Object.values(this.state).forEach(option => sidebarSettingsContainer.appendChild(this._getSidebarOption(option)));
+            Object.values(this.state).forEach(option => this.sidebarSettingsContainer.appendChild(this._getSidebarOption(option)));
         }
     }
     _getSidebarOption(option) {
@@ -325,17 +339,19 @@ options = new Options([
         defaultValue: 110,
         update: state => {
             updateFontSize(state.value);
-            const rangeInput = document.querySelector('input.custom-script-font-size-input');
-            const rangeLabel = document.querySelector('label.custom-script-font-size-label');
-            if (rangeInput)
+            const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
+            const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`);
+            if (rangeInput) {
                 rangeInput.value = state.value;
+                rangeInput.title = state.value;
+            }
             if (rangeLabel)
                 rangeLabel.innerText = `${state.value}%`;
         },
         init: function (state) {
             function _toRun() {
-                const rangeInput = document.querySelector('input.custom-script-font-size-input');
-                const rangeLabel = document.querySelector('label.custom-script-font-size-label');
+                const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
+                const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`);
                 if (rangeInput) {
                     rangeInput.value = state.value;
                     rangeLabel.innerText = `${state.value}%`;
@@ -354,7 +370,7 @@ options = new Options([
         },
         key: 'p'
     }
-], sidebarSettingsContainer);
+], `.${CLASS_NAMES.settingsContainer}>div`);
 function shortcutListener(event) {
     if (event.target.nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
         return;
@@ -880,28 +896,40 @@ function getMetadataFromLinks(wrappers) {
             background.classList.add("white-custom-background");
         }
         const lessonView = document.querySelector(SELECTORS.lessonView);
+        const sidebarSettingsContainer = document.createElement('div');
+        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer);
+        sidebarSettingsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <div></div>`;
         if (lessonView !== null) {
             console.log({ lessonView });
             const sliderContainer = document.createElement('div');
             sliderContainer.innerHTML = zoomSliderHTML;
             lessonView.appendChild(sliderContainer);
-            sliderContainer.querySelector('input.custom-script-font-size-input')
-                .addEventListener('input', e => document.querySelector('label.custom-script-font-size-label').innerText = `${e.target.value}%`);
+            lessonView.appendChild(sidebarSettingsContainer);
+            options.rerender();
+            sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
+                .addEventListener('input', e => document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`).innerText = `${e.target.value}%`);
+            sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`)
+                .addEventListener('click', () => {
+                options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
+            });
+            sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`)
+                .addEventListener('click', () => {
+                options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
+            });
         }
-        let sidebar = document.querySelector(SELECTORS.sidebar);
-        sidebarSettingsContainer = document.createElement('div');
-        if (sidebar !== null)
-            sidebar.prepend(sidebarSettingsContainer);
-        else {
-            const sidebarToggle = document.querySelector(SELECTORS.menuBtn);
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', event => {
-                    sidebar = document.querySelector('aside.sidenav-aside.course-sidenav');
-                    if (sidebar)
-                        sidebar.prepend(sidebarSettingsContainer);
-                });
-            }
-        }
+        // let sidebar = document.querySelector(SELECTORS.sidebar)
+        // if (sidebar !== null) sidebar.prepend(sidebarSettingsContainer)
+        // else {
+        //     const sidebarToggle = document.querySelector(SELECTORS.menuBtn)
+        //     if (sidebarToggle) {
+        //         sidebarToggle.addEventListener('click', event => {
+        //             sidebar = document.querySelector('aside.sidenav-aside.course-sidenav')
+        //             if (sidebar) sidebar.prepend(sidebarSettingsContainer)
+        //         })
+        //     }
+        // }
         if (GM_getValue(`option_keyboardControl`))
             setupKeyboardControl();
         addChapterInfo();
@@ -927,7 +955,7 @@ function getMetadataFromLinks(wrappers) {
     }
     function checkUnloaded() {
         console.log('unloaded??');
-        const testElement = document.querySelector('input.custom-script-font-size-input');
+        const testElement = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
         if (!isAwaiting && !testElement) {
             console.log('unloaded!!!');
             awaitLoad();
@@ -1120,6 +1148,23 @@ a.custom-options-btn svg {
 }
 
 a.custom-options-btn.active svg {transform: none;}
+
+.${CLASS_NAMES.fontSizeLabel} {
+    margin: 0 0.5rem;
+    height: 16px;
+    font-size: 24px; 
+}
+
+.${CLASS_NAMES.fontSizeInput} {
+    height: 16px;
+    margin-right: 0.9em
+}
+
+.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer} {
+    margin-top: 1rem; 
+    border: 1px solid rgb(239, 240, 243); 
+    padding: 15px; 
+}
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
