@@ -17,6 +17,12 @@
 
     function onLoaded() {
         console.log('loaded')
+
+        if (!appDiv) {
+            appDiv = document.querySelector(SELECTORS.appDiv)
+            if (appDiv) onAttributeChange(appDiv, 'screenid', checkUnloaded)
+        }
+
         let background = document.querySelector(SELECTORS.background)
         if (background !== null) {
             background.classList.remove("image-custom-background")
@@ -59,7 +65,7 @@
 
     let isAwaiting = false
     awaitLoad()
-    const appDiv = document.querySelector(SELECTORS.appDiv)
+    let appDiv = document.querySelector(SELECTORS.appDiv)
     if (appDiv) onAttributeChange(appDiv, 'screenid', checkUnloaded)
 
     function awaitLoad() {
