@@ -54,16 +54,9 @@ interface SearchResultSchema {
     };
     scout_metadata: {
         highlight: {
-            "snippet.content": {
-                [k: string]: unknown;
-            }[];
-            "snippet.subheader": {
-                [k: string]: unknown;
-            }[];
-            "snippet.header": {
-                [k: string]: unknown;
-            }[];
-            [k: string]: unknown;
+            "snippet.content": string[];
+            "snippet.subheader": string[];
+            "snippet.header": string[];
         };
         [k: string]: unknown;
     };
