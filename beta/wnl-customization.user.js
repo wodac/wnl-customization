@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.9.27b
+// @version      1.9.28b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -387,17 +387,6 @@ options = new Options([
         key: 'p'
     }
 ], `.${CLASS_NAMES.settingsContainer}>div`);
-// interface ToolInterface {
-//     render(): string
-// }
-// class TimeoutTool implements ToolInterface {
-//     constructor(public name: string, public option: ToolOptions) {}
-//     render () {
-//         return ''
-//     }
-// }
-// interface ToolOptions {
-// }
 let suggestBreakTimer, obs;
 function startBreakTimer() {
     clearTimeout(suggestBreakTimer);
@@ -682,11 +671,25 @@ function performSearch() {
     if (!searchContainer)
         return;
     const q = searchContainer.querySelector('input.custom-search-result').value;
-    getSearchResponseHTML(q).then(resp => {
+    const interpretation = interpretQuery(q);
+    getSearchResponseHTML(interpretation).then(resp => {
         if (searchResultsContainer)
             searchResultsContainer.innerHTML = resp;
         toggleSearch(true);
     });
+}
+function interpretQuery(q) {
+    const query = q.replace(/"/g, '');
+    q = q.toLowerCase();
+    const quotesRegExp = /"([^"]+)"/g;
+    const hasntRegExp = /-\w+/g;
+    let mustContain = q.match(quotesRegExp);
+    let musntContain = q.match(hasntRegExp);
+    if (mustContain)
+        mustContain = mustContain.map(s => s.slice(1, -1));
+    if (musntContain)
+        musntContain = musntContain.map(s => s.slice(1));
+    return { query, mustContain, musntContain };
 }
 function getSearchResponseHTML(q) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -715,7 +718,7 @@ function toggleSearch(visible) {
 function searchRequest(q) {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
-            url: getSearchURL(q),
+            url: getSearchURL(q.query),
             method: 'GET',
             responseType: "json",
             onload: ({ response }) => {
@@ -729,11 +732,36 @@ function searchRequest(q) {
                         id: el.id
                     };
                 });
-                resolve(parsed);
+                resolve(filterSearch(parsed, q));
             },
             onerror: reject
         });
     });
+}
+function filterSearch(parsed, q) {
+    let filtered = parsed;
+    if (q.mustContain) {
+        filtered = parsed.filter(result => {
+            return hasSomePhrases(result, q.mustContain).every(includes => includes);
+        });
+    }
+    if (q.musntContain) {
+        filtered = filtered.filter(result => {
+            return !hasSomePhrases(result, q.musntContain).some(includes => includes);
+        });
+    }
+    return filtered;
+    function hasSomePhrases(result, phrases) {
+        return phrases.map(toSearch => {
+            return Object.values(result.highlight).some(highlighted => {
+                return highlighted.some(s => stripTags(s).includes(toSearch));
+            });
+        });
+    }
+}
+function stripTags(s) {
+    const tagStripper = /<[^>]+>/g;
+    return s.toLowerCase().replace(tagStripper, '');
 }
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 10px;">
