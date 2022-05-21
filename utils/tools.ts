@@ -1,19 +1,3 @@
-// interface ToolInterface {
-    
-//     render(): string
-// }
-
-// class TimeoutTool implements ToolInterface {
-//     constructor(public name: string, public option: ToolOptions) {}
-//     render () {
-        
-//         return ''
-//     }
-// }
-
-// interface ToolOptions {
-
-// }
 let suggestBreakTimer: NodeJS.Timeout, obs: MutationObserver
 function startBreakTimer() {
     clearTimeout(suggestBreakTimer)
