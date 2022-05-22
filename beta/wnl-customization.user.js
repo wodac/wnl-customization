@@ -414,6 +414,8 @@ tools = new Options([
             }
             else {
                 obs.disconnect();
+                if (suggestBreakTimer)
+                    clearTimeout(suggestBreakTimer);
             }
         }
     }
