@@ -134,7 +134,9 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     background-color: rgb(247 247 247 / 90%);
     border-radius: 5px;
     box-shadow: 0px 1px 2px 2px #00000014;
-    transition: all 1s;
+    transition: top 1s, visibility 1s;
+    resize: horizontal;
+    min-width: 11rem;
 }
 
 .custom-search-result {
@@ -144,6 +146,13 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     padding: 5px;
     display: block;
     color: #222;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.custom-search-result em {
+    font-weight: 900;
+    padding-right: 0.2rem;
 }
 
 a.custom-script-summary-link {
@@ -187,11 +196,43 @@ a.custom-options-btn.active svg {transform: none;}
     margin: 0 0.5rem;
     height: 16px;
     font-size: 24px; 
+    vertical-align: top;
+    width: 4.3rem;
+    display: inline-block;
+    text-align: center;
+}
+
+.${CLASS_NAMES.fontSizeInput}-increase, .${CLASS_NAMES.fontSizeInput}-decrease {
+    vertical-align: sub;
 }
 
 .${CLASS_NAMES.fontSizeInput} {
-    height: 16px;
-    margin-right: 0.9em
+    -webkit-appearance: none;
+    appearance: none;
+    margin-right: 0.9em;
+    outline: none;
+    height: 0.6rem;
+    background: #96dbdf;
+    border-radius: 5px;
+    vertical-align: middle;
+}
+
+.${CLASS_NAMES.fontSizeInput}::-webkit-slider-thumb {
+    -webkit-appearance: none; 
+    appearance: none;
+    cursor: pointer;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--color-primary-text);
+    border-radius: 0.4rem;
+}
+
+.${CLASS_NAMES.fontSizeInput}::-moz-range-thumb {
+    cursor: pointer;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--color-primary-text);
+    border-radius: 0.4rem;
 }
 
 .${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 

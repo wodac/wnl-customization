@@ -25,6 +25,7 @@ function performSearch() {
     if (!searchContainer) return
     const q = (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
     const interpretation = interpretQuery(q)
+    searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
     getSearchResponseHTML(interpretation).then(resp => {
         if (searchResultsContainer) searchResultsContainer.innerHTML = resp
         toggleSearch(true)
@@ -33,31 +34,35 @@ function performSearch() {
 
 type QueryInterpretation = {
     query: string
+    rawQuery: string
     mustContain?: string[]
     musntContain?: string[]
 }
 
-function interpretQuery(q: string): QueryInterpretation {
-    const query = q.replace(/"/g, '')
-    q = q.toLowerCase()
+function interpretQuery(rawQuery: string): QueryInterpretation {
+    const query = rawQuery.replace(/"/g, '')
+    rawQuery = rawQuery.toLowerCase()
     const quotesRegExp = /"([^"]+)"/g
     const hasntRegExp = /-\w+/g
-    let mustContain = q.match(quotesRegExp)
-    let musntContain = q.match(hasntRegExp)
+    let mustContain = rawQuery.match(quotesRegExp)
+    let musntContain = rawQuery.match(hasntRegExp)
     if (mustContain) mustContain = mustContain.map(s => s.slice(1, -1))
     if (musntContain) musntContain = musntContain.map(s => s.slice(1))
-    return { query, mustContain, musntContain }
+    return { query, rawQuery, mustContain, musntContain }
 }
 
 async function getSearchResponseHTML(q: QueryInterpretation): Promise<string> {
     const response = await searchRequest(q)
-    return response.map(el => `
-        <a href='${WNL_DYNAMIC_SLIDES+el.id}' target='_blank' class='custom-search-result'>
-            <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-            <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-            <p>${el.highlight['snippet.content'] || el.details.content}</p>
-        </a>
-        `).join('')
+    if (response.length) {
+        return response.map(el => `
+            <a href='${WNL_DYNAMIC_SLIDES + el.id}' target='_blank' class='custom-search-result'>
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>
+            </a>
+            `).join('')
+    }
+    return `<p style='padding:0.5rem'>Nie znaleziono frazy <em>${q.rawQuery}</em> :(</p>`
 }
 
 function toggleSearch(visible?: boolean) {
@@ -78,7 +83,7 @@ function searchRequest(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
             responseType: "json",
             onload: ({ response }: { response: SearchResults }) => {
                 const entries = Object.entries(response)
-                const results = entries.filter( el => el[0].match(/^[0-9]+$/) ).map(el => el[1])
+                const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1])
                 const parsed = results.map(el => {
                     return {
                         highlight: el.scout_metadata.highlight,
