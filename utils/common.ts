@@ -52,7 +52,7 @@ function toggleSummary(visible?: boolean) {
         summaryContainer.classList.remove('custom-script-hidden')
         const activeLink = summaryContainer.querySelector('.active') as HTMLElement
         if (activeLink) {
-            activeLink.scrollIntoView()
+            activeLink.scrollIntoView({ behavior: "smooth" })
         }
     }
     else summaryContainer.classList.add('custom-script-hidden')

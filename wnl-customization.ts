@@ -106,7 +106,15 @@
         const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
         if (!isAwaiting && !testExtensionLoaded) {
             console.log('unloaded!!!')
+            onUnload()
             awaitLoad()
+        }
+    }
+
+    function onUnload() {
+        if (options && options.state.changeTitle.value) {
+            const { originalTitle } = options.state.changeTitle
+            document.title = originalTitle
         }
     }
 

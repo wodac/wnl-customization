@@ -114,8 +114,11 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
         active.classList.add('is-active')
-        active.scrollIntoView({behavior: "smooth"})
+        if (!summaryContainer.className.includes('custom-script-hidden')) {
+            active.scrollIntoView({behavior: "smooth"})
+        }
     }
+    updateTabTitle()
 }
 
 function addPageNumberContainer(): HTMLSpanElement {

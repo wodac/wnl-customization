@@ -32,7 +32,7 @@ function shortcutListener(event: KeyboardEvent) {
             toggleSearch()
             break
 
-        case 't':
+        case 'l':
             toggleSummary()
             break
 
@@ -73,14 +73,18 @@ function setupKeyboardControl() {
     })
     observeSlides(addSubsToIcons)
 
-    document.body.addEventListener('click', updateTabTitle)
-    document.body.addEventListener('keyup', updateTabTitle)
+    // document.body.addEventListener('click', updateTabTitle)
+    // document.body.addEventListener('keyup', updateTabTitle)
     document.body.addEventListener('keydown', event => {
+        if (event.key === ' ' || event.key === 'l') {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+        }
         if (event.key === 'ArrowUp') {
             scrollView(-60)
             return false
         }
-        if (event.key === 'ArrowDown') {
+        if (event.key === 'ArrowDown' || event.key === ' ') {
             scrollView(60)
             return false
         }
@@ -152,14 +156,17 @@ function scrollView(y) {
 }
 
 function updateTabTitle() {
-    let currentTitleHeader = document.querySelector('.present .sl-block-content h2')
-    console.log({ currentTitleHeader })
-    if (currentTitleHeader !== null && GM_getValue('option_changeTitle')) {
-        let currentTitle = currentTitleHeader.textContent
-        console.log({ currentTitle })
-        if (currentTitle && currentTitle.length) {
-            document.title = `${currentTitle} - Więcej niż LEK`
-        }
+    if (GM_getValue('option_changeTitle')) {
+        let mainTitle: string, currentTitle: string
+        const mainHeaderElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
+        if (mainHeaderElem !== null) mainTitle = mainHeaderElem.innerText
+        mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : ''
+
+        let currentTitleHeader = document.querySelector('.present .sl-block-content h2')
+        if (currentTitleHeader !== null) currentTitle = currentTitleHeader.textContent
+        currentTitle = currentTitle && currentTitle.match(/\w/) ? `${currentTitle} - ` : ''
+
+        document.title = currentTitle + mainTitle + options.state.changeTitle.originalTitle
     }
 }
 
@@ -193,12 +200,12 @@ function numericKeyPressed(key: string) {
     if (annotationImages.length > 0) {
         const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`
         const icon = document.querySelector(selector) as HTMLElement
-        console.log({selector, icon})
+        console.log({ selector, icon })
         if (icon) icon.click()
     } else {
         const selector = `.present .a-icon.sub-id-${key}`
         const icon = document.querySelector(selector) as HTMLElement
-        console.log({selector, icon})
+        console.log({ selector, icon })
         if (icon) icon.click()
         setTimeout(() => {
             annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper')

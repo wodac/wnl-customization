@@ -1,7 +1,21 @@
+interface OptionState<T> extends OptionConstructorOption<any> {
+    value: T
+    [k: string]: any
+}
+
+interface OptionConstructorOption<Name extends keyof OptionsTypes> {
+    name: Name
+    desc: string | ((state: OptionsTypes[Name]) => string)
+    type?: "button" | string
+    callback?: (state: OptionsTypes[Name]) => (Partial<OptionsTypes[Name]> | void)
+    update?: (this: Options, state: OptionsTypes[Name]) => any
+    init?: (this: Options, state: OptionsTypes[Name]) => any
+    defaultValue?: OptionsTypes[Name]["value"]
+    key?: string
+}
+
 class Options {
-    state: {
-        [k: string]: OptionState<any>
-    }
+    state: OptionsTypes
     settingsContainerSelector: string
 
     constructor(options: OptionConstructorOption<any>[], settingsContainerSelector: string) {
@@ -20,23 +34,23 @@ class Options {
         this.rerender()
     }
 
-    get sidebarSettingsContainer() {
+    get settingsContainer() {
         return document.querySelector(this.settingsContainerSelector)
     }
 
-    _rerenderSidebar() {
-        console.log('trying to render sidebar', this.sidebarSettingsContainer)
-        if (this.sidebarSettingsContainer) {
-            console.log('rendering sidebar', this.sidebarSettingsContainer)
-            const optionDivs = this.sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
+    _rerenderSettings() {
+        console.log('trying to render sidebar', this.settingsContainer)
+        if (this.settingsContainer) {
+            console.log('rendering sidebar', this.settingsContainer)
+            const optionDivs = this.settingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
             optionDivs.forEach(el => el.remove())
             Object.values(this.state).forEach(
-                option => this.sidebarSettingsContainer.appendChild(this._getSidebarOption(option))
+                option => this.settingsContainer.appendChild(this._getSettingsOption(option))
             )
         }
     }
 
-    _getSidebarOption(option: OptionState<any>) {
+    _getSettingsOption(option: OptionState<any>) {
         const optionContainer = document.createElement('div')
         optionContainer.classList.add(CLASS_NAMES.optionContainer)
         const getOption = (desc: string) => `<a class="custom-script-option" href="#">${desc}</a>`
@@ -63,7 +77,7 @@ class Options {
         }
         rerender = rerender.bind(this)
         Object.keys(this.state).forEach(rerender)
-        this._rerenderSidebar()
+        this._rerenderSettings()
     }
 
     _runCallback(option) {
@@ -118,13 +132,27 @@ class Options {
     update() { this._runOnAllOptions('update') }
     init() {
         this._runOnAllOptions('init')
-        this._rerenderSidebar()
+        this._rerenderSettings()
     }
 
     // options.forEach(option => { if (option.type === 'boolean') this.setOption[option.name](option.defaultValue) })
 }
 
 const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 "
+interface ChangeTitle extends OptionState<boolean> {
+    originalTitle: string
+}
+
+type OptionsTypes = {
+    changeTitle: ChangeTitle
+    increaseFontSize: OptionState<boolean>
+    increaseAnnotations: OptionState<boolean>
+    percentIncrease: OptionState<number>
+    invertImages: OptionState<boolean>
+    uniformFontSize: OptionState<boolean>
+    keyboardControl: OptionState<boolean>
+    smoothScroll: OptionState<boolean>
+}
 
 options = new Options([
     {
@@ -190,15 +218,15 @@ options = new Options([
         },
         update: state => {
             console.log('changeTitle update', { state })
-            unsafeWindow.document.title = (state.value && state.newTitle) ? state.newTitle : state.originalTitle
+            if (!state.value) {
+                if (state.originalTitle) unsafeWindow.document.title = state.originalTitle
+                // unsafeWindow.removeEventListener('popstate', updateTabTitle)
+            }
+            updateTabTitle()
         },
         init: state => {
             state.originalTitle = unsafeWindow.document.title
-            let headerElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
-            console.log({ headerElem })
-            if (headerElem !== null) state.newTitle = headerElem.innerText
-            console.log({ newTitle: state.newTitle })
-            if (state.originalTitle && state.newTitle) unsafeWindow.document.title = state.value ? state.newTitle : state.originalTitle
+            // unsafeWindow.addEventListener('popstate', updateTabTitle);
         },
         defaultValue: false,
         key: 'a'
