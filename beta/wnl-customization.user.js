@@ -5,7 +5,7 @@
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
-// @match        https://lek.wiecejnizlek.pl/app/*
+// @match        https://lek.wiecejnizlek.pl/*
 // @connect      https://lek.wiecejnizlek.pl/*
 // @icon         https://www.google.com/s2/favicons?domain=wiecejnizlek.pl
 // @grant        GM_registerMenuCommand
@@ -92,7 +92,7 @@ function toggleSummary(visible) {
         summaryContainer.classList.remove('custom-script-hidden');
         const activeLink = summaryContainer.querySelector('.active');
         if (activeLink) {
-            activeLink.scrollIntoView();
+            activeLink.scrollIntoView({ behavior: "smooth" });
         }
     }
     else
@@ -142,19 +142,19 @@ class Options {
         this.storeState();
         this.rerender();
     }
-    get sidebarSettingsContainer() {
+    get settingsContainer() {
         return document.querySelector(this.settingsContainerSelector);
     }
-    _rerenderSidebar() {
-        console.log('trying to render sidebar', this.sidebarSettingsContainer);
-        if (this.sidebarSettingsContainer) {
-            console.log('rendering sidebar', this.sidebarSettingsContainer);
-            const optionDivs = this.sidebarSettingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
+    _rerenderSettings() {
+        console.log('trying to render sidebar', this.settingsContainer);
+        if (this.settingsContainer) {
+            console.log('rendering sidebar', this.settingsContainer);
+            const optionDivs = this.settingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
             optionDivs.forEach(el => el.remove());
-            Object.values(this.state).forEach(option => this.sidebarSettingsContainer.appendChild(this._getSidebarOption(option)));
+            Object.values(this.state).forEach(option => this.settingsContainer.appendChild(this._getSettingsOption(option)));
         }
     }
-    _getSidebarOption(option) {
+    _getSettingsOption(option) {
         const optionContainer = document.createElement('div');
         optionContainer.classList.add(CLASS_NAMES.optionContainer);
         const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
@@ -176,7 +176,7 @@ class Options {
         };
         rerender = rerender.bind(this);
         Object.keys(this.state).forEach(rerender);
-        this._rerenderSidebar();
+        this._rerenderSettings();
     }
     _runCallback(option) {
         const result = option.callback.apply(this, [option, this.state]);
@@ -229,7 +229,7 @@ class Options {
     update() { this._runOnAllOptions('update'); }
     init() {
         this._runOnAllOptions('init');
-        this._rerenderSidebar();
+        this._rerenderSettings();
     }
 }
 const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 ";
@@ -298,17 +298,16 @@ options = new Options([
         },
         update: state => {
             console.log('changeTitle update', { state });
-            unsafeWindow.document.title = (state.value && state.newTitle) ? state.newTitle : state.originalTitle;
+            if (!state.value) {
+                if (state.originalTitle)
+                    unsafeWindow.document.title = state.originalTitle;
+                // unsafeWindow.removeEventListener('popstate', updateTabTitle)
+            }
+            updateTabTitle();
         },
         init: state => {
             state.originalTitle = unsafeWindow.document.title;
-            let headerElem = document.querySelector('.o-lesson__title__left__header');
-            console.log({ headerElem });
-            if (headerElem !== null)
-                state.newTitle = headerElem.innerText;
-            console.log({ newTitle: state.newTitle });
-            if (state.originalTitle && state.newTitle)
-                unsafeWindow.document.title = state.value ? state.newTitle : state.originalTitle;
+            // unsafeWindow.addEventListener('popstate', updateTabTitle);
         },
         defaultValue: false,
         key: 'a'
@@ -446,7 +445,7 @@ function shortcutListener(event) {
         case '/':
             toggleSearch();
             break;
-        case 't':
+        case 'l':
             toggleSummary();
             break;
         case 'Escape':
@@ -485,14 +484,18 @@ function setupKeyboardControl() {
         icons.forEach(icon => processIcon(icon, counter++));
     });
     observeSlides(addSubsToIcons);
-    document.body.addEventListener('click', updateTabTitle);
-    document.body.addEventListener('keyup', updateTabTitle);
+    // document.body.addEventListener('click', updateTabTitle)
+    // document.body.addEventListener('keyup', updateTabTitle)
     document.body.addEventListener('keydown', event => {
+        if (event.key === ' ' || event.key === 'l') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
         if (event.key === 'ArrowUp') {
             scrollView(-60);
             return false;
         }
-        if (event.key === 'ArrowDown') {
+        if (event.key === 'ArrowDown' || event.key === ' ') {
             scrollView(60);
             return false;
         }
@@ -558,14 +561,17 @@ function scrollView(y) {
     });
 }
 function updateTabTitle() {
-    let currentTitleHeader = document.querySelector('.present .sl-block-content h2');
-    console.log({ currentTitleHeader });
-    if (currentTitleHeader !== null && GM_getValue('option_changeTitle')) {
-        let currentTitle = currentTitleHeader.textContent;
-        console.log({ currentTitle });
-        if (currentTitle && currentTitle.length) {
-            document.title = `${currentTitle} - Więcej niż LEK`;
-        }
+    if (GM_getValue('option_changeTitle')) {
+        let mainTitle, currentTitle;
+        const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
+        if (mainHeaderElem !== null)
+            mainTitle = mainHeaderElem.innerText;
+        mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : '';
+        let currentTitleHeader = document.querySelector('.present .sl-block-content h2');
+        if (currentTitleHeader !== null)
+            currentTitle = currentTitleHeader.textContent;
+        currentTitle = currentTitle && currentTitle.match(/\w/) ? `${currentTitle} - ` : '';
+        document.title = currentTitle + mainTitle + options.state.changeTitle.originalTitle;
     }
 }
 function showImage() {
@@ -672,35 +678,39 @@ function performSearch() {
         return;
     const q = searchContainer.querySelector('input.custom-search-result').value;
     const interpretation = interpretQuery(q);
+    searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
     getSearchResponseHTML(interpretation).then(resp => {
         if (searchResultsContainer)
             searchResultsContainer.innerHTML = resp;
         toggleSearch(true);
     });
 }
-function interpretQuery(q) {
-    const query = q.replace(/"/g, '');
-    q = q.toLowerCase();
+function interpretQuery(rawQuery) {
+    const query = rawQuery.replace(/"/g, '');
+    rawQuery = rawQuery.toLowerCase();
     const quotesRegExp = /"([^"]+)"/g;
     const hasntRegExp = /-\w+/g;
-    let mustContain = q.match(quotesRegExp);
-    let musntContain = q.match(hasntRegExp);
+    let mustContain = rawQuery.match(quotesRegExp);
+    let musntContain = rawQuery.match(hasntRegExp);
     if (mustContain)
         mustContain = mustContain.map(s => s.slice(1, -1));
     if (musntContain)
         musntContain = musntContain.map(s => s.slice(1));
-    return { query, mustContain, musntContain };
+    return { query, rawQuery, mustContain, musntContain };
 }
 function getSearchResponseHTML(q) {
     return __awaiter(this, void 0, void 0, function* () {
         const response = yield searchRequest(q);
-        return response.map(el => `
-        <a href='${WNL_DYNAMIC_SLIDES + el.id}' target='_blank' class='custom-search-result'>
-            <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-            <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-            <p>${el.highlight['snippet.content'] || el.details.content}</p>
-        </a>
-        `).join('');
+        if (response.length) {
+            return response.map(el => `
+            <a href='${WNL_DYNAMIC_SLIDES + el.id}' target='_blank' class='custom-search-result'>
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>
+            </a>
+            `).join('');
+        }
+        return `<p style='padding:0.5rem'>Nie znaleziono frazy <em>${q.rawQuery}</em> :(</p>`;
     });
 }
 function toggleSearch(visible) {
@@ -870,8 +880,11 @@ function onSlideChanged(current, metadata) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`);
         active.classList.add('is-active');
-        active.scrollIntoView({ behavior: "smooth" });
+        if (!summaryContainer.className.includes('custom-script-hidden')) {
+            active.scrollIntoView({ behavior: "smooth" });
+        }
     }
+    updateTabTitle();
 }
 function addPageNumberContainer() {
     const classNames = [CLASS_NAMES.pageNumberContainer, CLASS_NAMES.currentChapterPage, '', CLASS_NAMES.chapterLength];
@@ -1054,7 +1067,14 @@ function getMetadataFromLinks(wrappers) {
         const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
         if (!isAwaiting && !testExtensionLoaded) {
             console.log('unloaded!!!');
+            onUnload();
             awaitLoad();
+        }
+    }
+    function onUnload() {
+        if (options && options.state.changeTitle.value) {
+            const { originalTitle } = options.state.changeTitle;
+            document.title = originalTitle;
         }
     }
 })();
@@ -1194,7 +1214,9 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     background-color: rgb(247 247 247 / 90%);
     border-radius: 5px;
     box-shadow: 0px 1px 2px 2px #00000014;
-    transition: all 1s;
+    transition: top 1s, visibility 1s;
+    resize: horizontal;
+    min-width: 11rem;
 }
 
 .custom-search-result {
@@ -1204,6 +1226,13 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     padding: 5px;
     display: block;
     color: #222;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.custom-search-result em {
+    font-weight: 900;
+    padding-right: 0.2rem;
 }
 
 a.custom-script-summary-link {
@@ -1247,11 +1276,43 @@ a.custom-options-btn.active svg {transform: none;}
     margin: 0 0.5rem;
     height: 16px;
     font-size: 24px; 
+    vertical-align: top;
+    width: 4.3rem;
+    display: inline-block;
+    text-align: center;
+}
+
+.${CLASS_NAMES.fontSizeInput}-increase, .${CLASS_NAMES.fontSizeInput}-decrease {
+    vertical-align: sub;
 }
 
 .${CLASS_NAMES.fontSizeInput} {
-    height: 16px;
-    margin-right: 0.9em
+    -webkit-appearance: none;
+    appearance: none;
+    margin-right: 0.9em;
+    outline: none;
+    height: 0.6rem;
+    background: #96dbdf;
+    border-radius: 5px;
+    vertical-align: middle;
+}
+
+.${CLASS_NAMES.fontSizeInput}::-webkit-slider-thumb {
+    -webkit-appearance: none; 
+    appearance: none;
+    cursor: pointer;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--color-primary-text);
+    border-radius: 0.4rem;
+}
+
+.${CLASS_NAMES.fontSizeInput}::-moz-range-thumb {
+    cursor: pointer;
+    width: 0.8rem;
+    height: 0.8rem;
+    background: var(--color-primary-text);
+    border-radius: 0.4rem;
 }
 
 .${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 
