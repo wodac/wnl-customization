@@ -573,7 +573,8 @@ function updateTabTitle() {
         if (currentTitleHeader !== null)
             currentTitle = currentTitleHeader.textContent;
         currentTitle = currentTitle && currentTitle.match(/\w/) ? `${currentTitle} - ` : '';
-        document.title = currentTitle + mainTitle + options.state.changeTitle.originalTitle;
+        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK';
+        document.title = currentTitle + mainTitle + originalTitle;
     }
 }
 function showImage() {
