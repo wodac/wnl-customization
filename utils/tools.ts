@@ -24,6 +24,7 @@ tools = new Options([
                 obs.observe(document.querySelector(SELECTORS.appDiv), { attributes: true })
             } else {
                 obs.disconnect()
+                if (suggestBreakTimer) clearTimeout(suggestBreakTimer)
             }
         }
     }
