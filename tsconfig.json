@@ -11,6 +11,7 @@
       "utils/enums.ts",
       "interfaces.d.ts", 
       "globals.d.ts", 
+      "utils/notes.ts",
       "utils/common.ts",
       "utils/options.ts",
       "utils/tools.ts",

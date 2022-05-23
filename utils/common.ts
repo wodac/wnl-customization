@@ -1,7 +1,8 @@
 document = unsafeWindow.document
 let toRunOnLoaded: Function[] = [], summaryContainer: HTMLDivElement
 let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement
-let options: Options, tools: Options
+let options: Options, tools: Options, chapterMetadata: SlideshowChapterMetadata[]
+let notesCollection: PresentationNotesCollection, currentSlideNotes: SlideNotesCollection
 
 let slideNumberObserver: MutationObserver, slideObserver: MutationObserver
 
@@ -16,6 +17,8 @@ const svgIcons = {
     zoomOut: inSVG`<path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
               <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
+    stickies: inSVG`<path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/>
+    <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/>`,
 }
 
 const zoomSliderHTML = `
@@ -31,7 +34,7 @@ const zoomSliderHTML = `
         </div>
     </div>`
 
-function toggleBodyClass(className, isOn) {
+function toggleBodyClass(className: string, isOn: boolean) {
     let body = document.body
     if (isOn) body.classList.add(className)
     else body.classList.remove(className)

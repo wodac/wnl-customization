@@ -6,7 +6,15 @@
 
         if (!appDiv) {
             appDiv = document.querySelector(SELECTORS.appDiv)
-            if (appDiv) onAttributeChange(appDiv, 'screenid', checkUnloaded)
+            if (appDiv) {
+                onAttributeChange(appDiv, 'screenid', checkUnloaded)
+                const screenid = appDiv.attributes.getNamedItem('screenid').value
+                console.log({screenid})
+                PresentationNotesCollection.createAsync(parseInt(screenid)).then(coll => {
+                    notesCollection = coll
+                    console.log({notesCollection})
+                })
+            }
         }
 
         let background = document.querySelector(SELECTORS.background)

@@ -242,6 +242,14 @@ a.custom-options-btn.active svg {transform: none;}
     padding: 15px; 
 }
 
+.custom-notes-btn {
+    display: none!important;
+}
+
+.custom-script-use-notes .custom-notes-btn {
+    display: flex!important;
+}
+
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`

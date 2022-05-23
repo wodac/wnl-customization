@@ -12,6 +12,7 @@ interface OptionConstructorOption<Name extends keyof OptionsTypes> {
     init?: (this: Options, state: OptionsTypes[Name]) => any
     defaultValue?: OptionsTypes[Name]["value"]
     key?: string
+    [k: string]: any
 }
 
 class Options {
@@ -152,6 +153,8 @@ type OptionsTypes = {
     uniformFontSize: OptionState<boolean>
     keyboardControl: OptionState<boolean>
     smoothScroll: OptionState<boolean>
+    suggestBreak: OptionState<boolean>
+    useNotes: OptionState<boolean>
 }
 
 options = new Options([

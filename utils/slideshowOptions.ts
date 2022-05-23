@@ -24,12 +24,20 @@ const slideshowOptions = `
         </div>
     </a>`
 
+const notesBtn = `
+    <a class="custom-notes-btn custom-script-slideshow-btn wnl-rounded-button" style="bottom: 10px;right: unset;left: 75px;z-index: 1;color: black;">
+        <div class="a-icon -x-small" title="Notatki">
+            ${svgIcons.stickies}
+        </div>
+    </a>`
+
+
 function addSlideOptions() {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
     addSearchContainer()
     slideOptionsContainer = document.createElement('div')
-    slideOptionsContainer.innerHTML = slideshowOptionsBtn
+    slideOptionsContainer.innerHTML = notesBtn + slideshowOptionsBtn
     additionalOptionsContainer = document.createElement('div')
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options'
     additionalOptionsContainer.innerHTML = slideshowOptions
@@ -115,10 +123,24 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
         active.classList.add('is-active')
         if (!summaryContainer.className.includes('custom-script-hidden')) {
-            active.scrollIntoView({behavior: "smooth"})
+            active.scrollIntoView({ behavior: "smooth" })
         }
     }
     updateTabTitle()
+    if (notesCollection) {
+        if (currentSlideNotes) currentSlideNotes.commitChanges()
+        notesCollection.getNotesBySlide(current).then(notes => {
+            currentSlideNotes = notes
+            console.log({currentSlideNotes})
+            const currentSlide = document.querySelector('.present .present')
+            const rect = currentSlide.getBoundingClientRect()
+            notes.notes.forEach(note => {
+                const position = note.metadata.position
+                console.log({ note, position })
+                
+            })
+        })
+    }
 }
 
 function addPageNumberContainer(): HTMLSpanElement {
@@ -178,6 +200,7 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const linksMetadata = getMetadataFromLinks(wrappers)
+    chapterMetadata = linksMetadata
     cb(linksMetadata)
 }
 
@@ -185,10 +208,10 @@ function closeMenu() {
     (document.querySelector('.topNavContainer__close') as HTMLElement).click()
 }
 
-function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {     
-    const links = wrappers.map(div => div.querySelector('a'))   
+function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {
+    const links = wrappers.map(div => div.querySelector('a'))
     const getLength = (t: string) => parseInt(t.slice(1, -1))
-    return links.map( (a, i) => {
+    return links.map((a, i) => {
         if (!a.href)
             return {}
         const chapterLength = getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText)
