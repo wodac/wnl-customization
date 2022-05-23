@@ -41,10 +41,216 @@ const SELECTORS = {
     menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
     appDiv: '.wnl-app-layout.wnl-course-layout'
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+class Note {
+    constructor(metadata, _content, parent) {
+        this.metadata = metadata;
+        this._content = _content;
+        this.parent = parent;
+        this._deleted = false;
+    }
+    get content() {
+        return this._content;
+    }
+    remove() {
+        this.parent.removeNoteById(this.metadata.id);
+        this._deleted = true;
+    }
+    set content(value) {
+        if (this._deleted)
+            throw new NoteDeletedError();
+        this._content = value;
+        this.parent.saveNote(this);
+    }
+}
+class NoteDeletedError extends Error {
+    constructor() {
+        super('Cannot modify deleted note!');
+    }
+}
+class SlideMetadata {
+    constructor(slide, screenid) {
+        this.slide = slide;
+        this.screenid = screenid;
+    }
+}
+class NoteMetadata extends SlideMetadata {
+    constructor(id, slideMetadata, position) {
+        super(slideMetadata.slide, slideMetadata.screenid);
+        this.id = id;
+        this.position = position;
+    }
+}
+class SlideNotesCollection {
+    constructor(metadata, _notesRaw, parent) {
+        this.metadata = metadata;
+        this._notesRaw = _notesRaw;
+        this.parent = parent;
+        this._notes = _notesRaw.map(record => {
+            return new Note(new NoteMetadata(record.id, this.metadata, record.position), record.content, this);
+        });
+        this._changedNotes = [];
+        this._deletedNotes = [];
+    }
+    get notes() {
+        return this._notes;
+    }
+    getNoteByPosition(position) {
+        return this._notes.find(note => note.metadata.position === position);
+    }
+    getNoteById(id) {
+        return this._notes.find(note => note.metadata.id === id);
+    }
+    addNote(position, content) {
+        const id = generateId();
+        const note = new Note(new NoteMetadata(id, this.metadata, position), content, this);
+        this._notes.push(note);
+        this._changedNotes.push(note);
+        return note;
+    }
+    removeNoteByContext(position) {
+        return this.removeNoteByQuery(note => note.metadata.position === position);
+    }
+    removeNoteByQuery(query) {
+        let deleted;
+        const indexInNotes = this._notes.findIndex(query);
+        const indexInChangedNotes = this._changedNotes.findIndex(query);
+        if (indexInNotes >= 0) {
+            deleted = this._notes.splice(indexInNotes, 1)[0];
+            this._deletedNotes.push(deleted);
+        }
+        if (indexInChangedNotes >= 0)
+            deleted = this._changedNotes.splice(indexInChangedNotes, 1)[0];
+        return deleted;
+    }
+    removeNoteById(id) {
+        return this.removeNoteByQuery(note => note.metadata.id === id);
+    }
+    saveNote(note) {
+        const index = this._changedNotes.findIndex(note => note.metadata.id === note.metadata.id);
+        if (index >= 0)
+            this._changedNotes[index] = note;
+        else
+            this._changedNotes.push(note);
+    }
+    commitChanges() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.parent.removeNotes(this._deletedNotes);
+            this._deletedNotes = [];
+            yield this.parent.saveNotes(this._changedNotes);
+            this._changedNotes = [];
+        });
+    }
+}
+function generateId() {
+    const r = Math.random();
+    let id = btoa((r * Date.now() + r).toLocaleString());
+    return id;
+}
+function getNotesDatabase(setupCb) {
+    return new Promise((resolve, reject) => {
+        var request = indexedDB.open("NotesDatabase");
+        request.addEventListener('error', ev => {
+            reject('Unable to open database');
+        });
+        request.addEventListener('upgradeneeded', function (ev) {
+            const db = this.result;
+            const store = setupCb(db);
+            store.transaction.addEventListener('complete', function () {
+                resolve(db);
+            });
+        });
+        request.addEventListener('success', function () {
+            const db = this.result;
+            db.onerror = event => {
+                console.error("Database error: " + event.target.errorCode);
+            };
+            resolve(db);
+        });
+    });
+}
+class PresentationNotesCollection {
+    constructor(db, _screenid) {
+        this.db = db;
+        this._screenid = _screenid;
+    }
+    static setupDB(db) {
+        const notesStore = db.createObjectStore(PresentationNotesCollection.STORE_NAME, { keyPath: 'id' });
+        notesStore.createIndex(PresentationNotesCollection.STORE_INDEX, ['screenid', 'slide'], { unique: false });
+        // notesStore.createIndex('id', 'id', { unique: true })
+        return notesStore;
+    }
+    static createAsync(screenid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const db = yield getNotesDatabase(PresentationNotesCollection.setupDB);
+            const notesCollection = new PresentationNotesCollection(db, screenid);
+            return notesCollection;
+        });
+    }
+    getNotesBySlide(slide) {
+        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readonly');
+        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
+        const screenidIndex = notesStore.index(PresentationNotesCollection.STORE_INDEX);
+        const notesRequest = screenidIndex.getAll([this._screenid, slide]);
+        return new Promise((resolve, reject) => {
+            notesRequest.addEventListener('success', ev => {
+                const notes = notesRequest.result;
+                resolve(new SlideNotesCollection(new SlideMetadata(slide, this._screenid), notes, this));
+            });
+        });
+    }
+    mapNoteToRecord(note) {
+        return {
+            content: note.content,
+            id: note.metadata.id,
+            screenid: note.metadata.screenid,
+            slide: note.metadata.slide,
+            position: note.metadata.position
+        };
+    }
+    saveNotes(notes) {
+        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readwrite');
+        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
+        notes.map(this.mapNoteToRecord).forEach(record => {
+            notesStore.put(record);
+        });
+        transaction.commit();
+        return new Promise((resolve, reject) => {
+            transaction.addEventListener('complete', ev => {
+                resolve();
+            });
+        });
+    }
+    removeNotes(notes) {
+        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readwrite');
+        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
+        notes.forEach(note => {
+            notesStore.delete(note.metadata.id);
+        });
+        transaction.commit();
+        return new Promise((resolve, reject) => {
+            transaction.addEventListener('complete', ev => {
+                resolve();
+            });
+        });
+    }
+}
+PresentationNotesCollection.STORE_NAME = 'Notes';
+PresentationNotesCollection.STORE_INDEX = 'byScreenIdAndSlide';
+// PresentationNotesCollection.createAsync(892).then(collection => console.log(collection))
 document = unsafeWindow.document;
 let toRunOnLoaded = [], summaryContainer;
 let slideOptionsContainer, additionalOptionsContainer;
-let options, tools;
+let options, tools, chapterMetadata;
+let notesCollection, currentSlideNotes;
 let slideNumberObserver, slideObserver;
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
 const svgIcons = {
@@ -57,6 +263,8 @@ const svgIcons = {
     zoomOut: inSVG `<path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
               <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
               <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
+    stickies: inSVG `<path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/>
+    <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/>`,
 };
 const zoomSliderHTML = `
     <div class='${CLASS_NAMES.zoomSliderContainer}'>
@@ -389,6 +597,7 @@ options = new Options([
 let suggestBreakTimer, obs;
 function startBreakTimer() {
     clearTimeout(suggestBreakTimer);
+    console.log('starting suggestBreak timer...');
     suggestBreakTimer = setTimeout(() => {
         alert('Pora na przerwę 🔔');
     }, 1000 * 60 * 7);
@@ -397,7 +606,27 @@ toRunOnLoaded.push(() => {
     obs = onAttributeChange(document.querySelector(SELECTORS.appDiv), 'slide', () => {
         startBreakTimer();
     });
+    if (tools && !tools.state.suggestBreak.value)
+        obs.disconnect();
 });
+const notesBtnHandler = (event) => {
+    if (currentSlideNotes) {
+        const slide = document.querySelector('.present .present');
+        slide.style.cursor = 'crosshair';
+        slide.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            slide.style.cursor = '';
+            const slideRect = slide.getBoundingClientRect();
+            console.log({ event, slideRect });
+            const position = {
+                x: (event.x - slideRect.x) / slideRect.width,
+                y: (event.y - slideRect.y) / slideRect.height
+            };
+            currentSlideNotes.addNote(position, prompt('Podaj treść notatki:'));
+        }, { once: true });
+    }
+};
 tools = new Options([
     {
         name: "suggestBreak",
@@ -407,10 +636,12 @@ tools = new Options([
             return { value: !state.value };
         },
         update: state => {
+            console.log('update suggestBreak', { state, obs });
             if (!obs)
                 return;
             if (state.value) {
                 obs.observe(document.querySelector(SELECTORS.appDiv), { attributes: true });
+                startBreakTimer();
             }
             else {
                 obs.disconnect();
@@ -418,6 +649,29 @@ tools = new Options([
                     clearTimeout(suggestBreakTimer);
             }
         }
+    },
+    {
+        name: "useNotes",
+        desc: state => `${getCheckboxEmoji(state.value)}📝 Używaj notatek`,
+        defaultValue: false,
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: state => {
+            const notesBtn = document.querySelector('.custom-notes-btn');
+            console.log({ notesBtn });
+            toggleBodyClass('custom-script-use-notes', state.value);
+            if (notesBtn) {
+                if (state.value) {
+                    notesBtn.addEventListener('click', notesBtnHandler);
+                }
+                else {
+                    notesBtn.removeEventListener('click', notesBtnHandler);
+                }
+            }
+        },
+        init: state => {
+        },
     }
 ], `.${CLASS_NAMES.toolsContainer}`);
 function shortcutListener(event) {
@@ -646,15 +900,6 @@ function toggleMouseVisibility(visible) {
     if (!mouseVisible)
         document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
 }
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
 const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
 let searchContainer, searchResultsContainer;
@@ -799,13 +1044,19 @@ const slideshowOptions = `
             ${svgIcons.zoomOut}
         </div>
     </a>`;
+const notesBtn = `
+    <a class="custom-notes-btn custom-script-slideshow-btn wnl-rounded-button" style="bottom: 10px;right: unset;left: 75px;z-index: 1;color: black;">
+        <div class="a-icon -x-small" title="Notatki">
+            ${svgIcons.stickies}
+        </div>
+    </a>`;
 function addSlideOptions() {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark');
     if (!bookmarkBtn)
         return;
     addSearchContainer();
     slideOptionsContainer = document.createElement('div');
-    slideOptionsContainer.innerHTML = slideshowOptionsBtn;
+    slideOptionsContainer.innerHTML = notesBtn + slideshowOptionsBtn;
     additionalOptionsContainer = document.createElement('div');
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options';
     additionalOptionsContainer.innerHTML = slideshowOptions;
@@ -888,6 +1139,20 @@ function onSlideChanged(current, metadata) {
         }
     }
     updateTabTitle();
+    if (notesCollection) {
+        if (currentSlideNotes)
+            currentSlideNotes.commitChanges();
+        notesCollection.getNotesBySlide(current).then(notes => {
+            currentSlideNotes = notes;
+            console.log({ currentSlideNotes });
+            const currentSlide = document.querySelector('.present .present');
+            const rect = currentSlide.getBoundingClientRect();
+            notes.notes.forEach(note => {
+                const position = note.metadata.position;
+                console.log({ note, position });
+            });
+        });
+    }
 }
 function addPageNumberContainer() {
     const classNames = [CLASS_NAMES.pageNumberContainer, CLASS_NAMES.currentChapterPage, '', CLASS_NAMES.chapterLength];
@@ -945,6 +1210,7 @@ function getMetadata(cb, menuOpened) {
         return;
     }
     const linksMetadata = getMetadataFromLinks(wrappers);
+    chapterMetadata = linksMetadata;
     cb(linksMetadata);
 }
 function closeMenu() {
@@ -977,8 +1243,15 @@ function getMetadataFromLinks(wrappers) {
         console.log('loaded');
         if (!appDiv) {
             appDiv = document.querySelector(SELECTORS.appDiv);
-            if (appDiv)
+            if (appDiv) {
                 onAttributeChange(appDiv, 'screenid', checkUnloaded);
+                const screenid = appDiv.attributes.getNamedItem('screenid').value;
+                console.log({ screenid });
+                PresentationNotesCollection.createAsync(parseInt(screenid)).then(coll => {
+                    notesCollection = coll;
+                    console.log({ notesCollection });
+                });
+            }
         }
         let background = document.querySelector(SELECTORS.background);
         if (background !== null) {
@@ -1323,6 +1596,14 @@ a.custom-options-btn.active svg {transform: none;}
     margin-top: 1rem; 
     border: 1px solid rgb(239, 240, 243); 
     padding: 15px; 
+}
+
+.custom-notes-btn {
+    display: none!important;
+}
+
+.custom-script-use-notes .custom-notes-btn {
+    display: flex!important;
 }
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
