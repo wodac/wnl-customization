@@ -86,14 +86,19 @@ class Options {
         if (typeof result === 'object') this.setOptionState({ name: option.name, ...result })
     }
 
-    setOptionState(state, name?) {
+    setOptionState<Name extends keyof OptionsTypes>(
+        state: Partial<OptionState<OptionsTypes[Name]['value']>> | 
+            ((this: Options, state: OptionState<OptionsTypes[Name]['value']>) => Partial<OptionState<OptionsTypes[Name]['value']>>), 
+        name?: Name) 
+    {
+        if (!name) name = state.name
         if (typeof state === 'function') {
             const result = state.apply(this, [this.state[name]])
             this._setOptionState({ ...this.state[name], ...result })
         }
-        else this._setOptionState(state)
+        else this._setOptionState({ ...state, name })
     }
-    _setOptionState(state: OptionState<any>) {
+    _setOptionState(state: Partial<OptionState<any>>) {
         const name = state.name
         this.state[name] = { ...this.state[state.name], ...state }
         this.storeState(name)
@@ -144,11 +149,15 @@ interface ChangeTitle extends OptionState<boolean> {
     originalTitle: string
 }
 
+interface PercentIncrease extends OptionState<number> {
+    increaseBy: (n: number) => number
+}
+
 type OptionsTypes = {
     changeTitle: ChangeTitle
     increaseFontSize: OptionState<boolean>
     increaseAnnotations: OptionState<boolean>
-    percentIncrease: OptionState<number>
+    percentIncrease: PercentIncrease
     invertImages: OptionState<boolean>
     uniformFontSize: OptionState<boolean>
     keyboardControl: OptionState<boolean>
@@ -285,14 +294,14 @@ options = new Options([
             if (rangeLabel) rangeLabel.innerText = `${state.value}%`
         },
         init: function (state) {
-            function _toRun() {
+            function _toRun(this: Options) {
                 const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`) as HTMLInputElement
                 const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLLabelElement
                 if (rangeInput) {
                     rangeInput.value = state.value
                     rangeLabel.innerText = `${state.value}%`
                     rangeInput.addEventListener('change', event => {
-                        const value = rangeInput.value
+                        const value = parseInt(rangeInput.value)
                         this.setOptionState({ name: "percentIncrease", value })
                     })
                     rangeInput.addEventListener('input', event => {
@@ -300,6 +309,18 @@ options = new Options([
                         updateFontSize(parseInt(value))
                     })
                 }
+                state.increaseBy = (n: number) => {
+                    const current = this.state.percentIncrease.value
+                    this.setOptionState({ value: current + n }, 'percentIncrease')
+                }
+                registerKeyboardShortcut({
+                    keys: ['-'],
+                    callback: () => state.increaseBy(-5)
+                })
+                registerKeyboardShortcut({
+                    keys: ['+', '='],
+                    callback: () => state.increaseBy(5)
+                })
             }
             const toRun = _toRun.bind(this)
             toRunOnLoaded.push(toRun)

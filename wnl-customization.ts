@@ -8,12 +8,11 @@
             appDiv = document.querySelector(SELECTORS.appDiv)
             if (appDiv) {
                 onAttributeChange(appDiv, 'screenid', checkUnloaded)
-                const screenid = appDiv.attributes.getNamedItem('screenid').value
-                console.log({screenid})
-                PresentationNotesCollection.createAsync(parseInt(screenid)).then(coll => {
-                    notesCollection = coll
-                    console.log({notesCollection})
-                })
+                presentationScreenID = parseInt(appDiv.attributes.getNamedItem('screenid').value)
+                console.log({ screenid: presentationScreenID })
+                if (tools && tools.state.useNotes.value) {
+                    loadNotes();
+                }
             }
         }
 
@@ -25,6 +24,9 @@
 
         const lessonView = document.querySelector(SELECTORS.lessonView)
         if (lessonView !== null) {
+            const mainHeaderElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
+            if (mainHeaderElem !== null) presentationName = mainHeaderElem.innerText
+
             addSliderContainer()
             addSettingsContainer()
             addToolsContainer()
@@ -37,6 +39,10 @@
         addSlideOptions()
 
         toRunOnLoaded.forEach(cb => cb())
+
+        unsafeWindow.addEventListener('beforeunload', ev => {
+            onUnload()
+        })
     }
 
     function addSliderContainer() {
@@ -124,6 +130,15 @@
             const { originalTitle } = options.state.changeTitle
             document.title = originalTitle
         }
+        if (currentSlideNotes) {
+            currentSlideNotes.commitChanges().then(() => {
+                notesCollection = undefined
+                currentSlideNotes = undefined
+            })
+        }
+        if (slideNumberObserver) slideNumberObserver.disconnect()
+        if (slideObserver) slideObserver.disconnect()
+        if (suggestBreakTimer) clearTimeout(suggestBreakTimer)
     }
 
 })();

@@ -1,43 +1,35 @@
 
 const slideshowOptionsBtn = `
-    <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 10px;">
+    <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
             ${svgIcons.chevronUp}
         </div>
     </a>`
 
 const slideshowOptions = `
-    <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 110px;">
+    <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Szukaj" style="margin: 0;padding: 0;">
             ${svgIcons.search}
         </div>
         <span class="custom-btn-caption">SZUKAJ</span>
     </a>
-    <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 160px;">
+    <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
             ${svgIcons.zoomIn}
         </div>
     </a>
-    <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 210px;">
+    <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
             ${svgIcons.zoomOut}
         </div>
     </a>`
-
-const notesBtn = `
-    <a class="custom-notes-btn custom-script-slideshow-btn wnl-rounded-button" style="bottom: 10px;right: unset;left: 75px;z-index: 1;color: black;">
-        <div class="a-icon -x-small" title="Notatki">
-            ${svgIcons.stickies}
-        </div>
-    </a>`
-
 
 function addSlideOptions() {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
     addSearchContainer()
     slideOptionsContainer = document.createElement('div')
-    slideOptionsContainer.innerHTML = notesBtn + slideshowOptionsBtn
+    slideOptionsContainer.innerHTML = notesBtnsContainer + slideshowOptionsBtn
     additionalOptionsContainer = document.createElement('div')
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options'
     additionalOptionsContainer.innerHTML = slideshowOptions
@@ -51,12 +43,12 @@ function addSlideOptions() {
     })
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (options) {
-            options.setOptionState(state => { return { value: state.value + 5 } }, 'percentIncrease')
+            options.state.percentIncrease.increaseBy(5)
         }
     })
     slideOptionsContainer.querySelector('.custom-zoom-down-btn').addEventListener('click', () => {
         if (options) {
-            options.setOptionState(state => { return { value: state.value - 5 } }, 'percentIncrease')
+            options.state.percentIncrease.increaseBy(-5)
         }
     })
 }
@@ -105,6 +97,8 @@ function addChapterInfo() {
 }
 
 function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
+    if (current === NaN) return
+    currentSlideNumber = current
     const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
@@ -127,20 +121,7 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
         }
     }
     updateTabTitle()
-    if (notesCollection) {
-        if (currentSlideNotes) currentSlideNotes.commitChanges()
-        notesCollection.getNotesBySlide(current).then(notes => {
-            currentSlideNotes = notes
-            console.log({currentSlideNotes})
-            const currentSlide = document.querySelector('.present .present')
-            const rect = currentSlide.getBoundingClientRect()
-            notes.notes.forEach(note => {
-                const position = note.metadata.position
-                console.log({ note, position })
-                
-            })
-        })
-    }
+    renderNotes(current)
 }
 
 function addPageNumberContainer(): HTMLSpanElement {

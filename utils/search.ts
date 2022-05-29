@@ -40,12 +40,16 @@ type QueryInterpretation = {
 }
 
 function interpretQuery(rawQuery: string): QueryInterpretation {
-    const query = rawQuery.replace(/"/g, '')
+    let query = rawQuery.replace(/"/g, '')
     rawQuery = rawQuery.toLowerCase()
     const quotesRegExp = /"([^"]+)"/g
     const hasntRegExp = /-\w+/g
     let mustContain = rawQuery.match(quotesRegExp)
     let musntContain = rawQuery.match(hasntRegExp)
+    if (musntContain) musntContain.forEach(toReplace => {
+        query.replace(`-${toReplace}`, '')
+    })
+    query = query.trim()
     if (mustContain) mustContain = mustContain.map(s => s.slice(1, -1))
     if (musntContain) musntContain = musntContain.map(s => s.slice(1))
     return { query, rawQuery, mustContain, musntContain }

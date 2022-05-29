@@ -23,5 +23,6 @@ const SELECTORS = {
     lessonView: '.wnl-lesson-view',
     sidebar: 'aside.sidenav-aside.course-sidenav',
     menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
-    appDiv: '.wnl-app-layout.wnl-course-layout'
+    appDiv: '.wnl-app-layout.wnl-course-layout',
+    currentSlideContainer: '.present .present'
 }
