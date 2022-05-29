@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
-    "start": "npx tsc && cd .. && http-server wnl-customization/dist -S -C cert.pem -o wnl-customization.user.js"
+    "start": "npx tsc -w & cd .. && http-server wnl-customization/dist -S -C cert.pem -o /"
   },
   "repository": {
     "type": "git",

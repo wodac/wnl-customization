@@ -24,21 +24,49 @@ function addSearchContainer() {
 function performSearch() {
     if (!searchContainer) return
     const q = (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
-    getSearchResponseHTML(q).then(resp => {
+    const interpretation = interpretQuery(q)
+    searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
+    getSearchResponseHTML(interpretation).then(resp => {
         if (searchResultsContainer) searchResultsContainer.innerHTML = resp
         toggleSearch(true)
     })
 }
 
-async function getSearchResponseHTML(q: string): Promise<string> {
+type QueryInterpretation = {
+    query: string
+    rawQuery: string
+    mustContain?: string[]
+    musntContain?: string[]
+}
+
+function interpretQuery(rawQuery: string): QueryInterpretation {
+    let query = rawQuery.replace(/"/g, '')
+    rawQuery = rawQuery.toLowerCase()
+    const quotesRegExp = /"([^"]+)"/g
+    const hasntRegExp = /-\w+/g
+    let mustContain = rawQuery.match(quotesRegExp)
+    let musntContain = rawQuery.match(hasntRegExp)
+    if (musntContain) musntContain.forEach(toReplace => {
+        query.replace(`-${toReplace}`, '')
+    })
+    query = query.trim()
+    if (mustContain) mustContain = mustContain.map(s => s.slice(1, -1))
+    if (musntContain) musntContain = musntContain.map(s => s.slice(1))
+    return { query, rawQuery, mustContain, musntContain }
+}
+
+async function getSearchResponseHTML(q: QueryInterpretation): Promise<string> {
     const response = await searchRequest(q)
-    return response.map(el => `
-        <a href='${WNL_DYNAMIC_SLIDES+el.id}' target='_blank' class='custom-search-result'>
-            <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-            <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-            <p>${el.highlight['snippet.content'] || el.details.content}</p>
-        </a>
-        `).join('')
+    if (response.length) {
+        return response.map(el => `
+            <a href='${WNL_DYNAMIC_SLIDES + el.id}' target='_blank' class='custom-search-result'>
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>
+            </a>
+            `).join('')
+    }
+    return `<p style='padding:0.5rem'>Nie znaleziono frazy <em>${q.rawQuery}</em> :(</p>`
 }
 
 function toggleSearch(visible?: boolean) {
@@ -51,15 +79,15 @@ function toggleSearch(visible?: boolean) {
     else searchContainer.classList.add('custom-script-hidden')
 }
 
-function searchRequest(q: string): Promise<ParsedSearchResult[]> {
+function searchRequest(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
-            url: getSearchURL(q),
+            url: getSearchURL(q.query),
             method: 'GET',
             responseType: "json",
             onload: ({ response }: { response: SearchResults }) => {
                 const entries = Object.entries(response)
-                const results = entries.filter( el => el[0].match(/^[0-9]+$/) ).map(el => el[1])
+                const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1])
                 const parsed = results.map(el => {
                     return {
                         highlight: el.scout_metadata.highlight,
@@ -68,9 +96,37 @@ function searchRequest(q: string): Promise<ParsedSearchResult[]> {
                         id: el.id
                     }
                 })
-                resolve(parsed)
+                resolve(filterSearch(parsed, q))
             },
             onerror: reject
         })
     })
+}
+
+function filterSearch(parsed: ParsedSearchResult[], q: QueryInterpretation): ParsedSearchResult[] {
+    let filtered = parsed
+    if (q.mustContain) {
+        filtered = parsed.filter(result => {
+            return hasSomePhrases(result, q.mustContain).every(includes => includes)
+        })
+    }
+    if (q.musntContain) {
+        filtered = filtered.filter(result => {
+            return !hasSomePhrases(result, q.musntContain).some(includes => includes)
+        })
+    }
+    return filtered
+
+    function hasSomePhrases(result: ParsedSearchResult, phrases: string[]) {
+        return phrases.map(toSearch => {
+            return Object.values(result.highlight).some(highlighted => {
+                return highlighted.some(s => stripTags(s).includes(toSearch))
+            })
+        })
+    }
+}
+
+function stripTags(s: string) {
+    const tagStripper = /<[^>]+>/g
+    return s.toLowerCase().replace(tagStripper, '')
 }

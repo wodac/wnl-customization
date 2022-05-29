@@ -1,65 +1,98 @@
+type KeyboardShortcut = {
+    keys: string[]
+    callback: (event: KeyboardEvent) => any
+}
 
+let keyboardShortcuts: KeyboardShortcut[] = [
+    {
+        keys: ['ArrowUp'],
+        callback: showImage
+    },
+    {
+        keys: ['ArrowUp'],
+        callback: showImage
+    },
+    {
+        keys: ['q', '0', 'Escape'],
+        callback: hideModal
+    },
+    {
+        keys: ['m'],
+        callback: () => toggleMouseVisibility()
+    },
+    {
+        keys: ['o', 's'],
+        callback: () => toggleOptions()
+    },
+    {
+        keys: ['?', '/'],
+        callback: () => toggleSearch()
+    },
+    {
+        keys: ['l'],
+        callback: () => toggleSummary()
+    },
+    {
+        keys: ['Enter'],
+        callback: () => {
+            const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span') as HTMLElement
+            if (quizVerifyBtn) quizVerifyBtn.click()
+        }
+    }
+]
+function registerKeyboardShortcut(shortcut: KeyboardShortcut) {
+    keyboardShortcuts.push(shortcut)
+}
 function shortcutListener(event: KeyboardEvent) {
-    if ((event.target as HTMLElement).nodeName === 'INPUT' || event.ctrlKey || event.altKey || event.metaKey) {
+    const tagName = (event.target as HTMLElement).nodeName
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
         return
     }
-    let quizVerifyBtn: HTMLElement
-    switch (event.key) {
-        case 'ArrowUp':
-            showImage()
-            break
+    keyboardShortcuts.forEach(shortcut => {
+        if (shortcut.keys.includes(event.key)) shortcut.callback(event)
+    })
+    // let quizVerifyBtn: HTMLElement
+    // switch (event.key) {
+    //     case 'ArrowUp':
+    //         showImage()
+    //         break
 
-        case 'ArrowDown':
-            hideImage()
-            break
+    //     case 'ArrowDown':
+    //         hideImage()
+    //         break
 
-        case 'q':
-        case '0':
-            hideModal()
-            break
+    //     case 'q':
+    //     case '0':
+    //         hideModal()
+    //         break
 
-        case 'm':
-            toggleMouseVisibility()
-            break
+    //     case 'm':
+    //         toggleMouseVisibility()
+    //         break
 
-        case 'o':
-        case 's':
-            toggleOptions()
-            break
+    //     case 'o':
+    //     case 's':
+    //         toggleOptions()
+    //         break
 
-        case '?':
-        case '/':
-            toggleSearch()
-            break
+    //     case '?':
+    //     case '/':
+    //         toggleSearch()
+    //         break
 
-        case 't':
-            toggleSummary()
-            break
+    //     case 'l':
+    //         toggleSummary()
+    //         break
 
-        case 'Escape':
-            event.preventDefault()
-            event.stopPropagation()
-            hideModal()
-            break
+    //     case 'Escape':
+    //         hideModal()
+    //         break
 
-        case 'Enter':
-            quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span')
-            if (quizVerifyBtn) quizVerifyBtn.click()
-            break
-
-        case '+':
-        case '=':
-            if (options) {
-                options.setOptionState(state => { return { value: state.value + 5 } }, 'percentIncrease')
-            }
-            break
-
-        case '-':
-            if (options) {
-                options.setOptionState(state => { return { value: state.value - 5 } }, 'percentIncrease')
-            }
-            break
-    }
+    //     case 'Enter':
+    //         quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span')
+    //         if (quizVerifyBtn) quizVerifyBtn.click()
+    //         break
+    // }
     const charCode = event.keyCode
     if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105)) numericKeyPressed(event.key)
 }
@@ -69,18 +102,22 @@ function setupKeyboardControl() {
     slides.forEach(slide => {
         let counter = 1
         const icons = slide.querySelectorAll('.a-icon')
-        icons.forEach(icon => processIcon(icon, counter++))
+        icons.forEach(icon => addSubToRef(icon, counter++))
     })
-    observeSlides(addSubsToIcons)
+    observeSlides(addSubsToRefs)
 
-    document.body.addEventListener('click', updateTabTitle)
-    document.body.addEventListener('keyup', updateTabTitle)
+    // document.body.addEventListener('click', updateTabTitle)
+    // document.body.addEventListener('keyup', updateTabTitle)
     document.body.addEventListener('keydown', event => {
+        if (event.key === ' ' || event.key === 'l') {
+            // event.preventDefault()
+            event.stopImmediatePropagation()
+        }
         if (event.key === 'ArrowUp') {
             scrollView(-60)
             return false
         }
-        if (event.key === 'ArrowDown') {
+        if (event.key === 'ArrowDown' || event.key === ' ') {
             scrollView(60)
             return false
         }
@@ -99,26 +136,19 @@ function observeSlides(cb: MutationCallback) {
 
 function observeSlideNumber(cb: (page: number) => any) {
     console.log('observe slide number')
-    const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement
-    slideNumberObserver = new MutationObserver(() => {
-        const number = parseInt(slideNumberSpan.innerText)
-        cb(number)
-    })
-    slideNumberObserver.observe(slideNumberSpan, {
-        subtree: true,
-        characterData: true
-    });
+    const appDiv = document.querySelector(SELECTORS.appDiv)
+    slideNumberObserver = onAttributeChange(appDiv, 'slide', value => cb(parseInt(value)))
 }
 
-function addSubsToIcons(mutations: MutationRecord[]) {
+function addSubsToRefs(mutations: MutationRecord[]) {
     console.log('mutation observed')
     let counter = 1
     mutations.forEach(mutation => {
         if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
             console.log('node added')
-            let icon = mutation.addedNodes[0] as HTMLElement
-            if (icon.className.includes('a-icon')) {
-                processIcon(icon, counter)
+            let ref = mutation.addedNodes[0] as HTMLElement
+            if (ref.className && ref.className.includes('m-referenceTrigger')) {
+                addSubToRef(ref, counter)
                 counter++
             }
         }
@@ -126,23 +156,19 @@ function addSubsToIcons(mutations: MutationRecord[]) {
 }
 
 
-function processIcon(icon: Element, counter: number) {
-    const genSub = (counter: number) => {
-        const sub = document.createElement('sub')
-        sub.innerText = counter.toString()
-        sub.className = `small`
-        return sub
-    }
-    icon.classList.add(`sub-id-${counter}`)
-    icon.appendChild(genSub(counter))
-    console.log('icon added')
+function addSubToRef(ref: Element, counter: number) {
+    const sub = document.createElement('sub')
+    sub.innerText = counter.toString()
+    sub.className = `small`
+    ref.classList.add(`sub-id-${counter}`)
+    ref.appendChild(sub)
 }
 
-function scrollView(y) {
+function scrollView(y: number) {
     const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto'
     const options = { top: y, left: 0, behavior } as ScrollToOptions
     const views = [
-        document.querySelector('.present .present'),
+        document.querySelector(SELECTORS.currentSlideContainer),
         document.querySelector('.m-modal__content'),
         document.querySelector('.wnl-comments')
     ]
@@ -153,13 +179,16 @@ function scrollView(y) {
 
 function updateTabTitle() {
     let currentTitleHeader = document.querySelector('.present .sl-block-content h2')
-    console.log({ currentTitleHeader })
-    if (currentTitleHeader !== null && GM_getValue('option_changeTitle')) {
-        let currentTitle = currentTitleHeader.textContent
-        console.log({ currentTitle })
-        if (currentTitle && currentTitle.length) {
-            document.title = `${currentTitle} - Więcej niż LEK`
-        }
+    if (currentTitleHeader !== null) currentSlideTitle = currentTitleHeader.textContent
+    
+    if (GM_getValue('option_changeTitle')) {
+        let mainTitle: string
+        mainTitle = presentationName && presentationName.match(/\w/) ? `${presentationName} - ` : ''
+
+        const slideTitle = currentSlideTitle && currentSlideTitle.match(/\w/) ? `${currentSlideTitle} - ` : ''
+
+        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK'
+        document.title = slideTitle + mainTitle + originalTitle
     }
 }
 
@@ -193,12 +222,12 @@ function numericKeyPressed(key: string) {
     if (annotationImages.length > 0) {
         const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`
         const icon = document.querySelector(selector) as HTMLElement
-        console.log({selector, icon})
+        console.log({ selector, icon })
         if (icon) icon.click()
     } else {
         const selector = `.present .a-icon.sub-id-${key}`
         const icon = document.querySelector(selector) as HTMLElement
-        console.log({selector, icon})
+        console.log({ selector, icon })
         if (icon) icon.click()
         setTimeout(() => {
             annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper')

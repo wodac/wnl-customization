@@ -1,24 +1,24 @@
 
 const slideshowOptionsBtn = `
-    <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 10px;">
+    <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
             ${svgIcons.chevronUp}
         </div>
     </a>`
 
 const slideshowOptions = `
-    <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 110px;">
+    <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Szukaj" style="margin: 0;padding: 0;">
             ${svgIcons.search}
         </div>
         <span class="custom-btn-caption">SZUKAJ</span>
     </a>
-    <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 160px;">
+    <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
             ${svgIcons.zoomIn}
         </div>
     </a>
-    <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button" style="top: 210px;">
+    <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
             ${svgIcons.zoomOut}
         </div>
@@ -29,7 +29,7 @@ function addSlideOptions() {
     if (!bookmarkBtn) return
     addSearchContainer()
     slideOptionsContainer = document.createElement('div')
-    slideOptionsContainer.innerHTML = slideshowOptionsBtn
+    slideOptionsContainer.innerHTML = notesBtnsContainer + slideshowOptionsBtn
     additionalOptionsContainer = document.createElement('div')
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options'
     additionalOptionsContainer.innerHTML = slideshowOptions
@@ -43,12 +43,12 @@ function addSlideOptions() {
     })
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (options) {
-            options.setOptionState(state => { return { value: state.value + 5 } }, 'percentIncrease')
+            options.state.percentIncrease.increaseBy(5)
         }
     })
     slideOptionsContainer.querySelector('.custom-zoom-down-btn').addEventListener('click', () => {
         if (options) {
-            options.setOptionState(state => { return { value: state.value - 5 } }, 'percentIncrease')
+            options.state.percentIncrease.increaseBy(-5)
         }
     })
 }
@@ -97,6 +97,8 @@ function addChapterInfo() {
 }
 
 function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
+    if (current === NaN) return
+    currentSlideNumber = current
     const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
@@ -114,8 +116,12 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
         active.classList.add('is-active')
-        active.scrollIntoView({behavior: "smooth"})
+        if (!summaryContainer.className.includes('custom-script-hidden')) {
+            active.scrollIntoView({ behavior: "smooth" })
+        }
     }
+    updateTabTitle()
+    renderNotes(current)
 }
 
 function addPageNumberContainer(): HTMLSpanElement {
@@ -175,6 +181,7 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const linksMetadata = getMetadataFromLinks(wrappers)
+    chapterMetadata = linksMetadata
     cb(linksMetadata)
 }
 
@@ -182,10 +189,10 @@ function closeMenu() {
     (document.querySelector('.topNavContainer__close') as HTMLElement).click()
 }
 
-function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {     
-    const links = wrappers.map(div => div.querySelector('a'))   
+function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {
+    const links = wrappers.map(div => div.querySelector('a'))
     const getLength = (t: string) => parseInt(t.slice(1, -1))
-    return links.map( (a, i) => {
+    return links.map((a, i) => {
         if (!a.href)
             return {}
         const chapterLength = getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText)

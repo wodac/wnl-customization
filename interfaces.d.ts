@@ -1,19 +1,3 @@
-interface OptionState<T> extends OptionConstructorOption<any> {
-    value: T
-    [k: string]: any
-}
-
-interface OptionConstructorOption<T> {
-    name: string
-    desc: string | ((state: OptionState<T>) => string)
-    type?: "button" | string
-    callback?: (state: OptionState<T>) => (Partial<OptionState<T>> | void)
-    update?: (state: OptionState<T>) => any
-    init?: (state: OptionState<T>) => any
-    defaultValue?: T
-    key?: string
-}
-
 interface SearchResultSchema {
     content: string;
     is_functional: boolean;
@@ -54,16 +38,9 @@ interface SearchResultSchema {
     };
     scout_metadata: {
         highlight: {
-            "snippet.content": {
-                [k: string]: unknown;
-            }[];
-            "snippet.subheader": {
-                [k: string]: unknown;
-            }[];
-            "snippet.header": {
-                [k: string]: unknown;
-            }[];
-            [k: string]: unknown;
+            "snippet.content": string[];
+            "snippet.subheader": string[];
+            "snippet.header": string[];
         };
         [k: string]: unknown;
     };
@@ -81,6 +58,7 @@ interface ParsedSearchResult {
     highlight: SearchResultSchema["scout_metadata"]["highlight"],
     details: SearchResultSchema["snippet"],
     context: SearchResultSchema["context"],
+    /** used for dynamic links */
     id: SearchResultSchema["id"]
 }
 

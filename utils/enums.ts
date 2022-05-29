@@ -6,7 +6,8 @@ const CLASS_NAMES = {
     fontSizeLabel: 'custom-script-font-size-label',
     fontSizeInput: 'custom-script-font-size-input',
     zoomSliderContainer: 'custom-script-zoom-slider-container',
-    settingsContainer: 'custom-script-settings-container'
+    settingsContainer: 'custom-script-settings-container',    
+    toolsContainer: 'custom-script-tools-container'
 }
 
 const BODY_CLASS_NAMES = {
@@ -22,5 +23,6 @@ const SELECTORS = {
     lessonView: '.wnl-lesson-view',
     sidebar: 'aside.sidenav-aside.course-sidenav',
     menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
-    appDiv: '.wnl-app-layout.wnl-course-layout'
+    appDiv: '.wnl-app-layout.wnl-course-layout',
+    currentSlideContainer: '.present .present'
 }
