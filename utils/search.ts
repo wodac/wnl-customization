@@ -147,6 +147,10 @@ namespace Search {
                 return !hasSomePhrases(result, q.musntContain).some(includes => includes)
             })
         }
+        filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID))
+        function sortUpSome<T>(predicate: (val: T) => boolean) {
+            return (val1: T, val2: T) => predicate(val1) && !predicate(val2) ? -1 : 1
+        }
         return (await getTagsAsResults(q)).concat(filtered)
 
         function hasSomePhrases(result: ParsedSearchResult, phrases: string[]) {
