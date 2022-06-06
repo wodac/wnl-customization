@@ -2,44 +2,44 @@
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
-            ${svgIcons.chevronUp}
+            ${SVGIcons.chevronUp}
         </div>
     </a>`
 
 const slideshowOptions = `
     <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Szukaj" style="margin: 0;padding: 0;">
-            ${svgIcons.search}
+            ${SVGIcons.search}
         </div>
         <span class="custom-btn-caption">SZUKAJ</span>
     </a>
     <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
-            ${svgIcons.zoomIn}
+            ${SVGIcons.zoomIn}
         </div>
     </a>
     <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
-            ${svgIcons.zoomOut}
+            ${SVGIcons.zoomOut}
         </div>
     </a>`
 
 function addSlideOptions() {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
-    addSearchContainer()
+    Search.addSearchContainer()
     slideOptionsContainer = document.createElement('div')
-    slideOptionsContainer.innerHTML = notesBtnsContainer + slideshowOptionsBtn
+    slideOptionsContainer.innerHTML = notesBtnsAndTags + slideshowOptionsBtn
     additionalOptionsContainer = document.createElement('div')
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options'
     additionalOptionsContainer.innerHTML = slideshowOptions
     slideOptionsContainer.append(additionalOptionsContainer)
     bookmarkBtn.after(slideOptionsContainer)
     additionalOptionsContainer.prepend(bookmarkBtn)
-    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => toggleOptions())
+    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsActive.toggle())
     slideOptionsContainer.querySelector('.custom-search-btn').addEventListener('click', () => {
-        toggleOptions(false)
-        toggleSearch(true)
+        Toggles.optionsActive.state = false
+        Toggles.searchHidden.toggle()
     })
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (options) {
@@ -66,16 +66,16 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
     summaryContainer.innerHTML = linksHTML
     const closeBtn = document.createElement('div')
     closeBtn.className = 'custom-script-summary-close'
-    closeBtn.innerHTML = svgIcons.chevronUp
+    closeBtn.innerHTML = SVGIcons.chevronUp
     summaryContainer.prepend(closeBtn)
-    closeBtn.addEventListener('click', () => toggleSummary(false))
+    closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true)
     document.querySelector('.order-number-container').after(summaryContainer)
     const links = summaryContainer.querySelectorAll('a.custom-script-summary-link') as NodeListOf<HTMLAnchorElement>
     links.forEach(link => {
         link.addEventListener('click', event => {
             event.preventDefault()
             const { startPage } = link.dataset
-            goToPage(parseInt(startPage))
+            goToSlideN(parseInt(startPage))
             return false
         })
     })
@@ -83,7 +83,7 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
 
 function addChapterInfo() {
     getMetadata(metadata => {
-        console.log({ metadata });
+       //console.log({ metadata });
         if (!metadata)
             return;
 
@@ -98,7 +98,7 @@ function addChapterInfo() {
 
 function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
     if (current === NaN) return
-    currentSlideNumber = current
+    presentationMetadata.currentSlideNumber = current
     const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
@@ -136,7 +136,7 @@ function addPageNumberContainer(): HTMLSpanElement {
         spans[0].appendChild(spans[i])
     }
     document.querySelector('.order-number-container').after(spans[0])
-    spans[0].addEventListener('click', () => toggleSummary())
+    spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle())
     return spans[0]
 }
 

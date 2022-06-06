@@ -185,6 +185,8 @@ a.custom-script-slideshow-btn.wnl-rounded-button {
     justify-content: center;
     width: 40px;
     margin: 5px;
+    overflow: hidden;
+    transition: width 0.5s, margin 0.5s;
 }
 
 span.custom-btn-caption {
@@ -261,23 +263,31 @@ a.custom-options-btn.active svg {transform: none;}
 }
 
 .custom-notes-btns-container {
-    left: 5px;
-    position: absolute;
-    bottom: 5px;
-    z-index: 11;
     flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap-reverse;
     display: none!important;
 }
 
 .custom-notes-additional-btns {
     display: flex;
     flex-direction: row;
-    transition: opacity 0.6s, visibility 0.6s;
+    align-items: flex-end;
 }
 
-.custom-notes-additional-btns.hidden {
-    opacity: 0;
-    visibility: hidden;
+.custom-add-note-btns.active {
+    height: 90px;
+}
+
+.custom-add-note-btns {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.5s;
+}
+
+.custom-add-note-btns-container {
+    display: flex;
+    flex-direction: column-reverse;
 }
 
 .custom-script-use-notes .fullscreen-mode .wnl-comments, 
@@ -290,7 +300,7 @@ a.custom-options-btn.active svg {transform: none;}
 }
 
 .slideshow-container.fullscreen .custom-notes-btns-container {
-    left: 70px;
+    margin-left: 70px;
 }
 
 .custom-script-notes-column:empty {
@@ -340,18 +350,26 @@ a.custom-options-btn.active svg {transform: none;}
     overflow-y: auto;
 }
 
-.custom-note form {display: none;}
+.custom-note form,
+.custom-tag form {display: none;}
 
-.custom-note.editing form {display: block;}
+.custom-note.editing form, 
+.custom-tag.editing form {display: block;}
 
-.custom-note.editing .custom-note-content {display: none;}
+.custom-note.editing .custom-note-content, 
+.custom-tag.editing .custom-tag-content {display: none;}
 
-.custom-note textarea {
+.custom-note textarea,
+.custom-tag input {
     appearance: none;
     border: none;
     width: 100%!important;
     height: 100%!important;
     background: none;
+}
+
+.custom-tag input[type=color] {
+    display: none;
 }
 
 .custom-notes-overlay a.custom-note-remove {    
@@ -383,6 +401,96 @@ a.custom-note-move {
 
 a.custom-note-remove:hover {color: red!important;}
 
+div.custom-tags-container:hover {    
+    opacity: 1;
+}
+
+.custom-tags-and-btns-container {    
+    left: 5px;
+    position: absolute;
+    bottom: 5px;
+    z-index: 11;
+    display: flex;
+    flex-direction: column;
+    max-width: 25%;
+}
+
+div.custom-tags-container {    
+    z-index: 11;
+    flex-wrap: wrap-reverse;
+    opacity: 0.5;
+    transition: opacity 0.4s;
+    display: none;
+    gap: 3px 5px;
+}
+
+.custom-tag.custom-new-tag {
+    color: #95b9f9;
+    background: none;
+    align-items: center;
+}
+
+.custom-tag {
+    border-radius: 5px;
+    padding: 2px 5px;
+    display: flex;
+    font-size: 12px;
+    max-width: 70px;
+    height: 25px;
+    overflow: hidden;
+    align-content: space-between;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    flex-direction: row;
+}
+
+.custom-tag-content {
+    overflow: hidden;
+    display: inline-block;
+    text-overflow: ellipsis; 
+}
+
+div.custom-tag .custom-remove,
+div.custom-tag .custom-change-color {
+    display: inline-block;
+    text-align: right;
+    cursor: pointer;
+    width: 0;
+    overflow: hidden;
+    transition: width 0.5s, color 0.5s;
+    color: inherit;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+div.custom-tag .custom-remove:hover {
+    color: #870000;
+}
+
+div.custom-tag .custom-remove svg,
+div.custom-tag .custom-change-color svg {
+    width: 13px;
+    height: 13px;
+}
+
+div.custom-tag:not(.editing):hover .custom-remove,
+div.custom-tag:not(.editing):hover .custom-change-color {
+    width: 16px;
+}
+
+.custom-notes-btns-container.custom-no-notes .custom-clear-notes-btn, 
+.custom-notes-btns-container.custom-no-notes .custom-notes-view-type-btn,
+.inactive.custom-notes-additional-btns > .wnl-rounded-button {
+    width: 0;
+    margin: 5px 0;
+}
+
+.custom-new-tag.custom-tag:only-child {
+    display: none;
+}
+
 .custom-while-active {display: none!important;}
 
 .active .custom-while-active.a-icon {display: inline-flex!important;}
@@ -391,7 +499,8 @@ a.custom-note-remove:hover {color: red!important;}
 
 .custom-script-use-notes.custom-script-notes-visible .custom-notes-overlay {display: block!important;}
 
-.custom-script-use-notes .custom-notes-btns-container {
+.custom-script-use-notes .custom-notes-btns-container, 
+.custom-script-use-notes.custom-script-tags-visible div.custom-tags-container {
     display: flex!important;
 }
 

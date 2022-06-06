@@ -14,5 +14,9 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addValueChangeListener
+// @grant        GM_getTabs
+// @grant        GM_saveTab
+// @grant        GM_openInTab
 // @run-at document-body
 // ==/UserScript==

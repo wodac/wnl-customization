@@ -40,9 +40,9 @@ class Options {
     }
 
     _rerenderSettings() {
-        console.log('trying to render sidebar', this.settingsContainer)
+       //console.log('trying to render sidebar', this.settingsContainer)
         if (this.settingsContainer) {
-            console.log('rendering sidebar', this.settingsContainer)
+           //console.log('rendering sidebar', this.settingsContainer)
             const optionDivs = this.settingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`)
             optionDivs.forEach(el => el.remove())
             Object.values(this.state).forEach(
@@ -211,11 +211,11 @@ options = new Options([
         },
         update: state => {
             if (state.value) {
-                setupKeyboardControl()
+                Keyboard.setupControl()
             }
             else {
                 document.querySelectorAll('sub.small').forEach(sub => sub.remove())
-                document.body.removeEventListener('keyup', shortcutListener)
+                Keyboard.disableControl()
                 if (slideObserver) slideObserver.disconnect()
             }
         },
@@ -229,7 +229,7 @@ options = new Options([
             return { ...state, value: !state.value }
         },
         update: state => {
-            console.log('changeTitle update', { state })
+           //console.log('changeTitle update', { state })
             if (!state.value) {
                 if (state.originalTitle) unsafeWindow.document.title = state.originalTitle
                 // unsafeWindow.removeEventListener('popstate', updateTabTitle)
@@ -313,11 +313,11 @@ options = new Options([
                     const current = this.state.percentIncrease.value
                     this.setOptionState({ value: current + n }, 'percentIncrease')
                 }
-                registerKeyboardShortcut({
+                Keyboard.registerShortcut({
                     keys: ['-'],
                     callback: () => state.increaseBy(-5)
                 })
-                registerKeyboardShortcut({
+                Keyboard.registerShortcut({
                     keys: ['+', '='],
                     callback: () => state.increaseBy(5)
                 })

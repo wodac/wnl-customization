@@ -2,14 +2,13 @@
     'use strict';
 
     function onLoaded() {
-        console.log('loaded')
-
         if (!appDiv) {
             appDiv = document.querySelector(SELECTORS.appDiv)
             if (appDiv) {
                 onAttributeChange(appDiv, 'screenid', checkUnloaded)
-                presentationScreenID = parseInt(appDiv.attributes.getNamedItem('screenid').value)
-                console.log({ screenid: presentationScreenID })
+                presentationMetadata.screenID = parseInt(appDiv.attributes.getNamedItem('screenid').value)
+                presentationMetadata.lessonID = getCurrentLessonID()
+                //console.log({ screenid: presentationMetadata.screenID })
                 if (tools && tools.state.useNotes.value) {
                     loadNotes();
                 }
@@ -25,20 +24,45 @@
         const lessonView = document.querySelector(SELECTORS.lessonView)
         if (lessonView !== null) {
             const mainHeaderElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
-            if (mainHeaderElem !== null) presentationName = mainHeaderElem.innerText
+            if (mainHeaderElem !== null) presentationMetadata.name = mainHeaderElem.innerText
 
             addSliderContainer()
             addSettingsContainer()
             addToolsContainer()
         }
 
-        if (GM_getValue(`option_keyboardControl`)) setupKeyboardControl()
+        if (GM_getValue(`option_keyboardControl`)) Keyboard.setupControl()
 
         addChapterInfo();
 
         addSlideOptions()
 
         toRunOnLoaded.forEach(cb => cb())
+
+        GM_getTabs(tabsObject => {
+            console.log({ tabsObject })
+            const tabs = Object.values(tabsObject)
+            let maxIndex = 0
+            if (tabs) {
+                tabs.forEach(tab => {
+                    if (tab && tab.index > maxIndex) maxIndex = tab.index
+                })
+                maxIndex++
+            }
+            thisTabIndex = maxIndex
+            console.log({ thisTabIndex })
+            GM_saveTab({ index: maxIndex })
+        })
+        GM_setValue('openInTab', {
+            lessonID: presentationMetadata.lessonID,
+            screenID: presentationMetadata.screenID,
+            slide: presentationMetadata.currentSlideNumber,
+            currentTab: -1
+        })
+        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
+            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote)
+            openSlideInTab(toOpen);
+        })
 
         unsafeWindow.addEventListener('beforeunload', ev => {
             onUnload()
@@ -116,16 +140,19 @@
     }
 
     function checkUnloaded() {
-        console.log('unloaded??')
+        //console.log('unloaded??')
         const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
         if (!isAwaiting && !testExtensionLoaded) {
-            console.log('unloaded!!!')
+            //console.log('unloaded!!!')
             onUnload()
             awaitLoad()
         }
     }
 
     function onUnload() {
+        for (const key in presentationMetadata) {
+            presentationMetadata[key] = undefined
+        }
         if (options && options.state.changeTitle.value) {
             const { originalTitle } = options.state.changeTitle
             document.title = originalTitle
@@ -138,7 +165,7 @@
         }
         if (slideNumberObserver) slideNumberObserver.disconnect()
         if (slideObserver) slideObserver.disconnect()
-        if (suggestBreakTimer) clearTimeout(suggestBreakTimer)
+        if (BreakTimer.timer) clearTimeout(BreakTimer.timer)
     }
 
 })();

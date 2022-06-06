@@ -3,7 +3,7 @@
       "module": "None",
       "target": "ES6",
       "sourceMap": false,
-      "outFile": "dist/wnl-customization.user.js"
+      "outFile": "dist/wnl-customization.user.js",
     },
     "lib": ["es2017"],
     "files": [
@@ -13,9 +13,9 @@
       "globals.d.ts", 
       "utils/common.ts",
       "utils/notes.ts",
+      "utils/keyboard.ts",
       "utils/options.ts",
       "utils/tools.ts",
-      "utils/keyboard.ts",
       "utils/search.ts",
       "utils/slideshowOptions.ts",
       "wnl-customization.ts", 
