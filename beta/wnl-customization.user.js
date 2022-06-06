@@ -14,76 +14,68 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addValueChangeListener
+// @grant        GM_getTabs
+// @grant        GM_saveTab
+// @grant        GM_openInTab
 // @run-at document-body
 // ==/UserScript==
-const CLASS_NAMES = {
-    optionContainer: 'custom-script-option-container',
-    pageNumberContainer: 'custom-script-page-number-container',
-    currentChapterPage: 'current-number',
-    chapterLength: 'n-of-pages',
-    fontSizeLabel: 'custom-script-font-size-label',
-    fontSizeInput: 'custom-script-font-size-input',
-    zoomSliderContainer: 'custom-script-zoom-slider-container',
-    settingsContainer: 'custom-script-settings-container',
-    toolsContainer: 'custom-script-tools-container'
-};
-const BODY_CLASS_NAMES = {
-    increaseFontSize: 'custom-script-increase-font-size',
-    increaseAnnotations: 'custom-script-increase-annotations',
-    uniformFontSize: 'custom-script-uniform-font-size',
-    hideCursor: 'custom-script-hide-cursor',
-    invertImages: 'custom-script-invert-images',
-};
-const SELECTORS = {
-    background: ".image-custom-background",
-    lessonView: '.wnl-lesson-view',
-    sidebar: 'aside.sidenav-aside.course-sidenav',
-    menuBtn: '.topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint',
-    appDiv: '.wnl-app-layout.wnl-course-layout',
-    currentSlideContainer: '.present .present'
-};
 document = unsafeWindow.document;
+let thisTabIndex;
 let toRunOnLoaded = [], summaryContainer;
 let slideOptionsContainer, additionalOptionsContainer;
 let options, tools, chapterMetadata;
-let currentSlideNumber, presentationScreenID, presentationName, currentSlideTitle;
+const presentationMetadata = {};
 let notesCollection, currentSlideNotes;
 let slideNumberObserver, slideObserver;
+const WNL_LESSON_LINK = 'https://lek.wiecejnizlek.pl/app/courses/1/lessons';
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
-const svgIcons = {
+const SVGIcons = {
     chevronUp: inSVG `<path fill-rule="evenodd" d="M7.776 5.553a.5.5 0 0 1 .448 0l6 3a.5.5 0 1 1-.448.894L8 6.56 2.224 9.447a.5.5 0 1 1-.448-.894l6-3z"/>`,
     dots: inSVG `<path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>`,
     search: inSVG `<path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>`,
     zoomIn: inSVG `<path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
-                <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
-                <path fill-rule="evenodd" d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5z"/>`,
+    <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
+    <path fill-rule="evenodd" d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5z"/>`,
     zoomOut: inSVG `<path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0z"/>
-                <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
-                <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
+    <path d="M10.344 11.742c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1 6.538 6.538 0 0 1-1.398 1.4z"/>
+    <path fill-rule="evenodd" d="M3 6.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/>`,
     stickies: inSVG `<path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/>
-                <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/>`,
+    <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/>`,
     stickiesFill: inSVG `<path d="M0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5A1.5 1.5 0 0 0 0 1.5z"/>
-                <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zm6 8.5a1 1 0 0 1 1-1h4.396a.25.25 0 0 1 .177.427l-5.146 5.146a.25.25 0 0 1-.427-.177V10.5z"/>`,
+    <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zm6 8.5a1 1 0 0 1 1-1h4.396a.25.25 0 0 1 .177.427l-5.146 5.146a.25.25 0 0 1-.427-.177V10.5z"/>`,
     plusSquare: inSVG `<path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>`,
+    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>`,
     trash: inSVG `<path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>`,
+    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>`,
     move: inSVG `<path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10zM.146 8.354a.5.5 0 0 1 0-.708l2-2a.5.5 0 1 1 .708.708L1.707 7.5H5.5a.5.5 0 0 1 0 1H1.707l1.147 1.146a.5.5 0 0 1-.708.708l-2-2zM10 8a.5.5 0 0 1 .5-.5h3.793l-1.147-1.146a.5.5 0 0 1 .708-.708l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L14.293 8.5H10.5A.5.5 0 0 1 10 8z"/>`,
     eraserFill: inSVG `<path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828l6.879-6.879zm.66 11.34L3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293l.16-.16z"/>`,
     viewList: inSVG `<path d="M3 4.5h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1H3zM1 2a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 2zm0 12a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 14z"/>`,
     layoutChaotic: inSVG `<path d="M5 1v8H1V1h4zM1 0a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1H1zm13 2v5H9V2h5zM9 1a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9zM5 13v2H3v-2h2zm-2-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H3zm12-1v2H9v-2h6zm-6-1a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H9z"/>`,
     viewStack: inSVG `<path d="M3 0h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3zm0 8h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1H3z"/>`,
+    removeCircle: inSVG `<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>`,
+    plusCircle: inSVG `<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>`,
+    tags: inSVG `<path d="M3 2v4.586l7 7L14.586 9l-7-7H3zM2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2z"/>
+    <path d="M5.5 5a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm0 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM1 7.086a1 1 0 0 0 .293.707L8.75 15.25l-.043.043a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 0 7.586V3a1 1 0 0 1 1-1v5.086z"/>`,
+    tagsFill: inSVG `<path d="M2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2zm3.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+    <path d="M1.293 7.793A1 1 0 0 1 1 7.086V2a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l.043-.043-7.457-7.457z"/>`,
+    addTag: inSVG `<path d="m2.7323 2.684v4.586l7 7 4.586-4.586-7-7zm-1 0a1 1 0 0 1 1-1h4.586a1 1 0 0 1 0.707 0.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7a1 1 0 0 1-0.293-0.707z"/>
+    <path d="m8.0118 6.3688c0.27243 0 0.49328 0.22085 0.49328 0.49328v0.56847h0.68583c0.65771 0 0.65771 0.98657 0 0.98657h-0.68583v0.67116c0 0.65771-0.98657 0.65771-0.98657 0v-0.67116h-0.64182c-0.65771 0-0.65771-0.98657 0-0.98657h0.64182v-0.56847c0-0.27243 0.22085-0.49328 0.49328-0.49328z" stroke-width=".99963"/>
+    <ellipse cx="8" cy="8" rx="2.25" ry="2.25" fill="none" opacity="1" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>`,
+    pallete: inSVG `<path d="M8 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm4 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM5.5 7a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+    <path d="M16 8c0 3.15-1.866 2.585-3.567 2.07C11.42 9.763 10.465 9.473 10 10c-.603.683-.475 1.819-.351 2.92C9.826 14.495 9.996 16 8 16a8 8 0 1 1 8-8zm-8 7c.611 0 .654-.171.655-.176.078-.146.124-.464.07-1.119-.014-.168-.037-.37-.061-.591-.052-.464-.112-1.005-.118-1.462-.01-.707.083-1.61.704-2.314.369-.417.845-.578 1.272-.618.404-.038.812.026 1.16.104.343.077.702.186 1.025.284l.028.008c.346.105.658.199.953.266.653.148.904.083.991.024C14.717 9.38 15 9.161 15 8a7 7 0 1 0-7 7z"/>`,
 };
 const zoomSliderHTML = `
-    <div class='${CLASS_NAMES.zoomSliderContainer}'>
+    <div class='${"custom-script-zoom-slider-container" /* zoomSliderContainer */}'>
         <label class="metadata">POWIĘKSZENIE</label>
         <div style="text-align: right;">
-            <input class="${CLASS_NAMES.fontSizeInput}" 
+            <input class="${"custom-script-font-size-input" /* fontSizeInput */}" 
                 type="range" size="3" maxlength="3" min="70" max="200" 
                 step="5">
-            <a class="${CLASS_NAMES.fontSizeInput}-decrease">${svgIcons.zoomOut}</a>
-            <span class="${CLASS_NAMES.fontSizeLabel}">120%</span>
-            <a class="${CLASS_NAMES.fontSizeInput}-increase">${svgIcons.zoomIn}</a>
+            <a class="${"custom-script-font-size-input" /* fontSizeInput */}-decrease">${SVGIcons.zoomOut}</a>
+            <span class="${"custom-script-font-size-label" /* fontSizeLabel */}">120%</span>
+            <a class="${"custom-script-font-size-input" /* fontSizeInput */}-increase">${SVGIcons.zoomIn}</a>
         </div>
     </div>`;
 function toggleBodyClass(className, isOn) {
@@ -92,6 +84,28 @@ function toggleBodyClass(className, isOn) {
         body.classList.add(className);
     else
         body.classList.remove(className);
+}
+function getForegroundColor(hex) {
+    if (hex.indexOf('#') === 0) {
+        hex = hex.slice(1);
+    }
+    // convert 3-digit hex to 6-digits.
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length !== 6) {
+        throw new Error('Invalid HEX color.');
+    }
+    var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    return (r * 0.299 + g * 0.587 + b * 0.114) > 186
+        ? '#000000'
+        : '#FFFFFF';
+}
+function getRandomElement(a) {
+    if (!a || !a.length)
+        return;
+    const i = Math.random() * a.length;
+    return a[Math.floor(i)];
 }
 const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93;
 const root = unsafeWindow.document.querySelector(":root");
@@ -132,40 +146,30 @@ class ClassToggler {
         this.state = !this.state;
     }
 }
-function toggleSummary(visible) {
-    if (!summaryContainer)
-        return;
-    if (typeof visible === 'undefined')
-        visible = summaryContainer.className.includes('custom-script-hidden');
-    if (visible) {
-        summaryContainer.classList.remove('custom-script-hidden');
-        const activeLink = summaryContainer.querySelector('.active');
-        if (activeLink) {
-            activeLink.scrollIntoView({ behavior: "smooth" });
+var Toggles;
+(function (Toggles) {
+    Toggles.summaryHidden = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
+        if (!t.state) {
+            summaryContainer.classList.remove('custom-script-hidden');
+            const activeLink = summaryContainer.querySelector('.active');
+            if (activeLink) {
+                activeLink.scrollIntoView({ behavior: "smooth" });
+            }
         }
+    });
+    const optionsHidden = new ClassToggler('custom-script-hidden', '.custom-script-additional-options');
+    Toggles.optionsActive = new ClassToggler('active', 'a.custom-options-btn', t => {
+        optionsHidden.state = !t.state;
+    });
+})(Toggles || (Toggles = {}));
+function goToSlideN(n) {
+    const nInput = document.querySelector('.wnl-slideshow-controls input[type=number]');
+    if (nInput) {
+        nInput.value = n.toString();
+        nInput.dispatchEvent(new InputEvent('input'));
+        return true;
     }
-    else
-        summaryContainer.classList.add('custom-script-hidden');
-}
-function toggleOptions(visible) {
-    if (!additionalOptionsContainer)
-        return;
-    const toggleBtn = document.querySelector('a.custom-options-btn');
-    if (typeof visible === 'undefined')
-        visible = additionalOptionsContainer.className.includes('custom-script-hidden');
-    if (visible) {
-        additionalOptionsContainer.classList.remove('custom-script-hidden');
-        toggleBtn.classList.add('active');
-    }
-    else {
-        additionalOptionsContainer.classList.add('custom-script-hidden');
-        toggleBtn.classList.remove('active');
-    }
-}
-function goToPage(page) {
-    const pageNumberInput = document.querySelector('.wnl-slideshow-controls input[type=number]');
-    pageNumberInput.value = page.toString();
-    pageNumberInput.dispatchEvent(new InputEvent('input'));
+    return false;
 }
 function onAttributeChange(element, attributeName, callback) {
     const obs = new MutationObserver(mutations => {
@@ -183,7 +187,13 @@ function onAttributeChange(element, attributeName, callback) {
     return obs;
 }
 function downloadFile(mimetype, name, data) {
-    const dataStr = `data:${mimetype};charset=utf-8,${encodeURIComponent(data)}`;
+    let dataText;
+    if (typeof data === 'string')
+        dataText = data;
+    else {
+        dataText = data.toString();
+    }
+    const dataStr = `data:${mimetype};charset=utf-8,${encodeURIComponent(dataText)}`;
     let dlAnchorElem = document.getElementById('downloadAnchorElem');
     if (!dlAnchorElem) {
         dlAnchorElem = document.createElement('a');
@@ -195,253 +205,9 @@ function downloadFile(mimetype, name, data) {
     dlAnchorElem.setAttribute("download", name);
     dlAnchorElem.click();
 }
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-class Note {
-    constructor(metadata, _content, parent) {
-        this.metadata = metadata;
-        this._content = _content;
-        this.parent = parent;
-        this._deleted = false;
-    }
-    get content() {
-        return this._content;
-    }
-    get element() {
-        return this._element;
-    }
-    remove(removeFromParent = true) {
-        console.log('deleting', { note: this, removeFromParent }, 'from Note');
-        if (removeFromParent)
-            this.parent.removeNoteById(this.metadata.id);
-        if (this._element)
-            this._element.remove();
-        this._element = null;
-        this._deleted = true;
-    }
-    set content(value) {
-        if (this._deleted)
-            throw new NoteDeletedError();
-        this._content = value;
-        if (this.element)
-            this.contentElement.innerHTML = value.replace(/\n/g, '<br />');
-        if (this.onchange)
-            this.onchange.apply(this, [value]);
-        this.parent.saveNote(this);
-    }
-    setNotePosition(pos) {
-        this._element.style.top = `${Math.round(pos.y * 100)}%`;
-        this._element.style.left = `${Math.round(pos.x * 100)}%`;
-    }
-    render(parent) {
-        this.parentElement = parent;
-        this._element = document.createElement('div');
-        this.setNotePosition(this.metadata.position);
-        this._element.dataset.id = this.metadata.id;
-        this._element.classList.add('custom-note');
-        this._element.innerHTML = Note.HTML;
-        const noteContentElem = this.contentElement;
-        const noteRemoveIcon = this._element.querySelector('.custom-note-remove');
-        noteContentElem.innerHTML = this.content.replace(/\n/g, '<br />');
-        this.setupEditing();
-        this.setupMoving();
-        noteRemoveIcon.addEventListener('click', ev => {
-            ev.stopPropagation();
-            if (confirm(`Usunąć notatkę o treści "${this.content}" ze slajdu ${this.metadata.slide}?`)) {
-                this.remove();
-            }
-        });
-        parent && parent.appendChild(this._element);
-        return this._element;
-    }
-    get contentElement() {
-        return this._element && this._element.querySelector('div.custom-note-content');
-    }
-    setupEditing() {
-        const noteContentInput = this._element.querySelector('textarea');
-        noteContentInput.value = this.content;
-        noteContentInput.addEventListener('blur', ev => {
-            this._element.classList.remove('editing');
-        });
-        noteContentInput.addEventListener('keyup', ev => {
-            if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
-                this._element.classList.remove('editing');
-            }
-        });
-        noteContentInput.addEventListener('input', ev => {
-            ev.stopPropagation();
-            const content = noteContentInput.value;
-            console.log('note content changed', { content });
-            this.content = content;
-        });
-        this._element.addEventListener('click', ev => {
-            this._element.classList.add('editing');
-            noteContentInput.focus();
-        });
-    }
-    setupMoving() {
-        const noteMoveIcon = this._element.querySelector('.custom-note-move');
-        noteMoveIcon.addEventListener('mousedown', ev => {
-            if (!this.parentElement)
-                return;
-            ev.stopPropagation();
-            const parentRect = this.parentElement.getBoundingClientRect();
-            let lastMousePosition = { x: ev.clientX, y: ev.clientY };
-            const followMouse = (ev) => {
-                ev.preventDefault();
-                let offset = {
-                    x: lastMousePosition.x - ev.clientX,
-                    y: lastMousePosition.y - ev.clientY
-                };
-                lastMousePosition = { x: ev.clientX, y: ev.clientY };
-                this._element.style.top = (this._element.offsetTop - offset.y) + 'px';
-                this._element.style.left = (this._element.offsetLeft - offset.x) + 'px';
-                const position = {
-                    x: (ev.x - parentRect.x) / parentRect.width,
-                    y: (ev.y - parentRect.y) / parentRect.height
-                };
-                this.metadata.position = position;
-                this.setNotePosition(position);
-            };
-            const endFollowing = ev => {
-                document.removeEventListener('mousemove', followMouse);
-                document.removeEventListener('mouseup', endFollowing);
-                this.parent.saveNote(this);
-            };
-            document.addEventListener('mousemove', followMouse);
-            document.addEventListener('mouseup', endFollowing);
-        });
-    }
-}
-Note.HTML = `
-        <div class="custom-note-content"></div>
-        <form> 
-            <textarea></textarea> 
-        </form>
-        <a class="custom-note-remove">${svgIcons.trash}</a>
-        <a class="custom-note-move">${svgIcons.move}</a>`;
-class NoteDeletedError extends Error {
-    constructor() {
-        super('Cannot modify deleted note!');
-    }
-}
-class SlideMetadata {
-    constructor(slide, screenid, slideTitle, presentationTitle) {
-        this.slide = slide;
-        this.screenid = screenid;
-        this.slideTitle = slideTitle;
-        this.presentationTitle = presentationTitle;
-    }
-}
-class NoteMetadata extends SlideMetadata {
-    constructor(id, slideMetadata, position, textContext) {
-        super(slideMetadata.slide, slideMetadata.screenid, slideMetadata.slideTitle, slideMetadata.presentationTitle);
-        this.id = id;
-        this.position = position;
-        this.textContext = textContext;
-    }
-}
-class SlideNotesCollection {
-    constructor(metadata, _notesRaw, parent) {
-        this.metadata = metadata;
-        this._notesRaw = _notesRaw;
-        this.parent = parent;
-        this._notes = _notesRaw.map(record => {
-            return new Note(new NoteMetadata(record.id, this.metadata, record.position, record.textContext), record.content, this);
-        });
-        this._changedNotes = [];
-        this._deletedNotes = [];
-    }
-    get notes() {
-        return this._notes;
-    }
-    get isSaved() {
-        return (this._changedNotes.length + this._deletedNotes.length) === 0;
-    }
-    getNoteByPosition(position) {
-        return this._notes.find(note => note.metadata.position === position);
-    }
-    getNoteById(id) {
-        return this._notes.find(note => note.metadata.id === id);
-    }
-    addNote({ position, content, textContext, presentationTitle, slideTitle }) {
-        if (presentationTitle)
-            this.metadata.presentationTitle = presentationTitle;
-        if (slideTitle)
-            this.metadata.slideTitle = slideTitle;
-        const id = generateId();
-        const note = new Note(new NoteMetadata(id, this.metadata, position, textContext), content, this);
-        this._notes.push(note);
-        this._changedNotes.push(note);
-        if (this.onchange)
-            this.onchange.apply(this, [{ added: [note] }]);
-        return note;
-    }
-    removeNoteByContext(position) {
-        return this.removeNoteByQuery(note => note.metadata.position === position);
-    }
-    removeNoteByQuery(query) {
-        let deleted;
-        const indexInNotes = this._notes.findIndex(query);
-        const indexInChangedNotes = this._changedNotes.findIndex(query);
-        if (indexInNotes >= 0) {
-            deleted = this._notes.splice(indexInNotes, 1)[0];
-            this._deletedNotes.push(deleted);
-        }
-        if (indexInChangedNotes >= 0)
-            deleted = this._changedNotes.splice(indexInChangedNotes, 1)[0];
-        deleted.remove(false);
-        if (this.onchange)
-            this.onchange.apply(this, [{ deleted: [deleted] }]);
-        console.log('deleting', { deleted }, 'from SlideNotesCollection');
-        return deleted;
-    }
-    removeAllNotes() {
-        const toDelete = this._notes.concat(this._changedNotes);
-        this._changedNotes = this._notes = [];
-        if (this.onchange)
-            this.onchange.apply(this, [{ deleted: toDelete }]);
-        this._deletedNotes.push(...toDelete);
-        toDelete.forEach(note => {
-            note.remove(false);
-        });
-        return toDelete;
-    }
-    removeNoteById(id) {
-        return this.removeNoteByQuery(note => note.metadata.id === id);
-    }
-    saveNote(note) {
-        if (!this._changedNotes.includes(note))
-            this._changedNotes.push(note);
-        if (this.onchange)
-            this.onchange.apply(this, [{ changed: [note] }]);
-    }
-    commitChanges() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this.oncommit)
-                this.oncommit.apply(this);
-            yield this.parent.removeNotes(this._deletedNotes);
-            this._deletedNotes = [];
-            yield this.parent.saveNotes(this._changedNotes);
-            this._changedNotes = [];
-        });
-    }
-}
-function generateId() {
-    const r = Math.random();
-    let id = btoa((r * Date.now() + r).toLocaleString());
-    return id;
-}
-function getNotesDatabase(setupCb) {
+function getIndexedDB(name, version, setupCb) {
     return new Promise((resolve, reject) => {
-        var request = indexedDB.open("NotesDatabase", 2);
+        var request = indexedDB.open(name, version);
         request.addEventListener('error', ev => {
             reject('Unable to open database');
         });
@@ -461,106 +227,915 @@ function getNotesDatabase(setupCb) {
         });
     });
 }
-class PresentationNotesCollection {
-    constructor(db, _screenid) {
-        this.db = db;
-        this._screenid = _screenid;
-    }
-    static setupDB(event, db) {
-        let notesStore;
-        if (event.oldVersion !== event.newVersion) {
-            notesStore = db.createObjectStore(PresentationNotesCollection.STORE_NAME, { keyPath: 'id' });
-        }
-        else {
-            notesStore = event.target.transaction.objectStore(PresentationNotesCollection.STORE_NAME);
-        }
-        notesStore.createIndex(PresentationNotesCollection.DUAL_INDEX, ['screenid', 'slide'], { unique: false });
-        notesStore.createIndex(PresentationNotesCollection.SCREENID_INDEX, 'screenid', { unique: false });
-        // notesStore.createIndex('id', 'id', { unique: true })
-        return notesStore;
-    }
-    static createAsync(screenid) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const db = yield getNotesDatabase(PresentationNotesCollection.setupDB);
-            const notesCollection = new PresentationNotesCollection(db, screenid);
-            return notesCollection;
-        });
-    }
-    getNotesBySlide(slide) {
-        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readonly');
-        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
-        const screenidIndex = notesStore.index(PresentationNotesCollection.DUAL_INDEX);
-        const notesRequest = screenidIndex.getAll([this._screenid, slide]);
-        return new Promise((resolve, reject) => {
-            notesRequest.addEventListener('success', ev => {
-                const notes = notesRequest.result;
-                const slideTitle = notes[0] && notes[0].slideTitle || '';
-                const presentationTitle = notes[0] && notes[0].presentationTitle || '';
-                resolve(new SlideNotesCollection(new SlideMetadata(slide, this._screenid, slideTitle, presentationTitle), notes, this));
-            });
-        });
-    }
-    static mapNoteToRecord(note) {
-        return {
-            content: note.content,
-            id: note.metadata.id,
-            screenid: note.metadata.screenid,
-            slide: note.metadata.slide,
-            position: note.metadata.position,
-            presentationTitle: note.metadata.presentationTitle,
-            slideTitle: note.metadata.slideTitle,
-            textContext: note.metadata.textContext
-        };
-    }
-    saveNotes(notes) {
-        const records = notes.map(PresentationNotesCollection.mapNoteToRecord);
-        return this.importNotes(records);
-    }
-    importNotes(notes) {
-        console.log('to import:', { notes });
-        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readwrite');
-        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
-        notes.forEach(record => {
-            notesStore.put(record);
-        });
-        transaction.commit();
-        return new Promise((resolve, reject) => {
-            transaction.addEventListener('complete', ev => {
-                resolve();
-            });
-        });
-    }
-    removeNotes(notes) {
-        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readwrite');
-        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
-        notes.forEach(note => {
-            console.log('deleting', { note }, 'from PresentationNotesCollection');
-            notesStore.delete(note.metadata.id);
-        });
-        transaction.commit();
-        return new Promise((resolve, reject) => {
-            transaction.addEventListener('complete', ev => {
-                resolve();
-            });
-        });
-    }
-    exportNotes() {
-        const transaction = this.db.transaction(PresentationNotesCollection.STORE_NAME, 'readonly');
-        const notesStore = transaction.objectStore(PresentationNotesCollection.STORE_NAME);
-        const screenidIndex = notesStore.index(PresentationNotesCollection.SCREENID_INDEX);
-        const notesRequest = screenidIndex.getAll(this._screenid);
-        return new Promise((resolve, reject) => {
-            notesRequest.addEventListener('success', ev => {
-                const notes = notesRequest.result;
-                resolve(notes);
-            });
-        });
+function observeSlideNumber(cb) {
+    //console.log('observe slide number')
+    const appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+    slideNumberObserver = onAttributeChange(appDiv, 'slide', value => cb(parseInt(value)));
+}
+function getCurrentLessonID() {
+    const element = document.querySelector('[lesson-id]');
+    if (!element)
+        return NaN;
+    const attr = element.attributes.getNamedItem('lesson-id');
+    if (!attr)
+        return NaN;
+    return parseInt(attr.value);
+}
+function updateTabTitle() {
+    let currentTitleHeader = document.querySelector('.present .sl-block-content h2');
+    if (currentTitleHeader !== null)
+        presentationMetadata.currentSlideTitle = currentTitleHeader.textContent;
+    if (GM_getValue('option_changeTitle')) {
+        let mainTitle;
+        mainTitle = presentationMetadata.name && presentationMetadata.name.match(/\w/) ? `${presentationMetadata.name} - ` : '';
+        const slideTitle = presentationMetadata.currentSlideTitle && presentationMetadata.currentSlideTitle.match(/\w/) ? `${presentationMetadata.currentSlideTitle} - ` : '';
+        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK';
+        document.title = slideTitle + mainTitle + originalTitle;
     }
 }
-PresentationNotesCollection.STORE_NAME = 'Notes';
-PresentationNotesCollection.DUAL_INDEX = 'byScreenIDAndSlide';
-PresentationNotesCollection.SCREENID_INDEX = 'byScreenID';
+class CustomEventEmmiter {
+    constructor() {
+        this.listeners = {};
+    }
+    addEventListener(eventName, listener, once) {
+        if (!this.listeners[eventName])
+            this.listeners[eventName] = [];
+        if (once) {
+            listener = event => {
+                listener.bind(this)(event);
+                this.removeEventListener(eventName, listener);
+            };
+        }
+        this.listeners[eventName].push(listener.bind(this));
+    }
+    removeEventListener(eventName, listener) {
+        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString());
+        if (i && i >= 0)
+            return this.listeners[eventName].splice(i, 1);
+    }
+    removeAllListeners() {
+        this.listeners = {};
+    }
+    trigger(eventName, event = {}) {
+        //console.log(`triggering ${eventName} with data`, event, 'on', this)
+        this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event));
+    }
+}
+function focusTab() {
+    if (document.hidden) {
+        const w = GM_openInTab('about:blank', { active: true, setParent: true });
+        setTimeout(() => w.close(), 0);
+    }
+}
+function openSlideInTab(toOpen) {
+    if (toOpen) {
+        console.log({ toOpen });
+        if (toOpen.currentTab === -1)
+            return;
+        if (toOpen.lessonID === presentationMetadata.lessonID &&
+            toOpen.screenID === presentationMetadata.screenID &&
+            toOpen.slide) {
+            focusTab();
+            goToSlideN(toOpen.slide);
+            GM_setValue('openInTab', {
+                lessonID: presentationMetadata.lessonID,
+                screenID: presentationMetadata.screenID,
+                slide: presentationMetadata.currentSlideNumber,
+                currentTab: -1
+            });
+        }
+        else if (toOpen.currentTab === -2 || toOpen.currentTab === thisTabIndex) {
+            GM_getTabs(tabsObject => {
+                console.log({ tabsObject });
+                const tabs = Object.values(tabsObject);
+                let nextIndex = 1000;
+                tabs.forEach(tab => {
+                    if (tab && tab.index > toOpen.currentTab && tab.index < nextIndex)
+                        nextIndex = tab.index;
+                });
+                if (nextIndex === 1000) {
+                    nextIndex = -1;
+                    openWindow();
+                }
+                toOpen.currentTab = nextIndex;
+                console.log('setting', { toOpen });
+                GM_setValue('openInTab', toOpen);
+            });
+        }
+    }
+    function openWindow() {
+        const path = [WNL_LESSON_LINK, toOpen.lessonID, toOpen.screenID, toOpen.slide];
+        console.log('opening', path);
+        return GM_openInTab(path.join('/'), { active: true, setParent: true });
+    }
+}
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var Notes;
+(function (Notes) {
+    class Note extends CustomEventEmmiter {
+        constructor(metadata, _content, parent) {
+            super();
+            this.metadata = metadata;
+            this._content = _content;
+            this.parent = parent;
+            this._edited = false;
+            this._deleted = false;
+        }
+        get content() {
+            return this._content;
+        }
+        get element() {
+            return this._element;
+        }
+        remove(removeFromParent = true) {
+            if (this._deleted)
+                return;
+            //console.log('deleting', { note: this, removeFromParent }, 'from Note')
+            this.trigger('remove');
+            if (removeFromParent)
+                this.parent.removeNoteById(this.metadata.id);
+            if (this._element)
+                this._element.remove();
+            this._element = null;
+            this._deleted = true;
+            this.removeAllListeners();
+        }
+        set content(value) {
+            if (this._deleted)
+                throw new NoteDeletedError();
+            this._content = value;
+            if (this.contentElement)
+                this.contentElement.innerHTML = value.replace(/\n/g, '<br />');
+            this.trigger('change', { newContent: value });
+            this.parent.saveNote(this);
+        }
+        setupEditing(noteContentInput) {
+            noteContentInput.value = this.content;
+            noteContentInput.addEventListener('blur', ev => {
+                this.endEditing();
+            });
+            noteContentInput.addEventListener('keyup', (ev) => {
+                if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
+                    this.endEditing();
+                }
+            });
+            noteContentInput.addEventListener('input', ev => {
+                ev.stopPropagation();
+                const content = noteContentInput.value;
+                //console.log('note content changed', { content })
+                this.content = content;
+            });
+            const form = this._element.querySelector('form');
+            form && form.addEventListener('submit', ev => {
+                ev.preventDefault();
+                this.endEditing();
+            });
+            this._element.addEventListener('click', ev => this.startEditing(noteContentInput));
+            // this._element.addEventListener('focus', ev => this.startEditing(noteContentInput))
+        }
+        startEditing(noteContentInput) {
+            this._element.classList.add('editing');
+            noteContentInput.focus();
+        }
+        endEditing() {
+            this._element.classList.remove('editing');
+            if (!this._content.trim().length) {
+                if (this._edited)
+                    this.remove();
+                else
+                    this._edited = true;
+                return;
+            }
+            this.trigger('edited', { newContent: this.content });
+        }
+    }
+    Notes.Note = Note;
+    class TagNote extends Note {
+        constructor() {
+            super(...arguments);
+            this._edited = true;
+        }
+        static from(note) {
+            return new TagNote(note.metadata, note.content, note.parent);
+        }
+        get contentElement() {
+            return this._element && this._element.querySelector('.custom-tag-content');
+        }
+        render(parent) {
+            this._element = document.createElement('div');
+            this._element.innerHTML = TagNote.HTML;
+            this._element.classList.add('custom-tag');
+            this._element.title = this.content;
+            this._element.tabIndex = 0;
+            const removeBtn = this._element.querySelector('.custom-remove');
+            const colorBtn = this._element.querySelector('.custom-change-color');
+            const colorInput = this._element.querySelector('input[type=color]');
+            this.contentElement.innerText = this.content;
+            this.setupEditing(this._element.querySelector('input'));
+            colorInput.value = this.metadata.color;
+            colorBtn.addEventListener('click', (ev) => {
+                ev.stopImmediatePropagation();
+                colorInput.click();
+            });
+            colorInput.addEventListener('change', () => {
+                this.metadata.color = colorInput.value;
+                this.trigger('colorChange', { newColor: this.metadata.color });
+                this.parent.saveNote(this);
+                this._element.style.background = this.metadata.color;
+                this._element.style.color = getForegroundColor(this.metadata.color);
+            });
+            removeBtn.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.remove();
+            });
+            this._element.title = this.content;
+            this.addEventListener('change', ({ newContent }) => {
+                this._element.title = newContent;
+            });
+            if (parent)
+                parent.prepend(this._element);
+            this.trigger('rendered');
+            return this._element;
+        }
+    }
+    TagNote.HTML = `
+    <span class='custom-tag-content'></span>
+    <form>
+        <input type='text' list='custom-tags-list' />
+        <input type='color' />
+    </form>
+    <a class='custom-change-color' title='Zmień kolor'>${SVGIcons.pallete}</a>
+    <a class='custom-remove' title='Usuń'>${SVGIcons.removeCircle}</a>
+    `;
+    Notes.TagNote = TagNote;
+    class RegularNote extends Note {
+        static from(note) {
+            return new RegularNote(note.metadata, note.content, note.parent);
+        }
+        static normalizeFractionalPosition(pos) {
+            if (pos.x < 0)
+                pos.x = 0;
+            if (pos.y < 0)
+                pos.y = 0;
+            if (pos.x > 1)
+                pos.x = 1;
+            if (pos.y > 1)
+                pos.y = 1;
+            return pos;
+        }
+        setNotePosition(pos) {
+            if (!pos)
+                pos = { x: 0, y: 0 };
+            pos = RegularNote.normalizeFractionalPosition(pos);
+            this._element.style.top = `${Math.round(pos.y * 100)}%`;
+            this._element.style.left = `${Math.round(pos.x * 100)}%`;
+        }
+        render(parent) {
+            this.parentElement = parent;
+            this._element = document.createElement('div');
+            this.setNotePosition(this.metadata.position);
+            this._element.dataset.id = this.metadata.id;
+            this._element.classList.add('custom-note');
+            this._element.innerHTML = RegularNote.HTML;
+            const input = this._element.querySelector('textarea');
+            const noteContentElem = this.contentElement;
+            const noteRemoveIcon = this._element.querySelector('.custom-note-remove');
+            noteContentElem.innerHTML = this.content.replace(/\n/g, '<br />');
+            this.setupEditing(input);
+            this.setupMoving();
+            noteRemoveIcon.addEventListener('click', ev => {
+                ev.stopPropagation();
+                this.remove();
+            });
+            parent && parent.appendChild(this._element);
+            return this._element;
+        }
+        get contentElement() {
+            return this._element && this._element.querySelector('div.custom-note-content');
+        }
+        setupMoving() {
+            const noteMoveIcon = this._element.querySelector('.custom-note-move');
+            noteMoveIcon.addEventListener('mousedown', (ev) => {
+                ev.stopPropagation();
+                const offset = {
+                    x: -noteMoveIcon.offsetLeft,
+                    y: -noteMoveIcon.offsetTop,
+                };
+                this.startFollowingMouse(offset);
+                this._endFollowingCb = () => this.endFollowingMouse();
+                document.addEventListener('mouseup', this._endFollowingCb);
+            });
+        }
+        endFollowingMouse() {
+            document.removeEventListener('mousemove', this._followingCb);
+            document.removeEventListener('mouseup', this._endFollowingCb);
+            this.isMoving = false;
+            this.parent.saveNote(this);
+        }
+        startFollowingMouse(followingOffset = { x: 0, y: 0 }) {
+            this.followingOffset = followingOffset;
+            if (!this.parentElement)
+                return;
+            this.isMoving = true;
+            // this.lastMousePosition = { x: position.x - 10, y: position.y - 10 }  //offset      
+            this.parentRect = this.parentElement.getBoundingClientRect();
+            this._followingCb = (ev) => this.followMouse(ev);
+            document.addEventListener('mousemove', this._followingCb);
+        }
+        followMouse(ev) {
+            ev.preventDefault();
+            const position = {
+                x: (ev.x + this.followingOffset.x - this.parentRect.x) / this.parentRect.width,
+                y: (ev.y + this.followingOffset.y - this.parentRect.y) / this.parentRect.height
+            };
+            this.metadata.position = position;
+            this.setNotePosition(position);
+        }
+    }
+    RegularNote.HTML = `
+        <div class="custom-note-content"></div>
+        <form> 
+            <textarea></textarea> 
+        </form>
+        <a class="custom-note-remove">${SVGIcons.trash}</a>
+        <a class="custom-note-move">${SVGIcons.move}</a>`;
+    Notes.RegularNote = RegularNote;
+    class NoteDeletedError extends Error {
+        constructor() {
+            super('Cannot modify deleted note!');
+        }
+    }
+    class SlideMetadata {
+        constructor(slide, screenid, slideTitle, presentationTitle, lessonID) {
+            this.slide = slide;
+            this.screenid = screenid;
+            this.slideTitle = slideTitle;
+            this.presentationTitle = presentationTitle;
+            this.lessonID = lessonID;
+        }
+    }
+    class NoteMetadata extends SlideMetadata {
+        constructor(id, type, slideMetadata, position, textContext, color = '#95b9f9') {
+            super(slideMetadata.slide, slideMetadata.screenid, slideMetadata.slideTitle, slideMetadata.presentationTitle, slideMetadata.lessonID);
+            this.id = id;
+            this.type = type;
+            this.position = position;
+            this.textContext = textContext;
+            this.color = color;
+        }
+    }
+    let Collections;
+    (function (Collections) {
+        class Slide extends CustomEventEmmiter {
+            constructor(metadata, _notesRaw, parent) {
+                super();
+                this.metadata = metadata;
+                this._notesRaw = _notesRaw;
+                this.parent = parent;
+                this._notes = [];
+                _notesRaw.forEach(record => {
+                    let note;
+                    if (record.type !== 'tag') {
+                        note = new RegularNote(new NoteMetadata(record.id, record.type, this.metadata, record.position, record.textContext), record.content, this);
+                    }
+                    else {
+                        note = new TagNote(new NoteMetadata(record.id, record.type, this.metadata, undefined, undefined, record.color), record.content, this);
+                        note.addEventListener('edited', ({ newContent }) => {
+                            const tags = this.tags.map(tag => tag.content);
+                            if (tags.filter(tag => tag === newContent).length > 1)
+                                note.remove();
+                        });
+                    }
+                    this._notes.push(note);
+                });
+                this._changedNotes = [];
+                this._deletedNotes = [];
+            }
+            get notes() {
+                return this._notes.filter(note => note instanceof RegularNote);
+            }
+            get tags() {
+                return this._notes.filter(note => note instanceof TagNote);
+            }
+            get isSaved() {
+                return (this._changedNotes.length + this._deletedNotes.length) === 0;
+            }
+            getNoteByPosition(position) {
+                return this._notes.find(note => note.metadata.position === position);
+            }
+            getNoteById(id) {
+                return this._notes.find(note => note.metadata.id === id);
+            }
+            addAnyNote({ position, content, textContext, presentationTitle, slideTitle, type, color, lessonID, screenid, slide }, constructor) {
+                if (presentationTitle)
+                    this.metadata.presentationTitle = presentationTitle;
+                if (slideTitle)
+                    this.metadata.slideTitle = slideTitle;
+                const id = generateId();
+                const note = new constructor(new NoteMetadata(id, type, this.metadata, position, textContext, color), content, this);
+                this._notes.push(note);
+                this._changedNotes.push(note);
+                this.trigger('change', { added: [note] });
+                return note;
+            }
+            addNote(options) {
+                options.type = 'regular';
+                return this.addAnyNote(options, RegularNote);
+            }
+            addTag(options) {
+                options.type = 'tag';
+                return this.addAnyNote(options, TagNote);
+            }
+            removeNoteByQuery(query) {
+                let deleted;
+                const indexInNotes = this._notes.findIndex(query);
+                const indexInChangedNotes = this._changedNotes.findIndex(query);
+                if (indexInNotes >= 0) {
+                    deleted = this._notes.splice(indexInNotes, 1)[0];
+                    this._deletedNotes.push(deleted);
+                }
+                if (indexInChangedNotes >= 0)
+                    deleted = this._changedNotes.splice(indexInChangedNotes, 1)[0];
+                deleted.remove(false);
+                this.trigger('change', { deleted: [deleted] });
+                //console.log('deleting', { deleted }, 'from SlideNotesCollection')
+                return deleted;
+            }
+            removeAllNotes() {
+                const toDelete = this._notes.concat(this._changedNotes);
+                this._changedNotes = this._notes = [];
+                this.trigger('change', { deleted: toDelete });
+                this._deletedNotes.push(...toDelete);
+                toDelete.forEach(note => {
+                    note.remove(false);
+                });
+                return toDelete;
+            }
+            removeNoteById(id) {
+                return this.removeNoteByQuery(note => note.metadata.id === id);
+            }
+            saveNote(note) {
+                if (!this._changedNotes.includes(note))
+                    this._changedNotes.push(note);
+                this.trigger('change', { changed: [note] });
+            }
+            commitChanges() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    this.trigger('commit', {});
+                    yield this.parent.removeNotes(this._deletedNotes);
+                    this._deletedNotes = [];
+                    yield this.parent.saveNotes(this._changedNotes);
+                    this._changedNotes = [];
+                });
+            }
+        }
+        Collections.Slide = Slide;
+    })(Collections = Notes.Collections || (Notes.Collections = {}));
+    function generateId() {
+        return unsafeWindow.crypto.randomUUID();
+    }
+    (function (Collections) {
+        class Presentation extends CustomEventEmmiter {
+            constructor(db, _screenid, _lessonID) {
+                super();
+                this.db = db;
+                this._screenid = _screenid;
+                this._lessonID = _lessonID;
+                this.cache = {};
+                this._tags = [];
+            }
+            static setupDB(event, db) {
+                let notesStore, tagsStore;
+                if (event.oldVersion !== event.newVersion) {
+                    notesStore = db.createObjectStore(Presentation.NOTES_STORE, { keyPath: 'id' });
+                    tagsStore = db.createObjectStore(Presentation.TAGS_STORE, { keyPath: 'name' });
+                }
+                else {
+                    const transaction = event.target.transaction;
+                    notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                    tagsStore = transaction.objectStore(Presentation.TAGS_STORE);
+                }
+                Presentation.generateIndexes(notesStore, Presentation.NOTES_INDEXES);
+                Presentation.generateIndexes(tagsStore, Presentation.TAGS_INDEXES);
+                // notesStore.createIndex('id', 'id', { unique: true })
+                return notesStore;
+            }
+            static generateIndexes(store, indexes) {
+                const notesIndexes = Object.values(indexes);
+                notesIndexes.forEach(index => {
+                    try {
+                        store.createIndex(index.name, index.columns, index.options);
+                    }
+                    catch (err) {
+                        console.error(err);
+                    }
+                });
+            }
+            static createAsync(screenid, lessonID) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const db = yield getIndexedDB("NotesDatabase", 5, Presentation.setupDB);
+                    const notesCollection = new Presentation(db, screenid, lessonID);
+                    return notesCollection;
+                });
+            }
+            wipeCache() {
+                this.cache = {};
+            }
+            getNotesBySlide(slide) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (this.cache[slide])
+                        return this.cache[slide];
+                    const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly');
+                    const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                    const screenidIndex = notesStore.index(Presentation.NOTES_INDEXES.byScreenIDAndSlide.name);
+                    const notesRequest = screenidIndex.getAll([this._screenid, slide]);
+                    return new Promise((resolve, reject) => {
+                        notesRequest.addEventListener('success', ev => {
+                            const notes = notesRequest.result;
+                            const slideTitle = notes[0] && notes[0].slideTitle || '';
+                            const presentationTitle = notes[0] && notes[0].presentationTitle || '';
+                            const slideCollection = new Collections.Slide(new SlideMetadata(slide, this._screenid, slideTitle, presentationTitle, this._lessonID), notes, this);
+                            this.cache[slide] = slideCollection;
+                            resolve(slideCollection);
+                        });
+                        notesRequest.addEventListener('error', err => reject(err));
+                    });
+                });
+            }
+            get tags() {
+                return this._tags;
+            }
+            getAllTagNames() {
+                const transaction = this.db.transaction(Presentation.TAGS_STORE, 'readonly');
+                const notesStore = transaction.objectStore(Presentation.TAGS_STORE);
+                const screenidIndex = notesStore.index(Presentation.TAGS_INDEXES.byName.name);
+                const allTags = screenidIndex.getAll();
+                return new Promise((resolve, reject) => {
+                    allTags.addEventListener('success', ev => {
+                        const tagsResult = allTags.result;
+                        if (this._tags.length !== tagsResult.length) {
+                            this.trigger('changedTags', {
+                                changed: tagsResult.map((tag, i) => {
+                                    return Object.assign(Object.assign({}, tag), { index: i });
+                                })
+                            });
+                        }
+                        resolve(tagsResult);
+                    });
+                    allTags.addEventListener('error', err => reject(err));
+                });
+            }
+            getAllTagsWithName(name) {
+                const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly');
+                const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                const tagIndex = notesStore.index(Presentation.NOTES_INDEXES.byContentAndType.name);
+                const notesRequest = tagIndex.getAll([name, 'tag']);
+                return new Promise((resolve, reject) => {
+                    notesRequest.addEventListener('success', ev => {
+                        const notes = notesRequest.result;
+                        resolve(notes);
+                    });
+                    notesRequest.addEventListener('error', err => reject(err));
+                });
+            }
+            static mapNoteToRecord(note) {
+                return {
+                    content: note.content,
+                    id: note.metadata.id,
+                    screenid: note.metadata.screenid,
+                    slide: note.metadata.slide,
+                    position: note.metadata.position,
+                    presentationTitle: note.metadata.presentationTitle,
+                    slideTitle: note.metadata.slideTitle,
+                    textContext: note.metadata.textContext,
+                    type: note.metadata.type,
+                    color: note.metadata.color,
+                    lessonID: note.metadata.lessonID
+                };
+            }
+            saveNotes(notes) {
+                const records = notes.map(Presentation.mapNoteToRecord);
+                return this.importNotes(records);
+            }
+            importNotes(notes) {
+                //console.log('to import:', { notes })
+                const transaction = this.db.transaction([Presentation.NOTES_STORE, Presentation.TAGS_STORE], 'readwrite');
+                const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                const tagStore = transaction.objectStore(Presentation.TAGS_STORE);
+                const changedTags = [];
+                const addedTags = [];
+                notes.forEach(record => {
+                    notesStore.put(record);
+                    if (record.type === 'tag') {
+                        const name = record.content;
+                        const color = record.color;
+                        const toSave = { name, color };
+                        tagStore.put(toSave);
+                        const i = this._tags.findIndex(t => t.name === name);
+                        if (i >= 0) {
+                            if (this._tags[i].color !== color) {
+                                this._tags[i].color = color;
+                                changedTags.push(Object.assign(Object.assign({}, this._tags[i]), { index: i }));
+                            }
+                        }
+                        else {
+                            this._tags.push(toSave);
+                            addedTags.push(toSave);
+                        }
+                    }
+                });
+                transaction.commit();
+                if (changedTags.length || addedTags.length)
+                    this.trigger('changedTags', {
+                        changed: changedTags, added: addedTags
+                    });
+                return new Promise((resolve, reject) => {
+                    transaction.addEventListener('complete', ev => {
+                        resolve();
+                    });
+                    transaction.addEventListener('error', err => reject(err));
+                });
+            }
+            removeNotes(notes) {
+                const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readwrite');
+                const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                notes.forEach(note => {
+                    //console.log('deleting', { note }, 'from PresentationNotesCollection')
+                    notesStore.delete(note.metadata.id);
+                });
+                transaction.commit();
+                return new Promise((resolve, reject) => {
+                    transaction.addEventListener('complete', ev => {
+                        resolve();
+                    });
+                    transaction.addEventListener('error', err => reject(err));
+                });
+            }
+            exportNotes() {
+                const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly');
+                const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                const screenidIndex = notesStore.index(Presentation.NOTES_INDEXES.byScreenID.name);
+                const notesRequest = screenidIndex.getAll(this._screenid);
+                return new Promise((resolve, reject) => {
+                    notesRequest.addEventListener('success', ev => {
+                        const notes = notesRequest.result;
+                        resolve(notes);
+                    });
+                    notesRequest.addEventListener('error', err => reject(err));
+                });
+            }
+        }
+        Presentation.NOTES_STORE = 'Notes';
+        Presentation.TAGS_STORE = 'Tags';
+        Presentation.NOTES_INDEXES = {
+            byScreenIDAndSlide: {
+                name: 'byScreenIDAndSlide',
+                columns: ['screenid', 'slide'],
+                options: { unique: false }
+            },
+            byScreenID: {
+                name: 'byScreenID',
+                columns: 'screenid',
+                options: { unique: false }
+            },
+            byContentAndType: {
+                name: 'contentAndType',
+                columns: ['content', 'type'],
+                options: { unique: false }
+            },
+            byType: {
+                name: 'byType',
+                columns: 'type',
+                options: { unique: false }
+            },
+            byContent: {
+                name: 'byContent',
+                columns: 'content',
+                options: { unique: false }
+            }
+        };
+        Presentation.TAGS_INDEXES = {
+            byName: {
+                columns: "name",
+                name: 'byName',
+                options: { unique: true }
+            }
+        };
+        Collections.Presentation = Presentation;
+    })(Collections = Notes.Collections || (Notes.Collections = {}));
+})(Notes || (Notes = {}));
 // PresentationNotesCollection.createAsync(892).then(collection => console.log(collection))
+var Keyboard;
+(function (Keyboard) {
+    let keyboardShortcuts = [
+        {
+            keys: ['ArrowUp'],
+            callback: showImage
+        },
+        {
+            keys: ['ArrowDown', 'q', '0', 'Escape'],
+            callback: hideImage
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: hideModal
+        },
+        {
+            keys: ['m'],
+            callback: () => toggleMouseVisibility()
+        },
+        {
+            keys: ['o', 's'],
+            callback: () => Toggles.optionsActive.toggle()
+        },
+        {
+            keys: ['?', '/'],
+            callback: () => Toggles.searchHidden.toggle()
+        },
+        {
+            keys: ['l'],
+            callback: () => Toggles.summaryHidden.toggle()
+        },
+        {
+            keys: ['Enter'],
+            callback: () => {
+                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
+                if (quizVerifyBtn)
+                    quizVerifyBtn.click();
+            }
+        }
+    ];
+    function registerShortcut(shortcut) {
+        keyboardShortcuts.push(shortcut);
+    }
+    Keyboard.registerShortcut = registerShortcut;
+    function shortcutListener(event) {
+        const tagName = event.target.nodeName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+        keyboardShortcuts.forEach(shortcut => {
+            if (shortcut.keys.includes(event.key))
+                shortcut.callback(event);
+        });
+        const charCode = event.keyCode;
+        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
+            numericKeyPressed(event.key);
+    }
+    function setupControl() {
+        const slides = document.querySelectorAll('.slides .stack');
+        if (!slides.length)
+            return;
+        slides.forEach(slide => {
+            let counter = 1;
+            const icons = slide.querySelectorAll('.a-icon');
+            icons.forEach(icon => addSubToRef(icon, counter++));
+        });
+        observeSlides(addSubsToRefs);
+        // document.body.addEventListener('click', updateTabTitle)
+        // document.body.addEventListener('keyup', updateTabTitle)
+        document.body.addEventListener('keydown', event => {
+            if (event.key === ' ' || event.key === 'l') {
+                // event.preventDefault()
+                event.stopImmediatePropagation();
+            }
+            if (event.key === 'ArrowUp') {
+                scrollView(-60);
+                return false;
+            }
+            if (event.key === 'ArrowDown' || event.key === ' ') {
+                scrollView(60);
+                return false;
+            }
+        });
+        document.body.addEventListener('keyup', shortcutListener);
+    }
+    Keyboard.setupControl = setupControl;
+    function disableControl() {
+        document.body.removeEventListener('keyup', shortcutListener);
+    }
+    Keyboard.disableControl = disableControl;
+    function observeSlides(cb) {
+        //console.log('observeSlides')
+        slideObserver = new MutationObserver(cb);
+        slideObserver.observe(document.querySelector('div.slides'), {
+            childList: true,
+            subtree: true
+        });
+    }
+    function addSubsToRefs(mutations) {
+        //console.log('mutation observed')
+        let counter = 1;
+        mutations.forEach(mutation => {
+            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
+                //console.log('node added')
+                let ref = mutation.addedNodes[0];
+                if (ref.className && ref.className.includes('m-referenceTrigger')) {
+                    addSubToRef(ref, counter);
+                    counter++;
+                }
+            }
+        });
+    }
+    function addSubToRef(ref, counter) {
+        const sub = document.createElement('sub');
+        sub.innerText = counter.toString();
+        sub.className = `small`;
+        ref.classList.add(`sub-id-${counter}`);
+        ref.appendChild(sub);
+    }
+    function scrollView(y) {
+        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
+        const options = { top: y, left: 0, behavior };
+        const views = [
+            document.querySelector(".present .present" /* currentSlideContainer */),
+            document.querySelector('.m-modal__content'),
+            document.querySelector('.wnl-comments')
+        ];
+        views.forEach(view => {
+            if (view)
+                view.scrollBy(options);
+        });
+    }
+    function showImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
+        if (fullscreenBtn)
+            fullscreenBtn.click();
+    }
+    function hideImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function hideModal() {
+        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function numericKeyPressed(key) {
+        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
+        if (quiz) {
+            const index = parseInt(key) - 1;
+            const answers = quiz.querySelectorAll('.quizAnswer');
+            if (index >= answers.length)
+                return;
+            answers[index].click();
+            return;
+        }
+        if (annotationImages.length > 0) {
+            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+        }
+        else {
+            const selector = `.present .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+            setTimeout(() => {
+                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+                let counter = 1;
+                annotationImages.forEach(image => {
+                    const btn = image.querySelector('.a-icon');
+                    btn.classList.add(`sub-id-${counter}`);
+                    const index = document.createElement('span');
+                    index.innerText = counter.toString();
+                    index.className = 'image-fullscreen-index';
+                    btn.appendChild(index);
+                    counter++;
+                });
+            }, 300);
+        }
+    }
+    let mouseVisible = true;
+    function toggleMouseVisibility(visible) {
+        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
+        //console.log({ mouseVisible, visible })
+        toggleBodyClass("custom-script-hide-cursor" /* hideCursor */, !mouseVisible);
+        if (!mouseVisible)
+            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
+    }
+})(Keyboard || (Keyboard = {}));
 class Options {
     constructor(options, settingsContainerSelector) {
         const document = unsafeWindow.document;
@@ -576,17 +1151,17 @@ class Options {
         return document.querySelector(this.settingsContainerSelector);
     }
     _rerenderSettings() {
-        console.log('trying to render sidebar', this.settingsContainer);
+        //console.log('trying to render sidebar', this.settingsContainer)
         if (this.settingsContainer) {
-            console.log('rendering sidebar', this.settingsContainer);
-            const optionDivs = this.settingsContainer.querySelectorAll(`div.${CLASS_NAMES.optionContainer}`);
+            //console.log('rendering sidebar', this.settingsContainer)
+            const optionDivs = this.settingsContainer.querySelectorAll(`div.${"custom-script-option-container" /* optionContainer */}`);
             optionDivs.forEach(el => el.remove());
             Object.values(this.state).forEach(option => this.settingsContainer.appendChild(this._getSettingsOption(option)));
         }
     }
     _getSettingsOption(option) {
         const optionContainer = document.createElement('div');
-        optionContainer.classList.add(CLASS_NAMES.optionContainer);
+        optionContainer.classList.add("custom-script-option-container" /* optionContainer */);
         const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
         const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
         optionContainer.innerHTML = getOption(desc);
@@ -678,7 +1253,7 @@ options = new Options([
             }
             return { value: !state.value };
         },
-        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseFontSize, state.value),
+        update: state => toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value),
         defaultValue: true,
         key: 'f'
     },
@@ -688,7 +1263,7 @@ options = new Options([
         callback: function (state) {
             return { value: !state.value };
         },
-        update: state => toggleBodyClass(BODY_CLASS_NAMES.increaseAnnotations, state.value),
+        update: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
         defaultValue: false,
         key: 'a'
     },
@@ -710,11 +1285,11 @@ options = new Options([
         },
         update: state => {
             if (state.value) {
-                setupKeyboardControl();
+                Keyboard.setupControl();
             }
             else {
                 document.querySelectorAll('sub.small').forEach(sub => sub.remove());
-                document.body.removeEventListener('keyup', shortcutListener);
+                Keyboard.disableControl();
                 if (slideObserver)
                     slideObserver.disconnect();
             }
@@ -729,7 +1304,7 @@ options = new Options([
             return Object.assign(Object.assign({}, state), { value: !state.value });
         },
         update: state => {
-            console.log('changeTitle update', { state });
+            //console.log('changeTitle update', { state })
             if (!state.value) {
                 if (state.originalTitle)
                     unsafeWindow.document.title = state.originalTitle;
@@ -756,7 +1331,7 @@ options = new Options([
             }
             return { value: !state.value };
         },
-        update: state => toggleBodyClass(BODY_CLASS_NAMES.uniformFontSize, state.value),
+        update: state => toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value),
         defaultValue: false,
         key: 'u'
     },
@@ -767,7 +1342,7 @@ options = new Options([
             return { value: !state.value };
         },
         defaultValue: false,
-        update: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
+        update: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
         key: 'i'
     },
     {
@@ -786,8 +1361,8 @@ options = new Options([
         defaultValue: 110,
         update: state => {
             updateFontSize(state.value);
-            const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
-            const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`);
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
             if (rangeInput) {
                 rangeInput.value = state.value;
                 rangeInput.title = state.value;
@@ -797,8 +1372,8 @@ options = new Options([
         },
         init: function (state) {
             function _toRun() {
-                const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
-                const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`);
+                const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+                const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
                 if (rangeInput) {
                     rangeInput.value = state.value;
                     rangeLabel.innerText = `${state.value}%`;
@@ -815,11 +1390,11 @@ options = new Options([
                     const current = this.state.percentIncrease.value;
                     this.setOptionState({ value: current + n }, 'percentIncrease');
                 };
-                registerKeyboardShortcut({
+                Keyboard.registerShortcut({
                     keys: ['-'],
                     callback: () => state.increaseBy(-5)
                 });
-                registerKeyboardShortcut({
+                Keyboard.registerShortcut({
                     keys: ['+', '='],
                     callback: () => state.increaseBy(5)
                 });
@@ -829,86 +1404,233 @@ options = new Options([
         },
         key: 'p'
     }
-], `.${CLASS_NAMES.settingsContainer}>div`);
-let suggestBreakTimer, obs, noteTarget;
-function startBreakTimer() {
-    clearTimeout(suggestBreakTimer);
-    console.log('starting suggestBreak timer...');
-    suggestBreakTimer = setTimeout(() => {
-        alert('Pora na przerwę 🔔');
-    }, 1000 * 60 * 7);
-}
-const notesBtnsContainer = `
-    <div class='custom-notes-btns-container'>
-        <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
-            <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
-                ${svgIcons.stickies}
-            </div>
-            <div class="a-icon -x-small custom-while-active" title="Ukryj notatki">
-                ${svgIcons.stickiesFill}
-            </div>
-        </a>
-        <div class='custom-notes-additional-btns hidden'>
-            <a class="custom-add-note-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small" title="Dodaj notatkę">
-                    ${svgIcons.plusSquare}
+], `.${"custom-script-settings-container" /* settingsContainer */}>div`);
+var BreakTimer;
+(function (BreakTimer) {
+    function start() {
+        clearTimeout(BreakTimer.timer);
+        //console.log('starting suggestBreak timer...')
+        BreakTimer.timer = setTimeout(() => {
+            alert('Pora na przerwę 🔔');
+        }, 1000 * 60 * 7);
+    }
+    BreakTimer.start = start;
+    toRunOnLoaded.push(() => {
+        BreakTimer.observer = onAttributeChange(document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */), 'slide', () => {
+            start();
+        });
+        tools && !tools.state.suggestBreak.value && BreakTimer.observer.disconnect();
+    });
+})(BreakTimer || (BreakTimer = {}));
+let noteTarget;
+const notesBtnsAndTags = ` 
+    <div class='custom-tags-and-btns-container'>
+        <div class='custom-tags-container'> 
+            <a class='custom-new-tag custom-tag'>${SVGIcons.plusCircle}</a>  
+        </div>
+        <div class='custom-notes-btns-container'>
+            <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
+                <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
+                    ${SVGIcons.stickies}
+                </div>
+                <div class="a-icon -x-small custom-while-active" title="Ukryj notatki">
+                    ${SVGIcons.stickiesFill}
                 </div>
             </a>
-            <a class="custom-clear-notes-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small" title="Usuń wszystkie notatki">
-                    ${svgIcons.eraserFill}
+            <div class="custom-add-note-btns-container">
+                <a class="custom-add-btn custom-script-slideshow-btn wnl-rounded-button">
+                    <div class="a-icon -x-small custom-while-inactive" title="Dodaj...">
+                        ${SVGIcons.plusSquare}
+                    </div>
+                    <div class="a-icon -x-small custom-while-active" style='transform: rotateZ(180deg)' title="Ukryj menu">
+                        ${SVGIcons.chevronUp}
+                    </div>
+                </a>
+                <div class="custom-add-note-btns">
+                    <a class="custom-add-note-btn custom-script-slideshow-btn wnl-rounded-button">
+                        <div class="a-icon -x-small" title="Dodaj notatkę">
+                        ${SVGIcons.stickies}
+                        </div>
+                    </a>
+                    <a class="custom-add-tag-btn custom-script-slideshow-btn wnl-rounded-button">
+                        <div class="a-icon -x-small" title="Dodaj tag">
+                        ${SVGIcons.tags}
+                        </div>
+                    </a>
                 </div>
-            </a>
-            <a class="custom-notes-view-type-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki w kolumnie">
-                    ${svgIcons.layoutChaotic}
+            </div>
+            <div class='custom-notes-additional-btns'>
+                <a class="custom-clear-notes-btn custom-script-slideshow-btn wnl-rounded-button">
+                    <div class="a-icon -x-small" title="Usuń wszystkie notatki">
+                        ${SVGIcons.eraserFill}
+                    </div>
+                </a>
+                <a class="custom-notes-view-type-btn custom-script-slideshow-btn wnl-rounded-button">
+                    <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki w kolumnie">
+                        ${SVGIcons.layoutChaotic}
+                    </div>
+                    <div class="a-icon -x-small custom-while-active" title="Pokaż notatki na slajdzie">
+                        ${SVGIcons.viewStack}
+                    </div>
+                </a>
+            </div>
+            <a class="custom-tags-view-btn custom-script-slideshow-btn wnl-rounded-button">
+                <div class="a-icon -x-small custom-while-inactive" title="Pokaż tagi">
+                    ${SVGIcons.tags}
                 </div>
-                <div class="a-icon -x-small custom-while-active" title="Pokaż notatki na slajdzie">
-                    ${svgIcons.viewStack}
+                <div class="a-icon -x-small custom-while-active" title="Ukryj tagi">
+                    ${SVGIcons.tagsFill}
                 </div>
             </a>
         </div>
     </div>`;
 function loadNotes() {
     return __awaiter(this, void 0, void 0, function* () {
-        const appDiv = document.querySelector(SELECTORS.appDiv);
-        notesCollection = yield PresentationNotesCollection.createAsync(presentationScreenID);
+        const appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+        notesCollection = yield Notes.Collections.Presentation.createAsync(presentationMetadata.screenID, presentationMetadata.lessonID);
         if (tools && tools.state.useNotes.value) {
+            setupTagsNamesAndColors();
             const slideNumber = appDiv.attributes.getNamedItem('slide').value;
             return renderNotes(parseInt(slideNumber));
         }
     });
 }
+const tagColorsStyles = document.createElement('style');
+document.head.append(tagColorsStyles);
+function setupTagsNamesAndColors() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const tags = yield notesCollection.getAllTagNames();
+        addTagStyle(tags);
+        const tagToOption = (tag) => {
+            const opt = document.createElement('option');
+            opt.value = tag.name;
+            opt.style.background = tag.color;
+            opt.innerHTML = tag.name;
+            return opt;
+        };
+        const suggestions = tags.map(tagToOption);
+        const suggestionsContainer = document.createElement('datalist');
+        suggestionsContainer.id = 'custom-tags-list';
+        suggestionsContainer.append(...suggestions);
+        document.body.append(suggestionsContainer);
+        notesCollection.addEventListener('changedTags', desc => {
+            if (desc.added && desc.added.length) {
+                addTagStyle(desc.added);
+                suggestionsContainer.append(...desc.added.map(tagToOption));
+            }
+            if (desc.changed && desc.changed.length) {
+                desc.changed.forEach(setTagColor);
+            }
+        });
+    });
+}
+function addTagStyle(tags) {
+    tags.forEach((tag) => __awaiter(this, void 0, void 0, function* () {
+        const rule = yield getRuleFromTag(tag);
+        //console.log({ rule })
+        tagColorsStyles.sheet.insertRule(rule);
+    }));
+}
+function getRuleFromTag(tag) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const varName = yield setTagColor(tag);
+        return `.custom-tag[title=${tag.name}] { 
+        background: var(${varName}-bg); 
+        color: var(${varName}-color) 
+    }`;
+    });
+}
+const btnsContainerNoTags = new ClassToggler('custom-no-tags', '.custom-notes-btns-container');
+const btnsContainerNoNotes = new ClassToggler('custom-no-notes', '.custom-notes-btns-container');
+function getRandomTagColor() {
+    const colors = ["#6e8898", "#606c38", "#fabc2a", "#c3423f", "#011936"];
+    return getRandomElement(colors);
+}
+function setTagColor(tag) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const varName = yield getTagVarName(tag);
+        root.style.setProperty(`${varName}-bg`, tag.color);
+        root.style.setProperty(`${varName}-color`, getForegroundColor(tag.color));
+        return varName;
+    });
+}
+function getTagVarName(tag) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const subtleCrypto = unsafeWindow.crypto.subtle;
+        const encoder = new TextEncoder();
+        const toDigest = encoder.encode(tag.name);
+        const hashBuffer = yield subtleCrypto.digest('SHA-1', toDigest);
+        const hashArray = new Uint8Array(hashBuffer);
+        const hash = hashArray.map(v => v.toString(16).padStart(2, '0')).slice(0, 15).join('');
+        return `--custom-tag-${hash}`;
+    });
+}
 function renderNotes(slideNumber) {
-    if (currentSlideNotes)
+    if (currentSlideNotes) {
         currentSlideNotes.commitChanges();
+        const removedListener = currentSlideNotes.removeEventListener('change', slideNotesChanged);
+        //console.log({ removedListener })
+    }
     if (tools && tools.state.useNotes.value && notesCollection) {
         if (noteTarget)
             noteTarget.innerHTML = '';
-        const currentSlide = document.querySelector(SELECTORS.currentSlideContainer);
+        const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
         const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
-        if (!noteTarget && notesOverlayElem)
-            return;
         return notesCollection.getNotesBySlide(slideNumber).then(notes => {
             currentSlideNotes = notes;
-            console.log({ currentSlideNotes });
-            currentSlideNotes.onchange = slideNotesChanged;
+            renderTags();
+            btnsContainerNoNotes.state = !notes.notes.length;
+            if (!noteTarget && notesOverlayElem)
+                return notes.notes.map(n => n.element);
+            //console.log({ currentSlideNotes })
+            currentSlideNotes.addEventListener('change', slideNotesChanged);
             return addNoteElems(notes.notes);
         });
     }
 }
+function renderTags() {
+    const tagContainer = document.querySelector('.custom-tags-container');
+    const toRemove = Array.from(tagContainer.children);
+    toRemove.pop();
+    toRemove.forEach(el => el.remove());
+    const tags = currentSlideNotes.tags;
+    if (tags.length) {
+        tags.forEach(tag => {
+            tag.render(tagContainer);
+            tag.addEventListener('colorChange', ({ newColor }) => {
+                setTagColor({ color: newColor, name: tag.content });
+            });
+        });
+    }
+    btnsContainerNoTags.state = !tags.length;
+}
 function slideNotesChanged(change) {
     if (change.added) {
-        addNoteElems(change.added);
+        const regular = change.added.filter(note => note instanceof Notes.RegularNote);
+        if (regular.length)
+            addNoteElems(regular);
+        const tags = change.added.filter(note => note instanceof Notes.TagNote);
+        btnsContainerNoTags.state && (btnsContainerNoTags.state = !tags.length);
+        const tagContainer = document.querySelector('.custom-tags-container');
+        tags.forEach(tag => {
+            const tagElem = tag.render(tagContainer);
+            tagElem.click();
+        });
+    }
+    if (change.deleted && !currentSlideNotes.notes.length) {
+        btnsContainerNoNotes.state = true;
     }
 }
 function addNoteElems(notes) {
+    if (!notes.length)
+        return;
+    btnsContainerNoNotes.state = false;
     let parent;
+    const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
     if (noteTarget) {
         parent = noteTarget;
     }
     else {
-        const currentSlide = document.querySelector(SELECTORS.currentSlideContainer);
         let notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
         if (!notesOverlayElem) {
             notesOverlayElem = document.createElement('div');
@@ -918,33 +1640,60 @@ function addNoteElems(notes) {
         parent = notesOverlayElem;
     }
     return notes.map(note => {
-        return note.render(parent);
+        const noteElem = note.render(parent);
+        const textContext = note.metadata.textContext;
+        if (textContext && textContext.trim().length) {
+            const allNodes = currentSlide.querySelectorAll('*');
+            const contextElem = Array.from(allNodes).find(node => {
+                return node.innerText && node.innerText.trim() === textContext.trim();
+            });
+            if (contextElem)
+                setupContextElem(contextElem, note);
+        }
+        return noteElem;
     });
 }
 const addNoteBtnHandler = (event) => {
     if (currentSlideNotes) {
-        const slide = document.querySelector(SELECTORS.currentSlideContainer);
+        const slide = document.querySelector(".present .present" /* currentSlideContainer */);
         slide.style.cursor = `copy`;
+        const newNote = currentSlideNotes.addNote({
+            content: '', position: { x: 0, y: 1 },
+            presentationTitle: presentationMetadata.name,
+            slideTitle: presentationMetadata.currentSlideTitle,
+            type: 'regular'
+        });
+        newNote.startFollowingMouse({ x: 0, y: 10 });
         slide.addEventListener('click', event => {
             event.preventDefault();
             event.stopImmediatePropagation();
+            newNote.endFollowingMouse();
             slide.style.cursor = '';
-            const slideRect = slide.getBoundingClientRect();
-            console.log({ event, slideRect });
-            const position = {
-                x: (event.x - slideRect.x) / slideRect.width,
-                y: (event.y - slideRect.y) / slideRect.height
-            };
-            const textContext = event.target.innerText;
-            const newNote = currentSlideNotes.addNote({
-                position, content: '', textContext,
-                presentationTitle: presentationName,
-                slideTitle: currentSlideTitle
-            });
+            const contextElem = event.target;
+            setupContextElem(contextElem, newNote);
+            const textContext = contextElem.innerText;
+            newNote.metadata.textContext = textContext;
             newNote.element.click();
         }, { once: true });
     }
 };
+function setupContextElem(contextElem, note) {
+    const noteElem = note.element;
+    contextElem.title = `Notatka: ${note.content}`;
+    note.addEventListener('change', ({ newContent }) => contextElem.title = `Notatka: ${newContent}`);
+    note.addEventListener('remove', () => contextElem.title = '');
+    noteElem.addEventListener('mouseenter', () => {
+        if (note.isMoving)
+            return;
+        contextElem.style.border = 'solid 1px black';
+    });
+    noteElem.addEventListener('mouseleave', () => {
+        contextElem.style.border = '';
+    });
+    note.addEventListener('remove', () => {
+        contextElem.style.border = '';
+    });
+}
 function addNotesColumn() {
     const notesContainer = document.createElement('div');
     notesContainer.classList.add('custom-script-notes-column', 'custom-script-hidden');
@@ -954,10 +1703,6 @@ function addNotesColumn() {
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible');
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column');
 toRunOnLoaded.push(() => {
-    obs = onAttributeChange(document.querySelector(SELECTORS.appDiv), 'slide', () => {
-        startBreakTimer();
-    });
-    tools && !tools.state.suggestBreak.value && obs.disconnect();
     if (tools && tools.state.useNotes.value) {
         addNotesColumn();
         setupNotesBtns();
@@ -972,30 +1717,30 @@ tools = new Options([
             return { value: !state.value };
         },
         update: state => {
-            console.log('update suggestBreak', { state, obs });
-            if (!obs)
+            //console.log('update suggestBreak', { state, obs: BreakTimer.observer })
+            if (!BreakTimer.observer)
                 return;
             if (state.value) {
-                obs.observe(document.querySelector(SELECTORS.appDiv), { attributes: true });
-                startBreakTimer();
+                BreakTimer.observer.observe(document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */), { attributes: true });
+                BreakTimer.start();
             }
             else {
-                obs.disconnect();
-                if (suggestBreakTimer)
-                    clearTimeout(suggestBreakTimer);
+                BreakTimer.observer.disconnect();
+                if (BreakTimer.timer)
+                    clearTimeout(BreakTimer.timer);
             }
         }
     },
     {
         name: "useNotes",
-        desc: state => `${getCheckboxEmoji(state.value)}📝 Używaj notatek`,
+        desc: state => `${getCheckboxEmoji(state.value)}📝 Używaj notatek i tagów`,
         defaultValue: false,
         callback: function (state) {
             return { value: !state.value };
         },
         update: state => {
             toggleBodyClass('custom-script-use-notes', state.value);
-            if (presentationScreenID && state.value && !notesCollection) {
+            if (presentationMetadata.screenID && state.value && !notesCollection) {
                 addNotesColumn();
                 setupNotesBtns();
                 loadNotes();
@@ -1010,8 +1755,8 @@ tools = new Options([
         type: 'button',
         callback: () => {
             notesCollection.exportNotes().then(notes => {
-                console.log({ notes });
-                downloadFile('application/json', `${presentationName}-notes.json`, JSON.stringify(notes));
+                //console.log({ notes })
+                downloadFile('application/json', `${presentationMetadata.name}-notes.json`, JSON.stringify(notes));
             });
         }
     },
@@ -1022,7 +1767,7 @@ tools = new Options([
         callback: (state) => {
             const uploadInput = state.uploadInput;
             uploadInput.addEventListener('change', (ev) => {
-                console.log({ ev });
+                //console.log({ ev })
                 if (uploadInput.files.length) {
                     const file = uploadInput.files.item(0);
                     file.text().then(imported => notesCollection.importNotes(JSON.parse(imported))).then(() => unsafeWindow.location.reload());
@@ -1040,10 +1785,26 @@ tools = new Options([
             state.uploadInput = uploadInput;
         }
     }
-], `.${CLASS_NAMES.toolsContainer}`);
+], `.${"custom-script-tools-container" /* toolsContainer */}`);
 function setupNotesBtns() {
-    const addNoteBtn = document.querySelector('.custom-add-note-btn');
-    addNoteBtn.addEventListener('click', addNoteBtnHandler);
+    const addBtn = document.querySelector('.custom-add-btn');
+    const addBtnContToggle = new ClassToggler('active', '.custom-add-note-btns');
+    const addBtnToggle = new ClassToggler('active', addBtn, t => {
+        addBtnContToggle.state = t.state;
+    });
+    addBtn.addEventListener('click', () => addBtnToggle.toggle());
+    const viewTagsBtn = document.querySelector('.custom-tags-view-btn');
+    const viewTagsToggle = new ClassToggler('custom-script-tags-visible');
+    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state);
+    viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle());
+    const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn');
+    const onAddTag = () => {
+        addBtnToggle.state = false;
+        viewTagsBtnToggle.state = true;
+        addTag();
+    };
+    addTagBtns.forEach(btn => btn.addEventListener('click', onAddTag));
+    Keyboard.registerShortcut({ keys: ['t'], callback: onAddTag });
     const clearNotesBtn = document.querySelector('.custom-clear-notes-btn');
     clearNotesBtn.addEventListener('click', () => {
         if (currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${currentSlideNotes.notes.length}) notatki ze slajdu ${currentSlideNotes.metadata.slide}?`))
@@ -1051,7 +1812,7 @@ function setupNotesBtns() {
     });
     let viewNotesBtnToggle;
     const viewNotesBtn = document.querySelector('.custom-notes-view-btn');
-    const hiddenBtnsToggle = new ClassToggler('hidden', '.custom-notes-additional-btns');
+    const hiddenBtnsToggle = new ClassToggler('inactive', '.custom-notes-additional-btns');
     const viewTypeBtn = document.querySelector('.custom-notes-view-type-btn');
     const viewTypeBtnToggle = new ClassToggler('active', viewTypeBtn, t => {
         if (!viewNotesBtnToggle || !viewNotesBtnToggle.state)
@@ -1067,7 +1828,7 @@ function setupNotesBtns() {
             document.querySelectorAll('.custom-notes-overlay').forEach(el => el.remove());
         }
         currentSlideNotes.commitChanges().then(() => {
-            renderNotes(currentSlideNumber);
+            renderNotes(presentationMetadata.currentSlideNumber);
         });
     });
     viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
@@ -1075,426 +1836,258 @@ function setupNotesBtns() {
         notesOverlayToggle.state = !viewTypeBtnToggle.state && t.state;
         noteColumnToggle.state = !(viewTypeBtnToggle.state && t.state);
     });
+    const addNoteBtn = document.querySelector('.custom-add-note-btn');
+    addNoteBtn.addEventListener('click', (ev) => {
+        addBtnToggle.state = false;
+        viewNotesBtnToggle.state = true;
+        addNoteBtnHandler(ev);
+    });
     viewNotesBtnToggle.state = tools && tools.state.useNotes.value;
     viewNotesBtn.addEventListener('click', () => viewNotesBtnToggle.toggle());
-    registerKeyboardShortcut({
+    Keyboard.registerShortcut({
         keys: ['n'], callback: () => viewNotesBtnToggle.toggle()
     });
     viewTypeBtn.addEventListener('click', () => viewTypeBtnToggle.toggle());
-    registerKeyboardShortcut({
+    Keyboard.registerShortcut({
         keys: ['v'], callback: () => viewTypeBtnToggle.toggle()
     });
 }
-let keyboardShortcuts = [
-    {
-        keys: ['ArrowUp'],
-        callback: showImage
-    },
-    {
-        keys: ['ArrowUp'],
-        callback: showImage
-    },
-    {
-        keys: ['q', '0', 'Escape'],
-        callback: hideModal
-    },
-    {
-        keys: ['m'],
-        callback: () => toggleMouseVisibility()
-    },
-    {
-        keys: ['o', 's'],
-        callback: () => toggleOptions()
-    },
-    {
-        keys: ['?', '/'],
-        callback: () => toggleSearch()
-    },
-    {
-        keys: ['l'],
-        callback: () => toggleSummary()
-    },
-    {
-        keys: ['Enter'],
-        callback: () => {
-            const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
-            if (quizVerifyBtn)
-                quizVerifyBtn.click();
-        }
-    }
-];
-function registerKeyboardShortcut(shortcut) {
-    keyboardShortcuts.push(shortcut);
-}
-function shortcutListener(event) {
-    const tagName = event.target.nodeName;
-    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
-        return;
-    }
-    keyboardShortcuts.forEach(shortcut => {
-        if (shortcut.keys.includes(event.key))
-            shortcut.callback(event);
-    });
-    // let quizVerifyBtn: HTMLElement
-    // switch (event.key) {
-    //     case 'ArrowUp':
-    //         showImage()
-    //         break
-    //     case 'ArrowDown':
-    //         hideImage()
-    //         break
-    //     case 'q':
-    //     case '0':
-    //         hideModal()
-    //         break
-    //     case 'm':
-    //         toggleMouseVisibility()
-    //         break
-    //     case 'o':
-    //     case 's':
-    //         toggleOptions()
-    //         break
-    //     case '?':
-    //     case '/':
-    //         toggleSearch()
-    //         break
-    //     case 'l':
-    //         toggleSummary()
-    //         break
-    //     case 'Escape':
-    //         hideModal()
-    //         break
-    //     case 'Enter':
-    //         quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span')
-    //         if (quizVerifyBtn) quizVerifyBtn.click()
-    //         break
-    // }
-    const charCode = event.keyCode;
-    if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
-        numericKeyPressed(event.key);
-}
-function setupKeyboardControl() {
-    const slides = document.querySelectorAll('.slides .stack');
-    if (!slides.length)
-        return;
-    slides.forEach(slide => {
-        let counter = 1;
-        const icons = slide.querySelectorAll('.a-icon');
-        icons.forEach(icon => addSubToRef(icon, counter++));
-    });
-    observeSlides(addSubsToRefs);
-    // document.body.addEventListener('click', updateTabTitle)
-    // document.body.addEventListener('keyup', updateTabTitle)
-    document.body.addEventListener('keydown', event => {
-        if (event.key === ' ' || event.key === 'l') {
-            // event.preventDefault()
-            event.stopImmediatePropagation();
-        }
-        if (event.key === 'ArrowUp') {
-            scrollView(-60);
-            return false;
-        }
-        if (event.key === 'ArrowDown' || event.key === ' ') {
-            scrollView(60);
-            return false;
-        }
-    });
-    document.body.addEventListener('keyup', shortcutListener);
-}
-function observeSlides(cb) {
-    console.log('observeSlides');
-    slideObserver = new MutationObserver(cb);
-    slideObserver.observe(document.querySelector('div.slides'), {
-        childList: true,
-        subtree: true
+function addTag() {
+    currentSlideNotes.addTag({
+        content: '', color: getRandomTagColor(),
+        presentationTitle: presentationMetadata.name,
+        slideTitle: presentationMetadata.currentSlideTitle
     });
 }
-function observeSlideNumber(cb) {
-    console.log('observe slide number');
-    const appDiv = document.querySelector(SELECTORS.appDiv);
-    slideNumberObserver = onAttributeChange(appDiv, 'slide', value => cb(parseInt(value)));
-}
-function addSubsToRefs(mutations) {
-    console.log('mutation observed');
-    let counter = 1;
-    mutations.forEach(mutation => {
-        if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
-            console.log('node added');
-            let ref = mutation.addedNodes[0];
-            if (ref.className && ref.className.includes('m-referenceTrigger')) {
-                addSubToRef(ref, counter);
-                counter++;
-            }
-        }
-    });
-}
-function addSubToRef(ref, counter) {
-    const sub = document.createElement('sub');
-    sub.innerText = counter.toString();
-    sub.className = `small`;
-    ref.classList.add(`sub-id-${counter}`);
-    ref.appendChild(sub);
-}
-function scrollView(y) {
-    const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
-    const options = { top: y, left: 0, behavior };
-    const views = [
-        document.querySelector(SELECTORS.currentSlideContainer),
-        document.querySelector('.m-modal__content'),
-        document.querySelector('.wnl-comments')
-    ];
-    views.forEach(view => {
-        if (view)
-            view.scrollBy(options);
-    });
-}
-function updateTabTitle() {
-    let currentTitleHeader = document.querySelector('.present .sl-block-content h2');
-    if (currentTitleHeader !== null)
-        currentSlideTitle = currentTitleHeader.textContent;
-    if (GM_getValue('option_changeTitle')) {
-        let mainTitle;
-        mainTitle = presentationName && presentationName.match(/\w/) ? `${presentationName} - ` : '';
-        const slideTitle = currentSlideTitle && currentSlideTitle.match(/\w/) ? `${currentSlideTitle} - ` : '';
-        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK';
-        document.title = slideTitle + mainTitle + originalTitle;
-    }
-}
-function showImage() {
-    if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-        return;
-    let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
-    if (fullscreenBtn)
-        fullscreenBtn.click();
-}
-function hideImage() {
-    if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-        return;
-    let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
-    if (exitBtn)
-        exitBtn.click();
-    exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
-    if (exitBtn)
-        exitBtn.click();
-}
-function hideModal() {
-    let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
-    if (exitBtn)
-        exitBtn.click();
-}
-function numericKeyPressed(key) {
-    let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-    const quiz = document.querySelector('.o-referenceModal .quizQuestion');
-    if (quiz) {
-        const index = parseInt(key) - 1;
-        const answers = quiz.querySelectorAll('.quizAnswer');
-        if (index >= answers.length)
-            return;
-        answers[index].click();
-        return;
-    }
-    if (annotationImages.length > 0) {
-        const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
-        const icon = document.querySelector(selector);
-        console.log({ selector, icon });
-        if (icon)
-            icon.click();
-    }
-    else {
-        const selector = `.present .a-icon.sub-id-${key}`;
-        const icon = document.querySelector(selector);
-        console.log({ selector, icon });
-        if (icon)
-            icon.click();
-        setTimeout(() => {
-            annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-            let counter = 1;
-            annotationImages.forEach(image => {
-                const btn = image.querySelector('.a-icon');
-                btn.classList.add(`sub-id-${counter}`);
-                const index = document.createElement('span');
-                index.innerText = counter.toString();
-                index.className = 'image-fullscreen-index';
-                btn.appendChild(index);
-                counter++;
-            });
-        }, 300);
-    }
-}
-let mouseVisible = true;
-function toggleMouseVisibility(visible) {
-    mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
-    console.log({ mouseVisible, visible });
-    toggleBodyClass(BODY_CLASS_NAMES.hideCursor, !mouseVisible);
-    if (!mouseVisible)
-        document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
-}
-const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
-const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
-let searchContainer, searchResultsContainer;
-function addSearchContainer() {
-    searchContainer = document.createElement('div');
-    searchContainer.className = 'custom-script-search custom-script-hidden';
-    searchContainer.innerHTML = `
+var Search;
+(function (Search) {
+    const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
+    const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
+    let searchContainer, searchResultsContainer;
+    function addSearchContainer() {
+        searchContainer = document.createElement('div');
+        searchContainer.className = 'custom-script-search custom-script-hidden';
+        searchContainer.innerHTML = `
         <input class="custom-search-result" style="width: 80%;display: inline-block;">
-        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${svgIcons.search}</a>
+        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
         `;
-    const closeBtn = document.createElement('div');
-    closeBtn.className = 'custom-script-summary-close';
-    closeBtn.innerHTML = svgIcons.chevronUp;
-    searchContainer.prepend(closeBtn);
-    closeBtn.addEventListener('click', () => toggleSearch(false));
-    searchResultsContainer = document.createElement('div');
-    searchContainer.append(searchResultsContainer);
-    document.querySelector('.order-number-container').after(searchContainer);
-    searchContainer.querySelector('input.custom-search-result').addEventListener('change', () => performSearch());
-    searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch());
-}
-function performSearch() {
-    if (!searchContainer)
-        return;
-    const q = searchContainer.querySelector('input.custom-search-result').value;
-    const interpretation = interpretQuery(q);
-    searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
-    getSearchResponseHTML(interpretation).then(resp => {
-        if (searchResultsContainer)
-            searchResultsContainer.innerHTML = resp;
-        toggleSearch(true);
-    });
-}
-function interpretQuery(rawQuery) {
-    let query = rawQuery.replace(/"/g, '');
-    rawQuery = rawQuery.toLowerCase();
-    const quotesRegExp = /"([^"]+)"/g;
-    const hasntRegExp = /-\w+/g;
-    let mustContain = rawQuery.match(quotesRegExp);
-    let musntContain = rawQuery.match(hasntRegExp);
-    if (musntContain)
-        musntContain.forEach(toReplace => {
-            query.replace(`-${toReplace}`, '');
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'custom-script-summary-close';
+        closeBtn.innerHTML = SVGIcons.chevronUp;
+        searchContainer.prepend(closeBtn);
+        closeBtn.addEventListener('click', () => Search.hiddenToggle.state = true);
+        searchResultsContainer = document.createElement('div');
+        searchContainer.append(searchResultsContainer);
+        document.querySelector('.order-number-container').after(searchContainer);
+        searchContainer.querySelector('input.custom-search-result').addEventListener('change', () => performSearch());
+        searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch());
+    }
+    Search.addSearchContainer = addSearchContainer;
+    function performSearch() {
+        if (!searchContainer)
+            return;
+        const q = searchContainer.querySelector('input.custom-search-result').value;
+        const interpretation = interpretQuery(q);
+        searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
+        getSearchResponseHTML(interpretation).then(resp => {
+            if (searchResultsContainer) {
+                searchResultsContainer.innerHTML = '';
+                searchResultsContainer.append(...resp);
+            }
+            Search.hiddenToggle.state = false;
         });
-    query = query.trim();
-    if (mustContain)
-        mustContain = mustContain.map(s => s.slice(1, -1));
-    if (musntContain)
-        musntContain = musntContain.map(s => s.slice(1));
-    return { query, rawQuery, mustContain, musntContain };
-}
-function getSearchResponseHTML(q) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const response = yield searchRequest(q);
-        if (response.length) {
-            return response.map(el => `
-            <a href='${WNL_DYNAMIC_SLIDES + el.id}' target='_blank' class='custom-search-result'>
+    }
+    function interpretQuery(rawQuery) {
+        let query = rawQuery.replace(/"/g, '');
+        rawQuery = rawQuery.toLowerCase();
+        const quotesRegExp = /"([^"]+)"/g;
+        const hasntRegExp = /-\w+/g;
+        let mustContain = rawQuery.match(quotesRegExp);
+        let musntContain = rawQuery.match(hasntRegExp);
+        if (musntContain)
+            musntContain.forEach(toReplace => {
+                query.replace(`-${toReplace}`, '');
+            });
+        query = query.trim();
+        if (mustContain)
+            mustContain = mustContain.map(s => s.slice(1, -1));
+        if (musntContain)
+            musntContain = musntContain.map(s => s.slice(1));
+        return { query, rawQuery, mustContain, musntContain };
+    }
+    function getSearchResponseHTML(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield searchRequest(q);
+            if (response.length) {
+                return response.map(el => {
+                    const link = document.createElement('a');
+                    link.innerHTML = `
                 <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
                 <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-                <p>${el.highlight['snippet.content'] || el.details.content}</p>
-            </a>
-            `).join('');
-        }
-        return `<p style='padding:0.5rem'>Nie znaleziono frazy <em>${q.rawQuery}</em> :(</p>`;
-    });
-}
-function toggleSearch(visible) {
-    if (!searchContainer)
-        return;
-    if (typeof visible === 'undefined')
-        visible = searchContainer.className.includes('custom-script-hidden');
-    if (visible) {
-        searchContainer.classList.remove('custom-script-hidden');
-        setTimeout(() => searchContainer.querySelector('input.custom-search-result').focus(), 100);
-    }
-    else
-        searchContainer.classList.add('custom-script-hidden');
-}
-function searchRequest(q) {
-    return new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            url: getSearchURL(q.query),
-            method: 'GET',
-            responseType: "json",
-            onload: ({ response }) => {
-                const entries = Object.entries(response);
-                const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
-                const parsed = results.map(el => {
-                    return {
-                        highlight: el.scout_metadata.highlight,
-                        details: el.snippet,
-                        context: el.context,
-                        id: el.id
-                    };
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
+                    link.href = getHref(el);
+                    link.target = '_blank';
+                    link.className = 'custom-search-result';
+                    link.addEventListener('click', ev => {
+                        ev.preventDefault();
+                        openSlideInTab({
+                            currentTab: -2,
+                            lessonID: el.context.lesson.id,
+                            screenID: el.context.screen.id,
+                            slide: el.context.slideshow.order_number
+                        });
+                    });
+                    return link;
                 });
-                resolve(filterSearch(parsed, q));
-            },
-            onerror: reject
+            }
+            const notFoundInfo = document.createElement('p');
+            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
+            notFoundInfo.style.padding = '0.5rem';
+            return [notFoundInfo];
+            function getHref(el) {
+                const fragm = {
+                    f1: el.context.lesson,
+                    f2: el.context.screen,
+                    f3: el.context.slideshow
+                };
+                if (Object.values(fragm).every(val => val)) {
+                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
+                    if (path.every(val => val)) {
+                        return [WNL_LESSON_LINK, ...path].join('/');
+                    }
+                }
+                if (el.id)
+                    return WNL_DYNAMIC_SLIDES + el.id;
+                return '#';
+            }
         });
+    }
+    Search.hiddenToggle = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+        if (!t.state)
+            setTimeout(() => {
+                searchContainer.querySelector('input.custom-search-result').focus();
+            }, 100);
     });
-}
-function filterSearch(parsed, q) {
-    let filtered = parsed;
-    if (q.mustContain) {
-        filtered = parsed.filter(result => {
-            return hasSomePhrases(result, q.mustContain).every(includes => includes);
-        });
-    }
-    if (q.musntContain) {
-        filtered = filtered.filter(result => {
-            return !hasSomePhrases(result, q.musntContain).some(includes => includes);
-        });
-    }
-    return filtered;
-    function hasSomePhrases(result, phrases) {
-        return phrases.map(toSearch => {
-            return Object.values(result.highlight).some(highlighted => {
-                return highlighted.some(s => stripTags(s).includes(toSearch));
+    function searchRequest(q) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                url: getSearchURL(q.query),
+                method: 'GET',
+                responseType: "json",
+                onload: ({ response }) => {
+                    const entries = Object.entries(response);
+                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
+                    const parsed = results.map(el => {
+                        return {
+                            highlight: el.scout_metadata.highlight,
+                            details: el.snippet,
+                            context: el.context,
+                            id: el.id
+                        };
+                    });
+                    resolve(filterSearch(parsed, q));
+                },
+                onerror: reject
             });
         });
     }
-}
-function stripTags(s) {
-    const tagStripper = /<[^>]+>/g;
-    return s.toLowerCase().replace(tagStripper, '');
-}
+    function filterSearch(parsed, q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let filtered = parsed;
+            if (q.mustContain) {
+                filtered = parsed.filter(result => {
+                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
+                });
+            }
+            if (q.musntContain) {
+                filtered = filtered.filter(result => {
+                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
+                });
+            }
+            return (yield getTagsAsResults(q)).concat(filtered);
+            function hasSomePhrases(result, phrases) {
+                return phrases.map(toSearch => {
+                    return Object.values(result.highlight).some(highlighted => {
+                        return highlighted.some(s => stripHTMLTags(s).includes(toSearch));
+                    });
+                });
+            }
+        });
+    }
+    function getTagsAsResults(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!notesCollection)
+                return [];
+            const tags = yield notesCollection.getAllTagsWithName(q.query);
+            return tags.map(tag => {
+                return {
+                    highlight: {
+                        "snippet.content": [`<div title='${tag.content}' class='custom-tag'>${tag.content}</div>`]
+                    },
+                    details: {
+                        header: tag.presentationTitle,
+                        subheader: tag.slideTitle,
+                    },
+                    context: {
+                        screen: { id: tag.screenid },
+                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
+                        slideshow: {
+                            order_number: tag.slide
+                        }
+                    }
+                };
+            });
+        });
+    }
+    function stripHTMLTags(s) {
+        const tagStripper = /<[^>]+>/g;
+        return s.toLowerCase().replace(tagStripper, '');
+    }
+})(Search || (Search = {}));
+var Toggles;
+(function (Toggles) {
+    Toggles.searchHidden = Search.hiddenToggle;
+})(Toggles || (Toggles = {}));
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
-            ${svgIcons.chevronUp}
+            ${SVGIcons.chevronUp}
         </div>
     </a>`;
 const slideshowOptions = `
     <a class="custom-search-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Szukaj" style="margin: 0;padding: 0;">
-            ${svgIcons.search}
+            ${SVGIcons.search}
         </div>
         <span class="custom-btn-caption">SZUKAJ</span>
     </a>
     <a class="custom-zoom-up-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
-            ${svgIcons.zoomIn}
+            ${SVGIcons.zoomIn}
         </div>
     </a>
     <a class="custom-zoom-down-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Powiększ">
-            ${svgIcons.zoomOut}
+            ${SVGIcons.zoomOut}
         </div>
     </a>`;
 function addSlideOptions() {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark');
     if (!bookmarkBtn)
         return;
-    addSearchContainer();
+    Search.addSearchContainer();
     slideOptionsContainer = document.createElement('div');
-    slideOptionsContainer.innerHTML = notesBtnsContainer + slideshowOptionsBtn;
+    slideOptionsContainer.innerHTML = notesBtnsAndTags + slideshowOptionsBtn;
     additionalOptionsContainer = document.createElement('div');
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options';
     additionalOptionsContainer.innerHTML = slideshowOptions;
     slideOptionsContainer.append(additionalOptionsContainer);
     bookmarkBtn.after(slideOptionsContainer);
     additionalOptionsContainer.prepend(bookmarkBtn);
-    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => toggleOptions());
+    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsActive.toggle());
     slideOptionsContainer.querySelector('.custom-search-btn').addEventListener('click', () => {
-        toggleOptions(false);
-        toggleSearch(true);
+        Toggles.optionsActive.state = false;
+        Toggles.searchHidden.toggle();
     });
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (options) {
@@ -1518,23 +2111,23 @@ function addSummary(metadata) {
     summaryContainer.innerHTML = linksHTML;
     const closeBtn = document.createElement('div');
     closeBtn.className = 'custom-script-summary-close';
-    closeBtn.innerHTML = svgIcons.chevronUp;
+    closeBtn.innerHTML = SVGIcons.chevronUp;
     summaryContainer.prepend(closeBtn);
-    closeBtn.addEventListener('click', () => toggleSummary(false));
+    closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true);
     document.querySelector('.order-number-container').after(summaryContainer);
     const links = summaryContainer.querySelectorAll('a.custom-script-summary-link');
     links.forEach(link => {
         link.addEventListener('click', event => {
             event.preventDefault();
             const { startPage } = link.dataset;
-            goToPage(parseInt(startPage));
+            goToSlideN(parseInt(startPage));
             return false;
         });
     });
 }
 function addChapterInfo() {
     getMetadata(metadata => {
-        console.log({ metadata });
+        //console.log({ metadata });
         if (!metadata)
             return;
         addPageNumberContainer();
@@ -1547,8 +2140,8 @@ function addChapterInfo() {
 function onSlideChanged(current, metadata) {
     if (current === NaN)
         return;
-    currentSlideNumber = current;
-    const pageNumberContainer = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
+    presentationMetadata.currentSlideNumber = current;
+    const pageNumberContainer = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
         return i >= 0 ? i : metadata.length - 1;
@@ -1557,9 +2150,9 @@ function onSlideChanged(current, metadata) {
     const chapterMetadata = metadata[chapterIndex];
     const relativeCurrent = current - chapterMetadata.startPage + 1;
     const chapterLength = chapterMetadata.chapterLength;
-    const relativeCurrentContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.currentChapterPage}`);
+    const relativeCurrentContainer = pageNumberContainer.querySelector(`.${"current-number" /* currentChapterPage */}`);
     relativeCurrentContainer.innerText = relativeCurrent.toString();
-    const chapterLengthContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.chapterLength}`);
+    const chapterLengthContainer = pageNumberContainer.querySelector(`.${"n-of-pages" /* chapterLength */}`);
     chapterLengthContainer.innerText = chapterLength.toString();
     if (summaryContainer) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
@@ -1573,7 +2166,7 @@ function onSlideChanged(current, metadata) {
     renderNotes(current);
 }
 function addPageNumberContainer() {
-    const classNames = [CLASS_NAMES.pageNumberContainer, CLASS_NAMES.currentChapterPage, '', CLASS_NAMES.chapterLength];
+    const classNames = ["custom-script-page-number-container" /* pageNumberContainer */, "current-number" /* currentChapterPage */, '', "n-of-pages" /* chapterLength */];
     const spans = classNames.map(name => {
         const span = document.createElement('span');
         span.className = name;
@@ -1584,11 +2177,11 @@ function addPageNumberContainer() {
         spans[0].appendChild(spans[i]);
     }
     document.querySelector('.order-number-container').after(spans[0]);
-    spans[0].addEventListener('click', () => toggleSummary());
+    spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle());
     return spans[0];
 }
 function openMenu() {
-    const menuBtn = document.querySelector(SELECTORS.menuBtn);
+    const menuBtn = document.querySelector(".topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint" /* menuBtn */);
     if (menuBtn) {
         menuBtn.click();
         return true;
@@ -1658,67 +2251,92 @@ function getMetadataFromLinks(wrappers) {
 (function () {
     'use strict';
     function onLoaded() {
-        console.log('loaded');
         if (!appDiv) {
-            appDiv = document.querySelector(SELECTORS.appDiv);
+            appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
             if (appDiv) {
                 onAttributeChange(appDiv, 'screenid', checkUnloaded);
-                presentationScreenID = parseInt(appDiv.attributes.getNamedItem('screenid').value);
-                console.log({ screenid: presentationScreenID });
+                presentationMetadata.screenID = parseInt(appDiv.attributes.getNamedItem('screenid').value);
+                presentationMetadata.lessonID = getCurrentLessonID();
+                //console.log({ screenid: presentationMetadata.screenID })
                 if (tools && tools.state.useNotes.value) {
                     loadNotes();
                 }
             }
         }
-        let background = document.querySelector(SELECTORS.background);
+        let background = document.querySelector(".image-custom-background" /* background */);
         if (background !== null) {
             background.classList.remove("image-custom-background");
             background.classList.add("white-custom-background");
         }
-        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
         if (lessonView !== null) {
             const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
             if (mainHeaderElem !== null)
-                presentationName = mainHeaderElem.innerText;
+                presentationMetadata.name = mainHeaderElem.innerText;
             addSliderContainer();
             addSettingsContainer();
             addToolsContainer();
         }
         if (GM_getValue(`option_keyboardControl`))
-            setupKeyboardControl();
+            Keyboard.setupControl();
         addChapterInfo();
         addSlideOptions();
         toRunOnLoaded.forEach(cb => cb());
+        GM_getTabs(tabsObject => {
+            console.log({ tabsObject });
+            const tabs = Object.values(tabsObject);
+            let maxIndex = 0;
+            if (tabs) {
+                tabs.forEach(tab => {
+                    if (tab && tab.index > maxIndex)
+                        maxIndex = tab.index;
+                });
+                maxIndex++;
+            }
+            thisTabIndex = maxIndex;
+            console.log({ thisTabIndex });
+            GM_saveTab({ index: maxIndex });
+        });
+        GM_setValue('openInTab', {
+            lessonID: presentationMetadata.lessonID,
+            screenID: presentationMetadata.screenID,
+            slide: presentationMetadata.currentSlideNumber,
+            currentTab: -1
+        });
+        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
+            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
+            openSlideInTab(toOpen);
+        });
         unsafeWindow.addEventListener('beforeunload', ev => {
             onUnload();
         });
     }
     function addSliderContainer() {
-        const test = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`);
+        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
         if (test)
             return;
-        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
         const sliderContainer = document.createElement('div');
         sliderContainer.innerHTML = zoomSliderHTML;
         lessonView.appendChild(sliderContainer);
-        sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
-            .addEventListener('input', e => document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`).innerText = `${e.target.value}%`);
-        sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`)
+        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
+            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
             .addEventListener('click', () => {
             options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
         });
-        sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`)
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
             .addEventListener('click', () => {
             options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
         });
     }
     function addToolsContainer() {
-        const test = document.querySelector(`.${CLASS_NAMES.toolsContainer}`);
+        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
         if (test)
             return;
-        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
         const toolsContainer = document.createElement('div');
-        toolsContainer.classList.add(CLASS_NAMES.toolsContainer);
+        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
         toolsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
             <div></div>`;
@@ -1726,12 +2344,12 @@ function getMetadataFromLinks(wrappers) {
         tools.rerender();
     }
     function addSettingsContainer() {
-        const test = document.querySelector(`.${CLASS_NAMES.settingsContainer}`);
+        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
         if (test)
             return;
-        const lessonView = document.querySelector(SELECTORS.lessonView);
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
         const sidebarSettingsContainer = document.createElement('div');
-        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer);
+        sidebarSettingsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
         sidebarSettingsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
             <div></div>`;
@@ -1740,14 +2358,14 @@ function getMetadataFromLinks(wrappers) {
     }
     let isAwaiting = false;
     awaitLoad();
-    let appDiv = document.querySelector(SELECTORS.appDiv);
+    let appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
     if (appDiv)
         onAttributeChange(appDiv, 'screenid', checkUnloaded);
     function awaitLoad() {
         let checkLoadedInterval;
         isAwaiting = true;
         checkLoadedInterval = setInterval(() => {
-            const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
+            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
             if (testExtensionLoaded) {
                 isAwaiting = false;
                 clearInterval(checkLoadedInterval);
@@ -1762,15 +2380,18 @@ function getMetadataFromLinks(wrappers) {
         }, 300);
     }
     function checkUnloaded() {
-        console.log('unloaded??');
-        const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`);
+        //console.log('unloaded??')
+        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
         if (!isAwaiting && !testExtensionLoaded) {
-            console.log('unloaded!!!');
+            //console.log('unloaded!!!')
             onUnload();
             awaitLoad();
         }
     }
     function onUnload() {
+        for (const key in presentationMetadata) {
+            presentationMetadata[key] = undefined;
+        }
         if (options && options.state.changeTitle.value) {
             const { originalTitle } = options.state.changeTitle;
             document.title = originalTitle;
@@ -1785,8 +2406,8 @@ function getMetadataFromLinks(wrappers) {
             slideNumberObserver.disconnect();
         if (slideObserver)
             slideObserver.disconnect();
-        if (suggestBreakTimer)
-            clearTimeout(suggestBreakTimer);
+        if (BreakTimer.timer)
+            clearTimeout(BreakTimer.timer);
     }
 })();
 const styles = `
@@ -1807,15 +2428,15 @@ html {
     background: white;
 }
 
-.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content span[style*='21px'] {
+.${"custom-script-increase-font-size" /* increaseFontSize */} .sl-block-content span[style*='21px'] {
     font-size: 0.75em!important;
 }
 
-.${CLASS_NAMES.optionContainer} {
+.${"custom-script-option-container" /* optionContainer */} {
     padding: 5px 15px;
 }
 
-.${CLASS_NAMES.optionContainer}:hover {
+.${"custom-script-option-container" /* optionContainer */}:hover {
     background-color: #f6f6f6
 }
 
@@ -1823,16 +2444,16 @@ a.custom-script-option {
     color: #0c1726
 }
 
-.${BODY_CLASS_NAMES.increaseAnnotations} article.content.-styleguide p {
+.${"custom-script-increase-annotations" /* increaseAnnotations */} article.content.-styleguide p {
     font-size: var(--scaled-font-size);
     line-height: 150%;
 }
 
-.${BODY_CLASS_NAMES.increaseFontSize} .sl-block-content p {
+.${"custom-script-increase-font-size" /* increaseFontSize */} .sl-block-content p {
     font-size: var(--scaled-font-size)!important;
 }
 
-.${BODY_CLASS_NAMES.uniformFontSize} .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
+.${"custom-script-uniform-font-size" /* uniformFontSize */} .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
     font-size: var(--uniform-font-size)!important;
 }
 
@@ -1845,12 +2466,12 @@ a.custom-script-option {
 }
 
 
-.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference {
+.${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference {
     margin-left: 0.5em
 }
 
-.${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference svg,
-.${BODY_CLASS_NAMES.uniformFontSize} .wnl-reference svg {
+.${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference svg,
+.${"custom-script-uniform-font-size" /* uniformFontSize */} .wnl-reference svg {
     transform: scale(1.6)!important;
 }
 
@@ -1876,7 +2497,7 @@ sub.small {
     font-size: 0.8rem;
 }
 
-.${CLASS_NAMES.pageNumberContainer} {
+.${"custom-script-page-number-container" /* pageNumberContainer */} {
     position: absolute;
     top: 30px;
     left: 0;
@@ -1889,7 +2510,7 @@ sub.small {
     cursor: pointer;
 }
 
-body.${BODY_CLASS_NAMES.hideCursor} {
+body.${"custom-script-hide-cursor" /* hideCursor */} {
     cursor: none;
 }
 
@@ -1976,6 +2597,8 @@ a.custom-script-slideshow-btn.wnl-rounded-button {
     justify-content: center;
     width: 40px;
     margin: 5px;
+    overflow: hidden;
+    transition: width 0.5s, margin 0.5s;
 }
 
 span.custom-btn-caption {
@@ -2001,7 +2624,7 @@ a.custom-options-btn svg {
 
 a.custom-options-btn.active svg {transform: none;}
 
-.${CLASS_NAMES.fontSizeLabel} {
+.${"custom-script-font-size-label" /* fontSizeLabel */} {
     margin: 0 0.5rem;
     height: 16px;
     font-size: 24px; 
@@ -2011,11 +2634,11 @@ a.custom-options-btn.active svg {transform: none;}
     text-align: center;
 }
 
-.${CLASS_NAMES.fontSizeInput}-increase, .${CLASS_NAMES.fontSizeInput}-decrease {
+.${"custom-script-font-size-input" /* fontSizeInput */}-increase, .${"custom-script-font-size-input" /* fontSizeInput */}-decrease {
     vertical-align: sub;
 }
 
-.${CLASS_NAMES.fontSizeInput} {
+.${"custom-script-font-size-input" /* fontSizeInput */} {
     -webkit-appearance: none;
     appearance: none;
     margin-right: 0.9em;
@@ -2026,7 +2649,7 @@ a.custom-options-btn.active svg {transform: none;}
     vertical-align: middle;
 }
 
-.${CLASS_NAMES.fontSizeInput}::-webkit-slider-thumb {
+.${"custom-script-font-size-input" /* fontSizeInput */}::-webkit-slider-thumb {
     -webkit-appearance: none; 
     appearance: none;
     cursor: pointer;
@@ -2036,7 +2659,7 @@ a.custom-options-btn.active svg {transform: none;}
     border-radius: 0.4rem;
 }
 
-.${CLASS_NAMES.fontSizeInput}::-moz-range-thumb {
+.${"custom-script-font-size-input" /* fontSizeInput */}::-moz-range-thumb {
     cursor: pointer;
     width: 0.8rem;
     height: 0.8rem;
@@ -2044,31 +2667,39 @@ a.custom-options-btn.active svg {transform: none;}
     border-radius: 0.4rem;
 }
 
-.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 
-.${CLASS_NAMES.toolsContainer} {
+.${"custom-script-zoom-slider-container" /* zoomSliderContainer */}, .${"custom-script-settings-container" /* settingsContainer */}, 
+.${"custom-script-tools-container" /* toolsContainer */} {
     margin-top: 1rem; 
     border: 1px solid rgb(239, 240, 243); 
     padding: 15px; 
 }
 
 .custom-notes-btns-container {
-    left: 5px;
-    position: absolute;
-    bottom: 5px;
-    z-index: 11;
     flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap-reverse;
     display: none!important;
 }
 
 .custom-notes-additional-btns {
     display: flex;
     flex-direction: row;
-    transition: opacity 0.6s, visibility 0.6s;
+    align-items: flex-end;
 }
 
-.custom-notes-additional-btns.hidden {
-    opacity: 0;
-    visibility: hidden;
+.custom-add-note-btns.active {
+    height: 90px;
+}
+
+.custom-add-note-btns {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.5s;
+}
+
+.custom-add-note-btns-container {
+    display: flex;
+    flex-direction: column-reverse;
 }
 
 .custom-script-use-notes .fullscreen-mode .wnl-comments, 
@@ -2081,7 +2712,7 @@ a.custom-options-btn.active svg {transform: none;}
 }
 
 .slideshow-container.fullscreen .custom-notes-btns-container {
-    left: 70px;
+    margin-left: 70px;
 }
 
 .custom-script-notes-column:empty {
@@ -2131,18 +2762,26 @@ a.custom-options-btn.active svg {transform: none;}
     overflow-y: auto;
 }
 
-.custom-note form {display: none;}
+.custom-note form,
+.custom-tag form {display: none;}
 
-.custom-note.editing form {display: block;}
+.custom-note.editing form, 
+.custom-tag.editing form {display: block;}
 
-.custom-note.editing .custom-note-content {display: none;}
+.custom-note.editing .custom-note-content, 
+.custom-tag.editing .custom-tag-content {display: none;}
 
-.custom-note textarea {
+.custom-note textarea,
+.custom-tag input {
     appearance: none;
     border: none;
     width: 100%!important;
     height: 100%!important;
     background: none;
+}
+
+.custom-tag input[type=color] {
+    display: none;
 }
 
 .custom-notes-overlay a.custom-note-remove {    
@@ -2174,6 +2813,96 @@ a.custom-note-move {
 
 a.custom-note-remove:hover {color: red!important;}
 
+div.custom-tags-container:hover {    
+    opacity: 1;
+}
+
+.custom-tags-and-btns-container {    
+    left: 5px;
+    position: absolute;
+    bottom: 5px;
+    z-index: 11;
+    display: flex;
+    flex-direction: column;
+    max-width: 25%;
+}
+
+div.custom-tags-container {    
+    z-index: 11;
+    flex-wrap: wrap-reverse;
+    opacity: 0.5;
+    transition: opacity 0.4s;
+    display: none;
+    gap: 3px 5px;
+}
+
+.custom-tag.custom-new-tag {
+    color: #95b9f9;
+    background: none;
+    align-items: center;
+}
+
+.custom-tag {
+    border-radius: 5px;
+    padding: 2px 5px;
+    display: flex;
+    font-size: 12px;
+    max-width: 70px;
+    height: 25px;
+    overflow: hidden;
+    align-content: space-between;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    flex-direction: row;
+}
+
+.custom-tag-content {
+    overflow: hidden;
+    display: inline-block;
+    text-overflow: ellipsis; 
+}
+
+div.custom-tag .custom-remove,
+div.custom-tag .custom-change-color {
+    display: inline-block;
+    text-align: right;
+    cursor: pointer;
+    width: 0;
+    overflow: hidden;
+    transition: width 0.5s, color 0.5s;
+    color: inherit;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+div.custom-tag .custom-remove:hover {
+    color: #870000;
+}
+
+div.custom-tag .custom-remove svg,
+div.custom-tag .custom-change-color svg {
+    width: 13px;
+    height: 13px;
+}
+
+div.custom-tag:not(.editing):hover .custom-remove,
+div.custom-tag:not(.editing):hover .custom-change-color {
+    width: 16px;
+}
+
+.custom-notes-btns-container.custom-no-notes .custom-clear-notes-btn, 
+.custom-notes-btns-container.custom-no-notes .custom-notes-view-type-btn,
+.inactive.custom-notes-additional-btns > .wnl-rounded-button {
+    width: 0;
+    margin: 5px 0;
+}
+
+.custom-new-tag.custom-tag:only-child {
+    display: none;
+}
+
 .custom-while-active {display: none!important;}
 
 .active .custom-while-active.a-icon {display: inline-flex!important;}
@@ -2182,11 +2911,12 @@ a.custom-note-remove:hover {color: red!important;}
 
 .custom-script-use-notes.custom-script-notes-visible .custom-notes-overlay {display: block!important;}
 
-.custom-script-use-notes .custom-notes-btns-container {
+.custom-script-use-notes .custom-notes-btns-container, 
+.custom-script-use-notes.custom-script-tags-visible div.custom-tags-container {
     display: flex!important;
 }
 
-.${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
+.${"custom-script-invert-images" /* invertImages */} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`;
 const head = unsafeWindow.document.querySelector('head');
