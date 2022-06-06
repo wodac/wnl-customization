@@ -2004,6 +2004,10 @@ var Search;
                     return !hasSomePhrases(result, q.musntContain).some(includes => includes);
                 });
             }
+            filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID));
+            function sortUpSome(predicate) {
+                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
+            }
             return (yield getTagsAsResults(q)).concat(filtered);
             function hasSomePhrases(result, phrases) {
                 return phrases.map(toSearch => {
