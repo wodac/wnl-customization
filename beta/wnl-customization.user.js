@@ -20,6 +20,7 @@
 // @grant        GM_openInTab
 // @run-at document-body
 // ==/UserScript==
+///<reference path="../interfaces.d.ts" />
 document = unsafeWindow.document;
 let thisTabIndex;
 let toRunOnLoaded = [], summaryContainer;
@@ -118,7 +119,14 @@ class ClassToggler {
         this.className = className;
         this._elementOrSelector = _elementOrSelector;
         this.onchange = onchange;
-        this._state = this.element && this.element.classList.contains(className);
+        this._unresolved = false;
+        if (this.element)
+            this._getClassState();
+        else
+            this._unresolved = true;
+    }
+    _getClassState() {
+        this._state = this.element.classList.contains(this.className);
     }
     get element() {
         if (typeof this._elementOrSelector === 'string') {
@@ -143,6 +151,8 @@ class ClassToggler {
         }
     }
     toggle() {
+        if (this._unresolved)
+            this._getClassState();
         this.state = !this.state;
     }
 }
@@ -204,6 +214,15 @@ function downloadFile(mimetype, name, data) {
     dlAnchorElem.setAttribute("href", dataStr);
     dlAnchorElem.setAttribute("download", name);
     dlAnchorElem.click();
+}
+function toggleFullscreen() {
+    setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'f', altKey: false, bubbles: true,
+        cancelable: true, charCode: 0, code: "KeyF",
+        composed: true, ctrlKey: false, detail: 0,
+        isComposing: false, keyCode: 70, location: 0,
+        metaKey: false, repeat: false, shiftKey: false
+    })), 10);
 }
 function getIndexedDB(name, version, setupCb) {
     return new Promise((resolve, reject) => {
@@ -277,7 +296,7 @@ class CustomEventEmmiter {
         this.listeners = {};
     }
     trigger(eventName, event = {}) {
-        //console.log(`triggering ${eventName} with data`, event, 'on', this)
+        console.log(`triggering ${eventName} with data`, event, 'on', this);
         this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event));
     }
 }
@@ -338,6 +357,717 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var Search;
+(function (Search) {
+    const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
+    const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
+    let searchContainer, searchResultsContainer;
+    function addSearchContainer() {
+        searchContainer = document.createElement('div');
+        searchContainer.className = 'custom-script-search custom-script-hidden';
+        searchContainer.innerHTML = `
+        <input class="custom-search-result" style="width: 80%;display: inline-block;">
+        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
+        `;
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'custom-script-summary-close';
+        closeBtn.innerHTML = SVGIcons.chevronUp;
+        searchContainer.prepend(closeBtn);
+        closeBtn.addEventListener('click', () => Search.hiddenToggle.state = true);
+        searchResultsContainer = document.createElement('div');
+        searchContainer.append(searchResultsContainer);
+        document.querySelector('.order-number-container').after(searchContainer);
+        const searchInput = searchContainer.querySelector('input.custom-search-result');
+        searchInput.addEventListener('change', () => performSearch());
+        searchInput.addEventListener('keyup', ev => {
+            if (ev.key === 'Escape') {
+                ev.preventDefault();
+                ev.stopImmediatePropagation();
+                Search.hiddenToggle.state = true;
+            }
+        });
+        searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch());
+    }
+    Search.addSearchContainer = addSearchContainer;
+    function performSearch() {
+        if (!searchContainer)
+            return;
+        const q = searchContainer.querySelector('input.custom-search-result').value;
+        const interpretation = interpretQuery(q);
+        searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
+        getSearchResponseHTML(interpretation).then(resp => {
+            if (searchResultsContainer) {
+                searchResultsContainer.innerHTML = '';
+                searchResultsContainer.append(...resp);
+            }
+            Search.hiddenToggle.state = false;
+        });
+    }
+    function interpretQuery(rawQuery) {
+        let query = rawQuery.replace(/"/g, '');
+        rawQuery = rawQuery.toLowerCase();
+        const quotesRegExp = /"([^"]+)"/g;
+        const hasntRegExp = /-\w+/g;
+        let mustContain = rawQuery.match(quotesRegExp);
+        let musntContain = rawQuery.match(hasntRegExp);
+        if (musntContain)
+            musntContain.forEach(toReplace => {
+                query.replace(`-${toReplace}`, '');
+            });
+        query = query.trim();
+        if (mustContain)
+            mustContain = mustContain.map(s => s.slice(1, -1));
+        if (musntContain)
+            musntContain = musntContain.map(s => s.slice(1));
+        return { query, rawQuery, mustContain, musntContain };
+    }
+    function getSearchResponseHTML(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield searchRequest(q);
+            if (response.length) {
+                return response.map(el => {
+                    const link = document.createElement('a');
+                    link.innerHTML = `
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
+                    link.href = getHref(el);
+                    link.target = '_blank';
+                    link.className = 'custom-search-result';
+                    link.addEventListener('click', ev => {
+                        ev.preventDefault();
+                        openSlideInTab({
+                            currentTab: -2,
+                            lessonID: el.context.lesson.id,
+                            screenID: el.context.screen.id,
+                            slide: el.context.slideshow.order_number
+                        });
+                    });
+                    return link;
+                });
+            }
+            const notFoundInfo = document.createElement('p');
+            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
+            notFoundInfo.style.padding = '0.5rem';
+            return [notFoundInfo];
+            function getHref(el) {
+                const fragm = {
+                    f1: el.context.lesson,
+                    f2: el.context.screen,
+                    f3: el.context.slideshow
+                };
+                if (Object.values(fragm).every(val => val)) {
+                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
+                    if (path.every(val => val)) {
+                        return [WNL_LESSON_LINK, ...path].join('/');
+                    }
+                }
+                if (el.id)
+                    return WNL_DYNAMIC_SLIDES + el.id;
+                return '#';
+            }
+        });
+    }
+    Search.hiddenToggle = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+        if (!t.state)
+            setTimeout(() => {
+                searchContainer.querySelector('input.custom-search-result').focus();
+            }, 100);
+    });
+    function searchRequest(q) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                url: getSearchURL(q.query),
+                method: 'GET',
+                responseType: "json",
+                onload: ({ response }) => {
+                    const entries = Object.entries(response);
+                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
+                    const parsed = results.map(el => {
+                        return {
+                            highlight: el.scout_metadata.highlight,
+                            details: el.snippet,
+                            context: el.context,
+                            id: el.id
+                        };
+                    });
+                    resolve(filterSearch(parsed, q));
+                },
+                onerror: reject
+            });
+        });
+    }
+    function filterSearch(parsed, q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let filtered = parsed;
+            if (q.mustContain) {
+                filtered = parsed.filter(result => {
+                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
+                });
+            }
+            if (q.musntContain) {
+                filtered = filtered.filter(result => {
+                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
+                });
+            }
+            filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID));
+            function sortUpSome(predicate) {
+                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
+            }
+            return (yield getTagsAsResults(q)).concat(filtered);
+            function hasSomePhrases(result, phrases) {
+                return phrases.map(toSearch => {
+                    return Object.values(result.highlight).some(highlighted => {
+                        return highlighted.some(s => stripHTMLTags(s).includes(toSearch));
+                    });
+                });
+            }
+        });
+    }
+    function getTagsAsResults(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!notesCollection)
+                return [];
+            const tags = yield notesCollection.getAllTagsWithName(q.query);
+            return tags.map(tag => {
+                return {
+                    highlight: {
+                        "snippet.content": [`<div title='${tag.content}' class='custom-tag'>${tag.content}</div>`]
+                    },
+                    details: {
+                        header: tag.presentationTitle,
+                        subheader: tag.slideTitle,
+                    },
+                    context: {
+                        screen: { id: tag.screenid },
+                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
+                        slideshow: {
+                            order_number: tag.slide
+                        }
+                    }
+                };
+            });
+        });
+    }
+    function stripHTMLTags(s) {
+        const tagStripper = /<[^>]+>/g;
+        return s.toLowerCase().replace(tagStripper, '');
+    }
+})(Search || (Search = {}));
+var Toggles;
+(function (Toggles) {
+    Toggles.searchHidden = Search.hiddenToggle;
+})(Toggles || (Toggles = {}));
+///<reference path="common.ts" />
+///<reference path="search.ts" />
+var Keyboard;
+(function (Keyboard) {
+    let keyboardShortcuts = [
+        {
+            keys: ['ArrowUp'],
+            callback: showImage
+        },
+        {
+            keys: ['ArrowDown', 'q', '0', 'Escape'],
+            callback: hideImage
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: hideModal
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: () => {
+                Toggles.optionsActive.state = false;
+                Toggles.searchHidden.state = true;
+                Toggles.summaryHidden.state = true;
+            }
+        },
+        {
+            keys: ['m'],
+            callback: () => toggleMouseVisibility()
+        },
+        {
+            keys: ['o', 's'],
+            callback: () => Toggles.optionsActive.toggle()
+        },
+        {
+            keys: ['?', '/'],
+            callback: () => Toggles.searchHidden.toggle()
+        },
+        {
+            keys: ['l'],
+            callback: () => Toggles.summaryHidden.toggle()
+        },
+        {
+            keys: ['Enter'],
+            callback: () => {
+                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
+                if (quizVerifyBtn)
+                    quizVerifyBtn.click();
+            }
+        }
+    ];
+    function registerShortcut(shortcut) {
+        keyboardShortcuts.push(shortcut);
+    }
+    Keyboard.registerShortcut = registerShortcut;
+    function shortcutListener(event) {
+        const tagName = event.target.nodeName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+        keyboardShortcuts.forEach(shortcut => {
+            if (shortcut.keys.includes(event.key))
+                shortcut.callback(event);
+        });
+        const charCode = event.keyCode;
+        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
+            numericKeyPressed(event.key);
+    }
+    document.addEventListener('fullscreenchange', ev => {
+        if (!document.fullscreenElement) {
+            if (document.querySelector('.o-referenceModal')) {
+                hideModal();
+                toggleFullscreen();
+            }
+            else if (!Toggles.searchHidden.state) {
+                Toggles.searchHidden.state = true;
+                toggleFullscreen();
+            }
+            else if (!Toggles.summaryHidden.state) {
+                Toggles.summaryHidden.state = true;
+                toggleFullscreen();
+            }
+        }
+    });
+    function setupControl() {
+        const slides = document.querySelectorAll('.slides .stack');
+        if (!slides.length)
+            return;
+        slides.forEach(slide => {
+            let counter = 1;
+            const icons = slide.querySelectorAll('.a-icon');
+            icons.forEach(icon => addSubToRef(icon, counter++));
+        });
+        observeSlides(addSubsToRefs);
+        // document.body.addEventListener('click', updateTabTitle)
+        // document.body.addEventListener('keyup', updateTabTitle)
+        document.body.addEventListener('keydown', event => {
+            if (event.key === ' ' || event.key === 'l') {
+                // event.preventDefault()
+                event.stopImmediatePropagation();
+            }
+            if (event.key === 'ArrowUp') {
+                scrollView(-60);
+                return false;
+            }
+            if (event.key === 'ArrowDown' || event.key === ' ') {
+                scrollView(60);
+                return false;
+            }
+        });
+        document.body.addEventListener('keyup', shortcutListener);
+    }
+    Keyboard.setupControl = setupControl;
+    function disableControl() {
+        document.body.removeEventListener('keyup', shortcutListener);
+    }
+    Keyboard.disableControl = disableControl;
+    function observeSlides(cb) {
+        //console.log('observeSlides')
+        slideObserver = new MutationObserver(cb);
+        slideObserver.observe(document.querySelector('div.slides'), {
+            childList: true,
+            subtree: true
+        });
+    }
+    function addSubsToRefs(mutations) {
+        //console.log('mutation observed')
+        let counter = 1;
+        mutations.forEach(mutation => {
+            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
+                //console.log('node added')
+                let ref = mutation.addedNodes[0];
+                if (ref.className && ref.className.includes('m-referenceTrigger')) {
+                    addSubToRef(ref, counter);
+                    counter++;
+                }
+            }
+        });
+    }
+    function addSubToRef(ref, counter) {
+        const sub = document.createElement('sub');
+        sub.innerText = counter.toString();
+        sub.className = `small`;
+        ref.classList.add(`sub-id-${counter}`);
+        ref.appendChild(sub);
+    }
+    function scrollView(y) {
+        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
+        const options = { top: y, left: 0, behavior };
+        const views = [
+            document.querySelector(".present .present" /* currentSlideContainer */),
+            document.querySelector('.m-modal__content'),
+            document.querySelector('.wnl-comments')
+        ];
+        views.forEach(view => {
+            if (view)
+                view.scrollBy(options);
+        });
+    }
+    function showImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
+        if (fullscreenBtn)
+            fullscreenBtn.click();
+    }
+    function hideImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function hideModal() {
+        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function numericKeyPressed(key) {
+        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
+        if (quiz) {
+            const index = parseInt(key) - 1;
+            const answers = quiz.querySelectorAll('.quizAnswer');
+            if (index >= answers.length)
+                return;
+            answers[index].click();
+            return;
+        }
+        if (annotationImages.length > 0) {
+            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+        }
+        else {
+            const selector = `.present .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+            setTimeout(() => {
+                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+                let counter = 1;
+                annotationImages.forEach(image => {
+                    const btn = image.querySelector('.a-icon');
+                    btn.classList.add(`sub-id-${counter}`);
+                    const index = document.createElement('span');
+                    index.innerText = counter.toString();
+                    index.className = 'image-fullscreen-index';
+                    btn.appendChild(index);
+                    counter++;
+                });
+            }, 300);
+        }
+    }
+    let mouseVisible = true;
+    function toggleMouseVisibility(visible) {
+        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
+        //console.log({ mouseVisible, visible })
+        toggleBodyClass("custom-script-hide-cursor" /* hideCursor */, !mouseVisible);
+        if (!mouseVisible)
+            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
+    }
+})(Keyboard || (Keyboard = {}));
+///<reference path="common.ts" />
+///<reference path="keyboard.ts" />
+class Options {
+    constructor(options, settingsContainerSelector) {
+        const document = unsafeWindow.document;
+        this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
+        this.settingsContainerSelector = settingsContainerSelector;
+        this.restoreState();
+        this.init();
+        this.update();
+        this.storeState();
+        this.rerender();
+    }
+    get settingsContainer() {
+        return document.querySelector(this.settingsContainerSelector);
+    }
+    _rerenderSettings() {
+        //console.log('trying to render sidebar', this.settingsContainer)
+        if (this.settingsContainer) {
+            //console.log('rendering sidebar', this.settingsContainer)
+            const optionDivs = this.settingsContainer.querySelectorAll(`div.${"custom-script-option-container" /* optionContainer */}`);
+            optionDivs.forEach(el => el.remove());
+            Object.values(this.state).forEach(option => this.settingsContainer.appendChild(this._getSettingsOption(option)));
+        }
+    }
+    _getSettingsOption(option) {
+        const optionContainer = document.createElement('div');
+        optionContainer.classList.add("custom-script-option-container" /* optionContainer */);
+        const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
+        const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
+        optionContainer.innerHTML = getOption(desc);
+        const optionLink = optionContainer.querySelector('a');
+        optionLink.addEventListener('click', event => {
+            event.preventDefault();
+            this._runCallback(option);
+        });
+        return optionContainer;
+    }
+    rerender() {
+        let rerender = (name) => {
+            const state = this.state[name];
+            GM_unregisterMenuCommand(state.handle);
+            const desc = typeof state.desc === 'function' ? state.desc(state) : state.desc;
+            this.state[name].handle = GM_registerMenuCommand(desc, () => this._runCallback(state), state.key);
+        };
+        rerender = rerender.bind(this);
+        Object.keys(this.state).forEach(rerender);
+        this._rerenderSettings();
+    }
+    _runCallback(option) {
+        const result = option.callback.apply(this, [option, this.state]);
+        if (typeof result === 'object')
+            this.setOptionState(Object.assign({ name: option.name }, result));
+    }
+    setOptionState(state, name) {
+        if (!name)
+            name = state.name;
+        if (typeof state === 'function') {
+            const result = state.apply(this, [this.state[name]]);
+            this._setOptionState(Object.assign(Object.assign({}, this.state[name]), result));
+        }
+        else
+            this._setOptionState(Object.assign(Object.assign({}, state), { name }));
+    }
+    _setOptionState(state) {
+        const name = state.name;
+        this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
+        this.storeState(name);
+        const updateCb = this.state[name].update;
+        if (updateCb)
+            updateCb.apply(this, [state, this.state]);
+        this.rerender();
+    }
+    storeState(optionName) {
+        const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value);
+        if (typeof optionName === 'string') {
+            saveOptionState(optionName);
+            return;
+        }
+        Object.keys(this.state).forEach(saveOptionState);
+    }
+    restoreState(optionName) {
+        const restoreOptionState = (name) => {
+            this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value);
+        };
+        if (typeof optionName === 'string') {
+            restoreOptionState(optionName);
+            return;
+        }
+        Object.keys(this.state).forEach(restoreOptionState);
+    }
+    _runOnAllOptions(functionName) {
+        Object.keys(this.state).forEach(optionName => {
+            const option = this.state[optionName];
+            const callback = option[functionName];
+            if (typeof callback === 'function')
+                callback.apply(this, [option, this.state]);
+        });
+    }
+    update() { this._runOnAllOptions('update'); }
+    init() {
+        this._runOnAllOptions('init');
+        this._rerenderSettings();
+    }
+}
+const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 ";
+options = new Options([
+    {
+        name: "increaseFontSize",
+        desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
+        callback: function (state) {
+            if (!state.value) {
+                this.setOptionState({
+                    name: "uniformFontSize",
+                    value: false
+                });
+            }
+            return { value: !state.value };
+        },
+        update: state => toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value),
+        defaultValue: true,
+        key: 'f'
+    },
+    {
+        name: "increaseAnnotations",
+        desc: state => getCheckboxEmoji(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
+        defaultValue: false,
+        key: 'a'
+    },
+    {
+        name: "hideChat",
+        desc: state => getCheckboxEmoji(state.value) + "💬 Ukryj czat",
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
+        defaultValue: false,
+        key: 'c'
+    },
+    {
+        name: "smoothScroll",
+        desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: () => null,
+        defaultValue: false,
+        key: 's'
+    },
+    {
+        name: "keyboardControl",
+        desc: state => getCheckboxEmoji(state.value) + "⌨️ Sterowanie klawiaturą",
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        update: state => {
+            if (state.value) {
+                Keyboard.setupControl();
+            }
+            else {
+                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
+                Keyboard.disableControl();
+                if (slideObserver)
+                    slideObserver.disconnect();
+            }
+        },
+        defaultValue: true,
+        key: 'k'
+    },
+    {
+        name: "changeTitle",
+        desc: state => getCheckboxEmoji(state.value) + "🆎 Zmień tytuł karty",
+        callback: function (state) {
+            return Object.assign(Object.assign({}, state), { value: !state.value });
+        },
+        update: state => {
+            //console.log('changeTitle update', { state })
+            if (!state.value) {
+                if (state.originalTitle)
+                    unsafeWindow.document.title = state.originalTitle;
+                // unsafeWindow.removeEventListener('popstate', updateTabTitle)
+            }
+            updateTabTitle();
+        },
+        init: state => {
+            state.originalTitle = unsafeWindow.document.title;
+            // unsafeWindow.addEventListener('popstate', updateTabTitle);
+        },
+        defaultValue: false,
+        key: 't'
+    },
+    {
+        name: "uniformFontSize",
+        desc: state => getCheckboxEmoji(state.value) + "🔤 Ujednolicona wielkość czcionki",
+        callback: function (state) {
+            if (!state.value) {
+                this.setOptionState({
+                    name: "increaseFontSize",
+                    value: false
+                });
+            }
+            return { value: !state.value };
+        },
+        update: state => toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value),
+        defaultValue: false,
+        key: 'u'
+    },
+    {
+        name: "invertImages",
+        desc: state => getCheckboxEmoji(state.value) + "🔃 Odwróć kolory obrazów",
+        callback: function (state) {
+            return { value: !state.value };
+        },
+        defaultValue: false,
+        update: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
+        key: 'i'
+    },
+    {
+        name: "percentIncrease",
+        type: "button",
+        desc: state => `➕ Zmień powiększenie (${state.value}%)`,
+        callback: (state) => {
+            const input = prompt(`Określ powiększenie czcionki (w %, obecnie ${state.value}%):`, state.value);
+            if (typeof input === "string") {
+                let nextValue = parseInt(input, 10);
+                if (nextValue !== NaN && nextValue > 10 && nextValue < 300) {
+                    return { value: nextValue };
+                }
+            }
+        },
+        defaultValue: 110,
+        update: state => {
+            updateFontSize(state.value);
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
+            if (rangeInput) {
+                rangeInput.value = state.value;
+                rangeInput.title = state.value;
+            }
+            if (rangeLabel)
+                rangeLabel.innerText = `${state.value}%`;
+        },
+        init: function (state) {
+            function _toRun() {
+                const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+                const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
+                if (rangeInput) {
+                    rangeInput.value = state.value;
+                    rangeLabel.innerText = `${state.value}%`;
+                    rangeInput.addEventListener('change', event => {
+                        const value = parseInt(rangeInput.value);
+                        this.setOptionState({ name: "percentIncrease", value });
+                    });
+                    rangeInput.addEventListener('input', event => {
+                        const value = rangeInput.value;
+                        updateFontSize(parseInt(value));
+                    });
+                }
+                state.increaseBy = (n) => {
+                    const current = this.state.percentIncrease.value;
+                    this.setOptionState({ value: current + n }, 'percentIncrease');
+                };
+                Keyboard.registerShortcut({
+                    keys: ['-'],
+                    callback: () => state.increaseBy(-5)
+                });
+                Keyboard.registerShortcut({
+                    keys: ['+', '='],
+                    callback: () => state.increaseBy(5)
+                });
+            }
+            const toRun = _toRun.bind(this);
+            toRunOnLoaded.push(toRun);
+        },
+        key: 'p'
+    }
+], `.${"custom-script-settings-container" /* settingsContainer */}>div`);
+///<reference path="common.ts" />
 var Notes;
 (function (Notes) {
     class Note extends CustomEventEmmiter {
@@ -347,6 +1077,7 @@ var Notes;
             this._content = _content;
             this.parent = parent;
             this._edited = false;
+            this._editing = false;
             this._deleted = false;
         }
         get content() {
@@ -358,14 +1089,14 @@ var Notes;
         remove(removeFromParent = true) {
             if (this._deleted)
                 return;
+            this._deleted = true;
             //console.log('deleting', { note: this, removeFromParent }, 'from Note')
             this.trigger('remove');
-            if (removeFromParent)
-                this.parent.removeNoteById(this.metadata.id);
             if (this._element)
                 this._element.remove();
+            if (removeFromParent)
+                this.parent.removeNoteById(this.metadata.id);
             this._element = null;
-            this._deleted = true;
             this.removeAllListeners();
         }
         set content(value) {
@@ -384,6 +1115,8 @@ var Notes;
             });
             noteContentInput.addEventListener('keyup', (ev) => {
                 if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
                     this.endEditing();
                 }
             });
@@ -402,19 +1135,24 @@ var Notes;
             // this._element.addEventListener('focus', ev => this.startEditing(noteContentInput))
         }
         startEditing(noteContentInput) {
+            this._editing = true;
+            this._lastValue = this._content;
             this._element.classList.add('editing');
             noteContentInput.focus();
         }
         endEditing() {
-            this._element.classList.remove('editing');
-            if (!this._content.trim().length) {
-                if (this._edited)
-                    this.remove();
-                else
-                    this._edited = true;
-                return;
+            if (this._editing) {
+                this._editing = false;
+                this._element.classList.remove('editing');
+                this.trigger('edited', { newContent: this.content });
+                if (!this._content.trim().length) {
+                    if (this._edited)
+                        this.remove();
+                    else
+                        this._edited = true;
+                    return;
+                }
             }
-            this.trigger('edited', { newContent: this.content });
         }
     }
     Notes.Note = Note;
@@ -437,20 +1175,19 @@ var Notes;
             this._element.tabIndex = 0;
             const removeBtn = this._element.querySelector('.custom-remove');
             const colorBtn = this._element.querySelector('.custom-change-color');
-            const colorInput = this._element.querySelector('input[type=color]');
+            this.colorInput = this._element.querySelector('input[type=color]');
+            this.setColor(this.metadata.color);
             this.contentElement.innerText = this.content;
             this.setupEditing(this._element.querySelector('input'));
-            colorInput.value = this.metadata.color;
             colorBtn.addEventListener('click', (ev) => {
                 ev.stopImmediatePropagation();
-                colorInput.click();
+                this.colorInput.click();
             });
-            colorInput.addEventListener('change', () => {
-                this.metadata.color = colorInput.value;
+            this.colorInput.addEventListener('change', () => {
+                this.metadata.color = this.colorInput.value;
                 this.trigger('colorChange', { newColor: this.metadata.color });
                 this.parent.saveNote(this);
-                this._element.style.background = this.metadata.color;
-                this._element.style.color = getForegroundColor(this.metadata.color);
+                this.setColor(this.metadata.color);
             });
             removeBtn.addEventListener('click', event => {
                 event.preventDefault();
@@ -458,13 +1195,31 @@ var Notes;
                 this.remove();
             });
             this._element.title = this.content;
-            this.addEventListener('change', ({ newContent }) => {
+            this.addEventListener('edited', ({ newContent }) => {
                 this._element.title = newContent;
+                this.setColorFromTagName();
             });
             if (parent)
                 parent.prepend(this._element);
             this.trigger('rendered');
             return this._element;
+        }
+        setColorFromTagName() {
+            const tagColors = this.parent.parent.tags;
+            console.log({ tagColors });
+            let color = this.metadata.color;
+            if (tagColors.length && this.content) {
+                const tagRecord = tagColors.find(tag => tag.name === this.content);
+                if (tagRecord)
+                    color = tagRecord.color;
+            }
+            this.metadata.color = color;
+            this.setColor(color);
+        }
+        setColor(color) {
+            this._element.style.background = color;
+            this._element.style.color = getForegroundColor(color);
+            this.colorInput.value = color;
         }
     }
     TagNote.HTML = `
@@ -608,7 +1363,10 @@ var Notes;
                         note = new RegularNote(new NoteMetadata(record.id, record.type, this.metadata, record.position, record.textContext), record.content, this);
                     }
                     else {
-                        note = new TagNote(new NoteMetadata(record.id, record.type, this.metadata, undefined, undefined, record.color), record.content, this);
+                        const tagColors = this.parent.tags;
+                        const tagRecord = tagColors.find(tag => tag.name === record.content);
+                        const color = tagRecord && tagRecord.color || record.color;
+                        note = new TagNote(new NoteMetadata(record.id, record.type, this.metadata, undefined, undefined, color), record.content, this);
                         note.addEventListener('edited', ({ newContent }) => {
                             const tags = this.tags.map(tag => tag.content);
                             if (tags.filter(tag => tag === newContent).length > 1)
@@ -752,8 +1510,7 @@ var Notes;
             }
             getNotesBySlide(slide) {
                 return __awaiter(this, void 0, void 0, function* () {
-                    if (this.cache[slide])
-                        return this.cache[slide];
+                    // if (this.cache[slide]) return this.cache[slide]
                     const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly');
                     const notesStore = transaction.objectStore(Presentation.NOTES_STORE);
                     const screenidIndex = notesStore.index(Presentation.NOTES_INDEXES.byScreenIDAndSlide.name);
@@ -783,6 +1540,7 @@ var Notes;
                     allTags.addEventListener('success', ev => {
                         const tagsResult = allTags.result;
                         if (this._tags.length !== tagsResult.length) {
+                            this._tags = tagsResult;
                             this.trigger('changedTags', {
                                 changed: tagsResult.map((tag, i) => {
                                     return Object.assign(Object.assign({}, tag), { index: i });
@@ -934,477 +1692,9 @@ var Notes;
     })(Collections = Notes.Collections || (Notes.Collections = {}));
 })(Notes || (Notes = {}));
 // PresentationNotesCollection.createAsync(892).then(collection => console.log(collection))
-var Keyboard;
-(function (Keyboard) {
-    let keyboardShortcuts = [
-        {
-            keys: ['ArrowUp'],
-            callback: showImage
-        },
-        {
-            keys: ['ArrowDown', 'q', '0', 'Escape'],
-            callback: hideImage
-        },
-        {
-            keys: ['q', '0', 'Escape'],
-            callback: hideModal
-        },
-        {
-            keys: ['m'],
-            callback: () => toggleMouseVisibility()
-        },
-        {
-            keys: ['o', 's'],
-            callback: () => Toggles.optionsActive.toggle()
-        },
-        {
-            keys: ['?', '/'],
-            callback: () => Toggles.searchHidden.toggle()
-        },
-        {
-            keys: ['l'],
-            callback: () => Toggles.summaryHidden.toggle()
-        },
-        {
-            keys: ['Enter'],
-            callback: () => {
-                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
-                if (quizVerifyBtn)
-                    quizVerifyBtn.click();
-            }
-        }
-    ];
-    function registerShortcut(shortcut) {
-        keyboardShortcuts.push(shortcut);
-    }
-    Keyboard.registerShortcut = registerShortcut;
-    function shortcutListener(event) {
-        const tagName = event.target.nodeName;
-        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
-            return;
-        }
-        keyboardShortcuts.forEach(shortcut => {
-            if (shortcut.keys.includes(event.key))
-                shortcut.callback(event);
-        });
-        const charCode = event.keyCode;
-        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
-            numericKeyPressed(event.key);
-    }
-    function setupControl() {
-        const slides = document.querySelectorAll('.slides .stack');
-        if (!slides.length)
-            return;
-        slides.forEach(slide => {
-            let counter = 1;
-            const icons = slide.querySelectorAll('.a-icon');
-            icons.forEach(icon => addSubToRef(icon, counter++));
-        });
-        observeSlides(addSubsToRefs);
-        // document.body.addEventListener('click', updateTabTitle)
-        // document.body.addEventListener('keyup', updateTabTitle)
-        document.body.addEventListener('keydown', event => {
-            if (event.key === ' ' || event.key === 'l') {
-                // event.preventDefault()
-                event.stopImmediatePropagation();
-            }
-            if (event.key === 'ArrowUp') {
-                scrollView(-60);
-                return false;
-            }
-            if (event.key === 'ArrowDown' || event.key === ' ') {
-                scrollView(60);
-                return false;
-            }
-        });
-        document.body.addEventListener('keyup', shortcutListener);
-    }
-    Keyboard.setupControl = setupControl;
-    function disableControl() {
-        document.body.removeEventListener('keyup', shortcutListener);
-    }
-    Keyboard.disableControl = disableControl;
-    function observeSlides(cb) {
-        //console.log('observeSlides')
-        slideObserver = new MutationObserver(cb);
-        slideObserver.observe(document.querySelector('div.slides'), {
-            childList: true,
-            subtree: true
-        });
-    }
-    function addSubsToRefs(mutations) {
-        //console.log('mutation observed')
-        let counter = 1;
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
-                //console.log('node added')
-                let ref = mutation.addedNodes[0];
-                if (ref.className && ref.className.includes('m-referenceTrigger')) {
-                    addSubToRef(ref, counter);
-                    counter++;
-                }
-            }
-        });
-    }
-    function addSubToRef(ref, counter) {
-        const sub = document.createElement('sub');
-        sub.innerText = counter.toString();
-        sub.className = `small`;
-        ref.classList.add(`sub-id-${counter}`);
-        ref.appendChild(sub);
-    }
-    function scrollView(y) {
-        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
-        const options = { top: y, left: 0, behavior };
-        const views = [
-            document.querySelector(".present .present" /* currentSlideContainer */),
-            document.querySelector('.m-modal__content'),
-            document.querySelector('.wnl-comments')
-        ];
-        views.forEach(view => {
-            if (view)
-                view.scrollBy(options);
-        });
-    }
-    function showImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
-        if (fullscreenBtn)
-            fullscreenBtn.click();
-    }
-    function hideImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function hideModal() {
-        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function numericKeyPressed(key) {
-        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
-        if (quiz) {
-            const index = parseInt(key) - 1;
-            const answers = quiz.querySelectorAll('.quizAnswer');
-            if (index >= answers.length)
-                return;
-            answers[index].click();
-            return;
-        }
-        if (annotationImages.length > 0) {
-            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-        }
-        else {
-            const selector = `.present .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-            setTimeout(() => {
-                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-                let counter = 1;
-                annotationImages.forEach(image => {
-                    const btn = image.querySelector('.a-icon');
-                    btn.classList.add(`sub-id-${counter}`);
-                    const index = document.createElement('span');
-                    index.innerText = counter.toString();
-                    index.className = 'image-fullscreen-index';
-                    btn.appendChild(index);
-                    counter++;
-                });
-            }, 300);
-        }
-    }
-    let mouseVisible = true;
-    function toggleMouseVisibility(visible) {
-        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
-        //console.log({ mouseVisible, visible })
-        toggleBodyClass("custom-script-hide-cursor" /* hideCursor */, !mouseVisible);
-        if (!mouseVisible)
-            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
-    }
-})(Keyboard || (Keyboard = {}));
-class Options {
-    constructor(options, settingsContainerSelector) {
-        const document = unsafeWindow.document;
-        this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
-        this.settingsContainerSelector = settingsContainerSelector;
-        this.restoreState();
-        this.init();
-        this.update();
-        this.storeState();
-        this.rerender();
-    }
-    get settingsContainer() {
-        return document.querySelector(this.settingsContainerSelector);
-    }
-    _rerenderSettings() {
-        //console.log('trying to render sidebar', this.settingsContainer)
-        if (this.settingsContainer) {
-            //console.log('rendering sidebar', this.settingsContainer)
-            const optionDivs = this.settingsContainer.querySelectorAll(`div.${"custom-script-option-container" /* optionContainer */}`);
-            optionDivs.forEach(el => el.remove());
-            Object.values(this.state).forEach(option => this.settingsContainer.appendChild(this._getSettingsOption(option)));
-        }
-    }
-    _getSettingsOption(option) {
-        const optionContainer = document.createElement('div');
-        optionContainer.classList.add("custom-script-option-container" /* optionContainer */);
-        const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
-        const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
-        optionContainer.innerHTML = getOption(desc);
-        const optionLink = optionContainer.querySelector('a');
-        optionLink.addEventListener('click', event => {
-            event.preventDefault();
-            this._runCallback(option);
-        });
-        return optionContainer;
-    }
-    rerender() {
-        let rerender = (name) => {
-            const state = this.state[name];
-            GM_unregisterMenuCommand(state.handle);
-            const desc = typeof state.desc === 'function' ? state.desc(state) : state.desc;
-            this.state[name].handle = GM_registerMenuCommand(desc, () => this._runCallback(state), state.key);
-        };
-        rerender = rerender.bind(this);
-        Object.keys(this.state).forEach(rerender);
-        this._rerenderSettings();
-    }
-    _runCallback(option) {
-        const result = option.callback.apply(this, [option, this.state]);
-        if (typeof result === 'object')
-            this.setOptionState(Object.assign({ name: option.name }, result));
-    }
-    setOptionState(state, name) {
-        if (!name)
-            name = state.name;
-        if (typeof state === 'function') {
-            const result = state.apply(this, [this.state[name]]);
-            this._setOptionState(Object.assign(Object.assign({}, this.state[name]), result));
-        }
-        else
-            this._setOptionState(Object.assign(Object.assign({}, state), { name }));
-    }
-    _setOptionState(state) {
-        const name = state.name;
-        this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
-        this.storeState(name);
-        const updateCb = this.state[name].update;
-        if (updateCb)
-            updateCb.apply(this, [state, this.state]);
-        this.rerender();
-    }
-    storeState(optionName) {
-        const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value);
-        if (typeof optionName === 'string') {
-            saveOptionState(optionName);
-            return;
-        }
-        Object.keys(this.state).forEach(saveOptionState);
-    }
-    restoreState(optionName) {
-        const restoreOptionState = (name) => {
-            this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value);
-        };
-        if (typeof optionName === 'string') {
-            restoreOptionState(optionName);
-            return;
-        }
-        Object.keys(this.state).forEach(restoreOptionState);
-    }
-    _runOnAllOptions(functionName) {
-        Object.keys(this.state).forEach(optionName => {
-            const option = this.state[optionName];
-            const callback = option[functionName];
-            if (typeof callback === 'function')
-                callback.apply(this, [option, this.state]);
-        });
-    }
-    update() { this._runOnAllOptions('update'); }
-    init() {
-        this._runOnAllOptions('init');
-        this._rerenderSettings();
-    }
-}
-const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 ";
-options = new Options([
-    {
-        name: "increaseFontSize",
-        desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
-        callback: function (state) {
-            if (!state.value) {
-                this.setOptionState({
-                    name: "uniformFontSize",
-                    value: false
-                });
-            }
-            return { value: !state.value };
-        },
-        update: state => toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value),
-        defaultValue: true,
-        key: 'f'
-    },
-    {
-        name: "increaseAnnotations",
-        desc: state => getCheckboxEmoji(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
-        callback: function (state) {
-            return { value: !state.value };
-        },
-        update: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
-        defaultValue: false,
-        key: 'a'
-    },
-    {
-        name: "smoothScroll",
-        desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
-        callback: function (state) {
-            return { value: !state.value };
-        },
-        update: () => null,
-        defaultValue: false,
-        key: 'a'
-    },
-    {
-        name: "keyboardControl",
-        desc: state => getCheckboxEmoji(state.value) + "⌨️ Sterowanie klawiaturą",
-        callback: function (state) {
-            return { value: !state.value };
-        },
-        update: state => {
-            if (state.value) {
-                Keyboard.setupControl();
-            }
-            else {
-                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
-                Keyboard.disableControl();
-                if (slideObserver)
-                    slideObserver.disconnect();
-            }
-        },
-        defaultValue: true,
-        key: 'a'
-    },
-    {
-        name: "changeTitle",
-        desc: state => getCheckboxEmoji(state.value) + "🆎 Zmień tytuł karty",
-        callback: function (state) {
-            return Object.assign(Object.assign({}, state), { value: !state.value });
-        },
-        update: state => {
-            //console.log('changeTitle update', { state })
-            if (!state.value) {
-                if (state.originalTitle)
-                    unsafeWindow.document.title = state.originalTitle;
-                // unsafeWindow.removeEventListener('popstate', updateTabTitle)
-            }
-            updateTabTitle();
-        },
-        init: state => {
-            state.originalTitle = unsafeWindow.document.title;
-            // unsafeWindow.addEventListener('popstate', updateTabTitle);
-        },
-        defaultValue: false,
-        key: 'a'
-    },
-    {
-        name: "uniformFontSize",
-        desc: state => getCheckboxEmoji(state.value) + "🔤 Ujednolicona wielkość czcionki",
-        callback: function (state) {
-            if (!state.value) {
-                this.setOptionState({
-                    name: "increaseFontSize",
-                    value: false
-                });
-            }
-            return { value: !state.value };
-        },
-        update: state => toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value),
-        defaultValue: false,
-        key: 'u'
-    },
-    {
-        name: "invertImages",
-        desc: state => getCheckboxEmoji(state.value) + "🔃 Odwróć kolory obrazów",
-        callback: function (state) {
-            return { value: !state.value };
-        },
-        defaultValue: false,
-        update: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
-        key: 'i'
-    },
-    {
-        name: "percentIncrease",
-        type: "button",
-        desc: state => `➕ Zmień powiększenie (${state.value}%)`,
-        callback: (state) => {
-            const input = prompt(`Określ powiększenie czcionki (w %, obecnie ${state.value}%):`, state.value);
-            if (typeof input === "string") {
-                let nextValue = parseInt(input, 10);
-                if (nextValue !== NaN && nextValue > 10 && nextValue < 300) {
-                    return { value: nextValue };
-                }
-            }
-        },
-        defaultValue: 110,
-        update: state => {
-            updateFontSize(state.value);
-            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
-            if (rangeInput) {
-                rangeInput.value = state.value;
-                rangeInput.title = state.value;
-            }
-            if (rangeLabel)
-                rangeLabel.innerText = `${state.value}%`;
-        },
-        init: function (state) {
-            function _toRun() {
-                const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-                const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
-                if (rangeInput) {
-                    rangeInput.value = state.value;
-                    rangeLabel.innerText = `${state.value}%`;
-                    rangeInput.addEventListener('change', event => {
-                        const value = parseInt(rangeInput.value);
-                        this.setOptionState({ name: "percentIncrease", value });
-                    });
-                    rangeInput.addEventListener('input', event => {
-                        const value = rangeInput.value;
-                        updateFontSize(parseInt(value));
-                    });
-                }
-                state.increaseBy = (n) => {
-                    const current = this.state.percentIncrease.value;
-                    this.setOptionState({ value: current + n }, 'percentIncrease');
-                };
-                Keyboard.registerShortcut({
-                    keys: ['-'],
-                    callback: () => state.increaseBy(-5)
-                });
-                Keyboard.registerShortcut({
-                    keys: ['+', '='],
-                    callback: () => state.increaseBy(5)
-                });
-            }
-            const toRun = _toRun.bind(this);
-            toRunOnLoaded.push(toRun);
-        },
-        key: 'p'
-    }
-], `.${"custom-script-settings-container" /* settingsContainer */}>div`);
+///<reference path="common.ts" />
+///<reference path="options.ts" />
+///<reference path="notes.ts" />
 var BreakTimer;
 (function (BreakTimer) {
     function start() {
@@ -1534,7 +1824,7 @@ function addTagStyle(tags) {
 function getRuleFromTag(tag) {
     return __awaiter(this, void 0, void 0, function* () {
         const varName = yield setTagColor(tag);
-        return `.custom-tag[title=${tag.name}] { 
+        return `.custom-tag[title="${tag.name}"] { 
         background: var(${varName}-bg); 
         color: var(${varName}-color) 
     }`;
@@ -1859,199 +2149,6 @@ function addTag() {
         slideTitle: presentationMetadata.currentSlideTitle
     });
 }
-var Search;
-(function (Search) {
-    const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
-    const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
-    let searchContainer, searchResultsContainer;
-    function addSearchContainer() {
-        searchContainer = document.createElement('div');
-        searchContainer.className = 'custom-script-search custom-script-hidden';
-        searchContainer.innerHTML = `
-        <input class="custom-search-result" style="width: 80%;display: inline-block;">
-        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
-        `;
-        const closeBtn = document.createElement('div');
-        closeBtn.className = 'custom-script-summary-close';
-        closeBtn.innerHTML = SVGIcons.chevronUp;
-        searchContainer.prepend(closeBtn);
-        closeBtn.addEventListener('click', () => Search.hiddenToggle.state = true);
-        searchResultsContainer = document.createElement('div');
-        searchContainer.append(searchResultsContainer);
-        document.querySelector('.order-number-container').after(searchContainer);
-        searchContainer.querySelector('input.custom-search-result').addEventListener('change', () => performSearch());
-        searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch());
-    }
-    Search.addSearchContainer = addSearchContainer;
-    function performSearch() {
-        if (!searchContainer)
-            return;
-        const q = searchContainer.querySelector('input.custom-search-result').value;
-        const interpretation = interpretQuery(q);
-        searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
-        getSearchResponseHTML(interpretation).then(resp => {
-            if (searchResultsContainer) {
-                searchResultsContainer.innerHTML = '';
-                searchResultsContainer.append(...resp);
-            }
-            Search.hiddenToggle.state = false;
-        });
-    }
-    function interpretQuery(rawQuery) {
-        let query = rawQuery.replace(/"/g, '');
-        rawQuery = rawQuery.toLowerCase();
-        const quotesRegExp = /"([^"]+)"/g;
-        const hasntRegExp = /-\w+/g;
-        let mustContain = rawQuery.match(quotesRegExp);
-        let musntContain = rawQuery.match(hasntRegExp);
-        if (musntContain)
-            musntContain.forEach(toReplace => {
-                query.replace(`-${toReplace}`, '');
-            });
-        query = query.trim();
-        if (mustContain)
-            mustContain = mustContain.map(s => s.slice(1, -1));
-        if (musntContain)
-            musntContain = musntContain.map(s => s.slice(1));
-        return { query, rawQuery, mustContain, musntContain };
-    }
-    function getSearchResponseHTML(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const response = yield searchRequest(q);
-            if (response.length) {
-                return response.map(el => {
-                    const link = document.createElement('a');
-                    link.innerHTML = `
-                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
-                    link.href = getHref(el);
-                    link.target = '_blank';
-                    link.className = 'custom-search-result';
-                    link.addEventListener('click', ev => {
-                        ev.preventDefault();
-                        openSlideInTab({
-                            currentTab: -2,
-                            lessonID: el.context.lesson.id,
-                            screenID: el.context.screen.id,
-                            slide: el.context.slideshow.order_number
-                        });
-                    });
-                    return link;
-                });
-            }
-            const notFoundInfo = document.createElement('p');
-            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
-            notFoundInfo.style.padding = '0.5rem';
-            return [notFoundInfo];
-            function getHref(el) {
-                const fragm = {
-                    f1: el.context.lesson,
-                    f2: el.context.screen,
-                    f3: el.context.slideshow
-                };
-                if (Object.values(fragm).every(val => val)) {
-                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
-                    if (path.every(val => val)) {
-                        return [WNL_LESSON_LINK, ...path].join('/');
-                    }
-                }
-                if (el.id)
-                    return WNL_DYNAMIC_SLIDES + el.id;
-                return '#';
-            }
-        });
-    }
-    Search.hiddenToggle = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
-        if (!t.state)
-            setTimeout(() => {
-                searchContainer.querySelector('input.custom-search-result').focus();
-            }, 100);
-    });
-    function searchRequest(q) {
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                url: getSearchURL(q.query),
-                method: 'GET',
-                responseType: "json",
-                onload: ({ response }) => {
-                    const entries = Object.entries(response);
-                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
-                    const parsed = results.map(el => {
-                        return {
-                            highlight: el.scout_metadata.highlight,
-                            details: el.snippet,
-                            context: el.context,
-                            id: el.id
-                        };
-                    });
-                    resolve(filterSearch(parsed, q));
-                },
-                onerror: reject
-            });
-        });
-    }
-    function filterSearch(parsed, q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let filtered = parsed;
-            if (q.mustContain) {
-                filtered = parsed.filter(result => {
-                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
-                });
-            }
-            if (q.musntContain) {
-                filtered = filtered.filter(result => {
-                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
-                });
-            }
-            filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID));
-            function sortUpSome(predicate) {
-                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
-            }
-            return (yield getTagsAsResults(q)).concat(filtered);
-            function hasSomePhrases(result, phrases) {
-                return phrases.map(toSearch => {
-                    return Object.values(result.highlight).some(highlighted => {
-                        return highlighted.some(s => stripHTMLTags(s).includes(toSearch));
-                    });
-                });
-            }
-        });
-    }
-    function getTagsAsResults(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!notesCollection)
-                return [];
-            const tags = yield notesCollection.getAllTagsWithName(q.query);
-            return tags.map(tag => {
-                return {
-                    highlight: {
-                        "snippet.content": [`<div title='${tag.content}' class='custom-tag'>${tag.content}</div>`]
-                    },
-                    details: {
-                        header: tag.presentationTitle,
-                        subheader: tag.slideTitle,
-                    },
-                    context: {
-                        screen: { id: tag.screenid },
-                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
-                        slideshow: {
-                            order_number: tag.slide
-                        }
-                    }
-                };
-            });
-        });
-    }
-    function stripHTMLTags(s) {
-        const tagStripper = /<[^>]+>/g;
-        return s.toLowerCase().replace(tagStripper, '');
-    }
-})(Search || (Search = {}));
-var Toggles;
-(function (Toggles) {
-    Toggles.searchHidden = Search.hiddenToggle;
-})(Toggles || (Toggles = {}));
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
@@ -2252,168 +2349,7 @@ function getMetadataFromLinks(wrappers) {
         };
     }).flat(1);
 }
-(function () {
-    'use strict';
-    function onLoaded() {
-        if (!appDiv) {
-            appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-            if (appDiv) {
-                onAttributeChange(appDiv, 'screenid', checkUnloaded);
-                presentationMetadata.screenID = parseInt(appDiv.attributes.getNamedItem('screenid').value);
-                presentationMetadata.lessonID = getCurrentLessonID();
-                //console.log({ screenid: presentationMetadata.screenID })
-                if (tools && tools.state.useNotes.value) {
-                    loadNotes();
-                }
-            }
-        }
-        let background = document.querySelector(".image-custom-background" /* background */);
-        if (background !== null) {
-            background.classList.remove("image-custom-background");
-            background.classList.add("white-custom-background");
-        }
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        if (lessonView !== null) {
-            const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
-            if (mainHeaderElem !== null)
-                presentationMetadata.name = mainHeaderElem.innerText;
-            addSliderContainer();
-            addSettingsContainer();
-            addToolsContainer();
-        }
-        if (GM_getValue(`option_keyboardControl`))
-            Keyboard.setupControl();
-        addChapterInfo();
-        addSlideOptions();
-        toRunOnLoaded.forEach(cb => cb());
-        GM_getTabs(tabsObject => {
-            console.log({ tabsObject });
-            const tabs = Object.values(tabsObject);
-            let maxIndex = 0;
-            if (tabs) {
-                tabs.forEach(tab => {
-                    if (tab && tab.index > maxIndex)
-                        maxIndex = tab.index;
-                });
-                maxIndex++;
-            }
-            thisTabIndex = maxIndex;
-            console.log({ thisTabIndex });
-            GM_saveTab({ index: maxIndex });
-        });
-        GM_setValue('openInTab', {
-            lessonID: presentationMetadata.lessonID,
-            screenID: presentationMetadata.screenID,
-            slide: presentationMetadata.currentSlideNumber,
-            currentTab: -1
-        });
-        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
-            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
-            openSlideInTab(toOpen);
-        });
-        unsafeWindow.addEventListener('beforeunload', ev => {
-            onUnload();
-        });
-    }
-    function addSliderContainer() {
-        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const sliderContainer = document.createElement('div');
-        sliderContainer.innerHTML = zoomSliderHTML;
-        lessonView.appendChild(sliderContainer);
-        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
-            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
-            .addEventListener('click', () => {
-            options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
-        });
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
-            .addEventListener('click', () => {
-            options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
-        });
-    }
-    function addToolsContainer() {
-        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const toolsContainer = document.createElement('div');
-        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
-        toolsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
-            <div></div>`;
-        lessonView.appendChild(toolsContainer);
-        tools.rerender();
-    }
-    function addSettingsContainer() {
-        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const sidebarSettingsContainer = document.createElement('div');
-        sidebarSettingsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
-        sidebarSettingsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
-            <div></div>`;
-        lessonView.appendChild(sidebarSettingsContainer);
-        options.rerender();
-    }
-    let isAwaiting = false;
-    awaitLoad();
-    let appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-    if (appDiv)
-        onAttributeChange(appDiv, 'screenid', checkUnloaded);
-    function awaitLoad() {
-        let checkLoadedInterval;
-        isAwaiting = true;
-        checkLoadedInterval = setInterval(() => {
-            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
-            if (testExtensionLoaded) {
-                isAwaiting = false;
-                clearInterval(checkLoadedInterval);
-                return;
-            }
-            const testSlideshowLoaded = document.querySelector('.order-number-container');
-            if (testSlideshowLoaded) {
-                isAwaiting = false;
-                clearInterval(checkLoadedInterval);
-                onLoaded();
-            }
-        }, 300);
-    }
-    function checkUnloaded() {
-        //console.log('unloaded??')
-        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
-        if (!isAwaiting && !testExtensionLoaded) {
-            //console.log('unloaded!!!')
-            onUnload();
-            awaitLoad();
-        }
-    }
-    function onUnload() {
-        for (const key in presentationMetadata) {
-            presentationMetadata[key] = undefined;
-        }
-        if (options && options.state.changeTitle.value) {
-            const { originalTitle } = options.state.changeTitle;
-            document.title = originalTitle;
-        }
-        if (currentSlideNotes) {
-            currentSlideNotes.commitChanges().then(() => {
-                notesCollection = undefined;
-                currentSlideNotes = undefined;
-            });
-        }
-        if (slideNumberObserver)
-            slideNumberObserver.disconnect();
-        if (slideObserver)
-            slideObserver.disconnect();
-        if (BreakTimer.timer)
-            clearTimeout(BreakTimer.timer);
-    }
-})();
+///<reference path="utils/enums.ts" />
 const styles = `
 :root {
     --uniform-font-size: 0.93em;
@@ -2920,6 +2856,10 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     display: flex!important;
 }
 
+.${"custom-script-hide-chat" /* hideChat */} .wnl-chat-toggle {
+    display: none!important;
+}
+
 .${"custom-script-invert-images" /* invertImages */} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }`;
@@ -2927,3 +2867,173 @@ const head = unsafeWindow.document.querySelector('head');
 const stylesheet = document.createElement('style');
 stylesheet.innerHTML = styles;
 head.appendChild(stylesheet);
+///<reference path="packageMetadata.ts" />
+///<reference path="globals.d.ts" />
+///<reference path="utils/enums.ts" />
+///<reference path="utils/common.ts" />
+///<reference path="utils/tools.ts" />
+///<reference path="utils/keyboard.ts" />
+///<reference path="utils/slideshowOptions.ts" />
+///<reference path="style.ts" />
+(function () {
+    'use strict';
+    function onLoaded() {
+        if (!appDiv) {
+            appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+            if (appDiv) {
+                onAttributeChange(appDiv, 'screenid', checkUnloaded);
+                presentationMetadata.screenID = parseInt(appDiv.attributes.getNamedItem('screenid').value);
+                presentationMetadata.lessonID = getCurrentLessonID();
+                //console.log({ screenid: presentationMetadata.screenID })
+                if (tools && tools.state.useNotes.value) {
+                    loadNotes();
+                }
+            }
+        }
+        let background = document.querySelector(".image-custom-background" /* background */);
+        if (background !== null) {
+            background.classList.remove("image-custom-background");
+            background.classList.add("white-custom-background");
+        }
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        if (lessonView !== null) {
+            const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
+            if (mainHeaderElem !== null)
+                presentationMetadata.name = mainHeaderElem.innerText;
+            addSliderContainer();
+            addSettingsContainer();
+            addToolsContainer();
+        }
+        if (GM_getValue(`option_keyboardControl`))
+            Keyboard.setupControl();
+        addChapterInfo();
+        addSlideOptions();
+        toRunOnLoaded.forEach(cb => cb());
+        GM_getTabs(tabsObject => {
+            console.log({ tabsObject });
+            const tabs = Object.values(tabsObject);
+            let maxIndex = 0;
+            if (tabs) {
+                tabs.forEach(tab => {
+                    if (tab && tab.index > maxIndex)
+                        maxIndex = tab.index;
+                });
+                maxIndex++;
+            }
+            thisTabIndex = maxIndex;
+            console.log({ thisTabIndex });
+            GM_saveTab({ index: maxIndex });
+        });
+        GM_setValue('openInTab', {
+            lessonID: presentationMetadata.lessonID,
+            screenID: presentationMetadata.screenID,
+            slide: presentationMetadata.currentSlideNumber,
+            currentTab: -1
+        });
+        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
+            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
+            openSlideInTab(toOpen);
+        });
+        unsafeWindow.addEventListener('beforeunload', ev => {
+            onUnload();
+        });
+    }
+    function addSliderContainer() {
+        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        const sliderContainer = document.createElement('div');
+        sliderContainer.innerHTML = zoomSliderHTML;
+        lessonView.appendChild(sliderContainer);
+        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
+            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
+            .addEventListener('click', () => {
+            options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
+        });
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
+            .addEventListener('click', () => {
+            options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
+        });
+    }
+    function addToolsContainer() {
+        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        const toolsContainer = document.createElement('div');
+        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
+        toolsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
+            <div></div>`;
+        lessonView.appendChild(toolsContainer);
+        tools.rerender();
+    }
+    function addSettingsContainer() {
+        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
+        if (test)
+            return;
+        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        const sidebarSettingsContainer = document.createElement('div');
+        sidebarSettingsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
+        sidebarSettingsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <div></div>`;
+        lessonView.appendChild(sidebarSettingsContainer);
+        options.rerender();
+    }
+    let isAwaiting = false;
+    awaitLoad();
+    let appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+    if (appDiv)
+        onAttributeChange(appDiv, 'screenid', checkUnloaded);
+    function awaitLoad() {
+        let checkLoadedInterval;
+        isAwaiting = true;
+        checkLoadedInterval = setInterval(() => {
+            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+            if (testExtensionLoaded) {
+                isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                return;
+            }
+            const testSlideshowLoaded = document.querySelector('.order-number-container');
+            if (testSlideshowLoaded) {
+                isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                onLoaded();
+            }
+        }, 300);
+    }
+    function checkUnloaded() {
+        //console.log('unloaded??')
+        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+        if (!isAwaiting && !testExtensionLoaded) {
+            //console.log('unloaded!!!')
+            onUnload();
+            awaitLoad();
+        }
+    }
+    function onUnload() {
+        for (const key in presentationMetadata) {
+            presentationMetadata[key] = undefined;
+        }
+        if (options && options.state.changeTitle.value) {
+            const { originalTitle } = options.state.changeTitle;
+            document.title = originalTitle;
+        }
+        if (currentSlideNotes) {
+            currentSlideNotes.commitChanges().then(() => {
+                notesCollection = undefined;
+                currentSlideNotes = undefined;
+            });
+        }
+        if (slideNumberObserver)
+            slideNumberObserver.disconnect();
+        if (slideObserver)
+            slideObserver.disconnect();
+        if (BreakTimer.timer)
+            clearTimeout(BreakTimer.timer);
+    }
+})();
