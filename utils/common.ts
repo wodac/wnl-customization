@@ -1,3 +1,5 @@
+///<reference path="../interfaces.d.ts" />
+
 document = unsafeWindow.document
 let thisTabIndex: number
 let toRunOnLoaded: Function[] = [], summaryContainer: HTMLDivElement
@@ -108,15 +110,21 @@ const updateFontSize = (fontSize: number) => {
 }
 
 class ClassToggler {
+    private _unresolved = false
 
     constructor(
         public className: string,
         private _elementOrSelector: Element | string = document.body,
         public onchange?: (toggler: ClassToggler) => any
     ) {
-        this._state = this.element && this.element.classList.contains(className)
+        if (this.element) this._getClassState()
+        else this._unresolved = true
     }
     private _state: boolean
+
+    private _getClassState() {
+        this._state = this.element.classList.contains(this.className)
+    }
 
     get element() {
         if (typeof this._elementOrSelector === 'string') {
@@ -141,6 +149,7 @@ class ClassToggler {
     }
 
     toggle() {
+        if (this._unresolved) this._getClassState()
         this.state = !this.state
     }
 }
@@ -205,6 +214,19 @@ function downloadFile(mimetype: string, name: string, data: string | Buffer) {
     dlAnchorElem.setAttribute("href", dataStr);
     dlAnchorElem.setAttribute("download", name);
     dlAnchorElem.click();
+}
+
+function toggleFullscreen() {
+    setTimeout(
+        () => document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'f', altKey: false, bubbles: true,
+            cancelable: true, charCode: 0, code: "KeyF",
+            composed: true, ctrlKey: false, detail: 0,
+            isComposing: false, keyCode: 70, location: 0,
+            metaKey: false, repeat: false, shiftKey: false
+        })),
+        10
+    )
 }
 
 function getIndexedDB(name: string, version: number, setupCb: (ev: IDBVersionChangeEvent, db: IDBDatabase) => IDBObjectStore) {
@@ -290,7 +312,7 @@ class CustomEventEmmiter<Events> {
 
 
     trigger<EventName extends keyof Events>(eventName: EventName, event: Events[EventName] = {} as Events[EventName]) {
-        //console.log(`triggering ${eventName} with data`, event, 'on', this)
+        console.log(`triggering ${eventName} with data`, event, 'on', this)
         this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event))
     }
 }

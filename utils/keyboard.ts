@@ -1,3 +1,5 @@
+///<reference path="common.ts" />
+///<reference path="search.ts" />
 namespace Keyboard {
     type KeyboardShortcut = {
         keys: string[]
@@ -16,6 +18,14 @@ namespace Keyboard {
         {
             keys: ['q', '0', 'Escape'],
             callback: hideModal
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: () => {
+                Toggles.optionsActive.state = false
+                Toggles.searchHidden.state = true
+                Toggles.summaryHidden.state = true
+            }
         },
         {
             keys: ['m'],
@@ -55,6 +65,20 @@ namespace Keyboard {
         const charCode = event.keyCode
         if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105)) numericKeyPressed(event.key)
     }
+    document.addEventListener('fullscreenchange', ev => {
+        if (!document.fullscreenElement) {
+            if (document.querySelector('.o-referenceModal')) {
+                hideModal()
+                toggleFullscreen()
+            } else if (!Toggles.searchHidden.state) {
+                Toggles.searchHidden.state = true
+                toggleFullscreen()
+            } else if (!Toggles.summaryHidden.state) {
+                Toggles.summaryHidden.state = true
+                toggleFullscreen()
+            }
+        }
+    })
     export function setupControl() {
         const slides = document.querySelectorAll('.slides .stack')
         if (!slides.length) return

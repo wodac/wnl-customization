@@ -16,6 +16,7 @@ declare const enum BODY_CLASS_NAMES {
     uniformFontSize = 'custom-script-uniform-font-size',
     hideCursor = 'custom-script-hide-cursor',
     invertImages = 'custom-script-invert-images',
+    hideChat = 'custom-script-hide-chat',
 }
 
 declare const enum SELECTORS {

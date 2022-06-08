@@ -1,3 +1,11 @@
+///<reference path="packageMetadata.ts" />
+///<reference path="globals.d.ts" />
+///<reference path="utils/enums.ts" />
+///<reference path="utils/common.ts" />
+///<reference path="utils/tools.ts" />
+///<reference path="utils/keyboard.ts" />
+///<reference path="utils/slideshowOptions.ts" />
+///<reference path="style.ts" />
 (function () {
     'use strict';
 

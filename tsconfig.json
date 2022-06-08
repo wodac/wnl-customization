@@ -7,18 +7,6 @@
     },
     "lib": ["es2017"],
     "files": [
-      "packageMetadata.ts",
-      "utils/enums.ts",
-      "interfaces.d.ts", 
-      "globals.d.ts", 
-      "utils/common.ts",
-      "utils/notes.ts",
-      "utils/keyboard.ts",
-      "utils/options.ts",
-      "utils/tools.ts",
-      "utils/search.ts",
-      "utils/slideshowOptions.ts",
-      "wnl-customization.ts", 
-      "style.ts"
+      "wnl-customization.ts"
     ]
   }

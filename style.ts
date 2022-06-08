@@ -1,3 +1,4 @@
+///<reference path="utils/enums.ts" />
 const styles = `
 :root {
     --uniform-font-size: 0.93em;
@@ -502,6 +503,10 @@ div.custom-tag:not(.editing):hover .custom-change-color {
 .custom-script-use-notes .custom-notes-btns-container, 
 .custom-script-use-notes.custom-script-tags-visible div.custom-tags-container {
     display: flex!important;
+}
+
+.${BODY_CLASS_NAMES.hideChat} .wnl-chat-toggle {
+    display: none!important;
 }
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {

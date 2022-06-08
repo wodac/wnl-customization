@@ -18,7 +18,15 @@ namespace Search {
         searchResultsContainer = document.createElement('div')
         searchContainer.append(searchResultsContainer)
         document.querySelector('.order-number-container').after(searchContainer)
-        searchContainer.querySelector('input.custom-search-result').addEventListener('change', () => performSearch())
+        const searchInput = searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
+        searchInput.addEventListener('change', () => performSearch())
+        searchInput.addEventListener('keyup', ev => {
+            if (ev.key === 'Escape') {
+                ev.preventDefault()
+                ev.stopImmediatePropagation()
+                hiddenToggle.state = true
+            }
+        })
         searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch())
     }
 

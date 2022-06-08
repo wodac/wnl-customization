@@ -1,3 +1,5 @@
+///<reference path="common.ts" />
+///<reference path="keyboard.ts" />
 interface OptionState<T> extends OptionConstructorOption<any> {
     value: T
     [k: string]: any
@@ -194,6 +196,16 @@ options = new Options([
         key: 'a'
     },
     {
+        name: "hideChat",
+        desc: state => getCheckboxEmoji(state.value) + "💬 Ukryj czat",
+        callback: function (state) {
+            return { value: !state.value }
+        },
+        update: state => toggleBodyClass(BODY_CLASS_NAMES.hideChat, state.value),
+        defaultValue: false,
+        key: 'c'
+    },
+    {
         name: "smoothScroll",
         desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
         callback: function (state) {
@@ -201,7 +213,7 @@ options = new Options([
         },
         update: () => null,
         defaultValue: false,
-        key: 'a'
+        key: 's'
     },
     {
         name: "keyboardControl",
@@ -220,7 +232,7 @@ options = new Options([
             }
         },
         defaultValue: true,
-        key: 'a'
+        key: 'k'
     },
     {
         name: "changeTitle",
@@ -241,7 +253,7 @@ options = new Options([
             // unsafeWindow.addEventListener('popstate', updateTabTitle);
         },
         defaultValue: false,
-        key: 'a'
+        key: 't'
     },
     {
         name: "uniformFontSize",

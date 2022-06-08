@@ -1,3 +1,6 @@
+///<reference path="common.ts" />
+///<reference path="options.ts" />
+///<reference path="notes.ts" />
 namespace BreakTimer {
     export let timer: NodeJS.Timeout, observer: MutationObserver
     export function start() {
@@ -130,7 +133,7 @@ function addTagStyle(tags: Notes.RecordTypes.Tag[]) {
 
 async function getRuleFromTag(tag: Notes.RecordTypes.Tag) {
     const varName = await setTagColor(tag)
-    return `.custom-tag[title=${tag.name}] { 
+    return `.custom-tag[title="${tag.name}"] { 
         background: var(${varName}-bg); 
         color: var(${varName}-color) 
     }`

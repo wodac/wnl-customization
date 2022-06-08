@@ -1,3 +1,4 @@
+///<reference path="common.ts" />
 namespace Notes {
     export namespace Events {
         export type Note = {
@@ -17,6 +18,8 @@ namespace Notes {
     export abstract class Note extends CustomEventEmmiter<Events.Note> {
         protected _deleted: boolean
         protected _edited: boolean = false
+        protected _editing: boolean = false
+        protected _lastValue: string
         protected _element: HTMLDivElement
         abstract get contentElement(): HTMLDivElement
         abstract render(): HTMLDivElement
@@ -40,12 +43,12 @@ namespace Notes {
 
         remove(removeFromParent = true) {
             if (this._deleted) return
-           //console.log('deleting', { note: this, removeFromParent }, 'from Note')
-            this.trigger('remove')
-            if (removeFromParent) this.parent.removeNoteById(this.metadata.id)
-            if (this._element) this._element.remove()
-            this._element = null
             this._deleted = true
+            //console.log('deleting', { note: this, removeFromParent }, 'from Note')
+            this.trigger('remove')
+            if (this._element) this._element.remove()
+            if (removeFromParent) this.parent.removeNoteById(this.metadata.id)
+            this._element = null
             this.removeAllListeners()
         }
 
@@ -64,13 +67,15 @@ namespace Notes {
             })
             noteContentInput.addEventListener('keyup', (ev: KeyboardEvent) => {
                 if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
+                    ev.stopImmediatePropagation()
+                    ev.preventDefault()
                     this.endEditing()
                 }
             })
             noteContentInput.addEventListener('input', ev => {
                 ev.stopPropagation()
                 const content = noteContentInput.value
-               //console.log('note content changed', { content })
+                //console.log('note content changed', { content })
                 this.content = content
             })
             const form = this._element.querySelector('form')
@@ -83,22 +88,28 @@ namespace Notes {
         }
 
         private startEditing(noteContentInput: HTMLInputElement | HTMLTextAreaElement) {
+            this._editing = true
+            this._lastValue = this._content
             this._element.classList.add('editing')
             noteContentInput.focus()
         }
 
         private endEditing() {
-            this._element.classList.remove('editing')
-            if (!this._content.trim().length) {
-                if (this._edited) this.remove()
-                else this._edited = true
-                return
+            if (this._editing) {
+                this._editing = false
+                this._element.classList.remove('editing')
+                this.trigger('edited', { newContent: this.content })
+                if (!this._content.trim().length) {
+                    if (this._edited) this.remove()
+                    else this._edited = true
+                    return
+                }
             }
-            this.trigger('edited', { newContent: this.content })
         }
     }
 
     export class TagNote extends Note {
+        private colorInput: HTMLInputElement
         static from(note: Note) {
             return new TagNote(note.metadata, note.content, note.parent)
         }
@@ -125,26 +136,26 @@ namespace Notes {
             this._element.classList.add('custom-tag')
             this._element.title = this.content
             this._element.tabIndex = 0
+
             const removeBtn = this._element.querySelector('.custom-remove') as HTMLElement
             const colorBtn = this._element.querySelector('.custom-change-color') as HTMLElement
-            const colorInput = this._element.querySelector('input[type=color]') as HTMLInputElement
-            
+            this.colorInput = this._element.querySelector('input[type=color]') as HTMLInputElement
+            this.setColor(this.metadata.color)
+
             this.contentElement.innerText = this.content
             this.setupEditing(this._element.querySelector('input'))
 
-            colorInput.value = this.metadata.color
             colorBtn.addEventListener('click', (ev) => {
                 ev.stopImmediatePropagation()
-                colorInput.click()
+                this.colorInput.click()
             })
-            colorInput.addEventListener('change', () => {
-                this.metadata.color = colorInput.value
+            this.colorInput.addEventListener('change', () => {
+                this.metadata.color = this.colorInput.value
                 this.trigger('colorChange', { newColor: this.metadata.color })
                 this.parent.saveNote(this)
-                this._element.style.background = this.metadata.color
-                this._element.style.color = getForegroundColor(this.metadata.color)
+                this.setColor(this.metadata.color)
             })
-            
+
             removeBtn.addEventListener('click', event => {
                 event.preventDefault()
                 event.stopPropagation()
@@ -152,12 +163,32 @@ namespace Notes {
             })
 
             this._element.title = this.content
-            this.addEventListener('change', ({ newContent }) => {
+            this.addEventListener('edited', ({ newContent }) => {
                 this._element.title = newContent
+                this.setColorFromTagName()
             })
             if (parent) parent.prepend(this._element)
             this.trigger('rendered')
             return this._element
+        }
+
+        private setColorFromTagName() {
+            const tagColors = this.parent.parent.tags
+            console.log({tagColors})
+            let color = this.metadata.color
+            if (tagColors.length && this.content) {
+                const tagRecord = tagColors.find(tag => tag.name === this.content)
+                if (tagRecord)
+                    color = tagRecord.color
+            }
+            this.metadata.color = color
+            this.setColor(color)
+        }
+
+        private setColor(color: string) {
+            this._element.style.background = color
+            this._element.style.color = getForegroundColor(color)
+            this.colorInput.value = color
         }
     }
 
@@ -332,8 +363,11 @@ namespace Notes {
                             this
                         )
                     } else {
+                        const tagColors = this.parent.tags
+                        const tagRecord = tagColors.find(tag => tag.name === record.content)
+                        const color = tagRecord && tagRecord.color || record.color
                         note = new TagNote(
-                            new NoteMetadata(record.id, record.type, this.metadata, undefined, undefined, record.color),
+                            new NoteMetadata(record.id, record.type, this.metadata, undefined, undefined, color),
                             record.content,
                             this
                         )
@@ -370,7 +404,7 @@ namespace Notes {
 
             private addAnyNote<N extends Note>(
                 {
-                    position, content, textContext, 
+                    position, content, textContext,
                     presentationTitle, slideTitle, type, color,
                     lessonID, screenid, slide
                 }: NewNoteOptions,
@@ -408,7 +442,7 @@ namespace Notes {
                 if (indexInChangedNotes >= 0) deleted = this._changedNotes.splice(indexInChangedNotes, 1)[0]
                 deleted.remove(false)
                 this.trigger('change', { deleted: [deleted] })
-               //console.log('deleting', { deleted }, 'from SlideNotesCollection')
+                //console.log('deleting', { deleted }, 'from SlideNotesCollection')
                 return deleted
             }
 
@@ -568,7 +602,7 @@ namespace Notes {
             }
 
             async getNotesBySlide(slide: number): Promise<Slide> {
-                if (this.cache[slide]) return this.cache[slide]
+                // if (this.cache[slide]) return this.cache[slide]
                 const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly')
                 const notesStore = transaction.objectStore(Presentation.NOTES_STORE)
                 const screenidIndex = notesStore.index(Presentation.NOTES_INDEXES.byScreenIDAndSlide.name)
@@ -602,6 +636,7 @@ namespace Notes {
                     allTags.addEventListener('success', ev => {
                         const tagsResult: RecordTypes.Tag[] = allTags.result
                         if (this._tags.length !== tagsResult.length) {
+                            this._tags = tagsResult
                             this.trigger('changedTags', {
                                 changed: tagsResult.map((tag, i) => {
                                     return { ...tag, index: i }
@@ -615,7 +650,7 @@ namespace Notes {
 
             }
 
-            getAllTagsWithName(name: string) {                
+            getAllTagsWithName(name: string) {
                 const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readonly')
                 const notesStore = transaction.objectStore(Presentation.NOTES_STORE)
                 const tagIndex = notesStore.index(Presentation.NOTES_INDEXES.byContentAndType.name)
@@ -651,7 +686,7 @@ namespace Notes {
             }
 
             importNotes(notes: RecordTypes.Note[]) {
-               //console.log('to import:', { notes })
+                //console.log('to import:', { notes })
                 const transaction = this.db.transaction(
                     [Presentation.NOTES_STORE, Presentation.TAGS_STORE],
                     'readwrite'
@@ -695,7 +730,7 @@ namespace Notes {
                 const transaction = this.db.transaction(Presentation.NOTES_STORE, 'readwrite')
                 const notesStore = transaction.objectStore(Presentation.NOTES_STORE)
                 notes.forEach(note => {
-                   //console.log('deleting', { note }, 'from PresentationNotesCollection')
+                    //console.log('deleting', { note }, 'from PresentationNotesCollection')
                     notesStore.delete(note.metadata.id)
                 })
                 transaction.commit()
