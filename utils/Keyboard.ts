@@ -1,5 +1,5 @@
 ///<reference path="common.ts" />
-///<reference path="search.ts" />
+///<reference path="Search.ts" />
 namespace Keyboard {
     type KeyboardShortcut = {
         keys: string[]
@@ -79,7 +79,7 @@ namespace Keyboard {
             }
         }
     })
-    export function setupControl() {
+    export function setupControl(app: App) {
         const slides = document.querySelectorAll('.slides .stack')
         if (!slides.length) return
         slides.forEach(slide => {
@@ -87,7 +87,7 @@ namespace Keyboard {
             const icons = slide.querySelectorAll('.a-icon')
             icons.forEach(icon => addSubToRef(icon, counter++))
         })
-        observeSlides(addSubsToRefs)
+        observeSlides(app, addSubsToRefs)
 
         // document.body.addEventListener('click', updateTabTitle)
         // document.body.addEventListener('keyup', updateTabTitle)
@@ -112,10 +112,10 @@ namespace Keyboard {
         document.body.removeEventListener('keyup', shortcutListener)
     }
 
-    function observeSlides(cb: MutationCallback) {
+    function observeSlides(app: App, cb: MutationCallback) {
         //console.log('observeSlides')
-        slideObserver = new MutationObserver(cb)
-        slideObserver.observe(document.querySelector('div.slides'), {
+        app.slideObserver = new MutationObserver(cb)
+        app.slideObserver.observe(document.querySelector('div.slides'), {
             childList: true,
             subtree: true
         });

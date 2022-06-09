@@ -24,13 +24,13 @@ const slideshowOptions = `
         </div>
     </a>`
 
-function addSlideOptions() {
+function addSlideOptions(app: App) {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
-    Search.addSearchContainer()
-    slideOptionsContainer = document.createElement('div')
-    slideOptionsContainer.innerHTML = notesBtnsAndTags + slideshowOptionsBtn
-    additionalOptionsContainer = document.createElement('div')
+    app.search.addSearchContainer()
+    const slideOptionsContainer = document.createElement('div')
+    slideOptionsContainer.innerHTML = slideshowOptionsBtn
+    const additionalOptionsContainer = document.createElement('div')
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options'
     additionalOptionsContainer.innerHTML = slideshowOptions
     slideOptionsContainer.append(additionalOptionsContainer)
@@ -42,13 +42,13 @@ function addSlideOptions() {
         Toggles.searchHidden.toggle()
     })
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
-        if (options) {
-            options.state.percentIncrease.increaseBy(5)
+        if (app.options) {
+            app.options.state.percentIncrease.increaseBy(5)
         }
     })
     slideOptionsContainer.querySelector('.custom-zoom-down-btn').addEventListener('click', () => {
-        if (options) {
-            options.state.percentIncrease.increaseBy(-5)
+        if (app.options) {
+            app.options.state.percentIncrease.increaseBy(-5)
         }
     })
 }
@@ -61,7 +61,7 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
                <span class='small'>(${e.chapterLength})</span>
        </a>`
     ).join('')
-    summaryContainer = document.createElement('div')
+    const summaryContainer = document.createElement('div')
     summaryContainer.className = 'custom-script-summary custom-script-hidden'
     summaryContainer.innerHTML = linksHTML
     const closeBtn = document.createElement('div')
@@ -75,30 +75,31 @@ function addSummary(metadata: SlideshowChapterMetadata[]) {
         link.addEventListener('click', event => {
             event.preventDefault()
             const { startPage } = link.dataset
-            goToSlideN(parseInt(startPage))
+            presentationMetadata.slideNumber = parseInt(startPage)
             return false
         })
     })
 }
 
-function addChapterInfo() {
+function addChapterInfo(app: App) {
     getMetadata(metadata => {
        //console.log({ metadata });
         if (!metadata)
             return;
 
+        app.metadata = metadata
+
         addPageNumberContainer();
         addSummary(metadata);
 
-        observeSlideNumber(page => onSlideChanged(page, metadata));
+        presentationMetadata.addEventListener('slideChange', page => onSlideChanged(page, metadata, app));
         const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement;
-        onSlideChanged(parseInt(slideNumberSpan.innerText), metadata);
+        onSlideChanged(parseInt(slideNumberSpan.innerText), metadata, app);
     });
 }
 
-function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
+function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[], app: App) {
     if (current === NaN) return
-    presentationMetadata.currentSlideNumber = current
     const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
     const getChapterIndex = page => {
         const i = metadata.findIndex(m => m.startPage > page) - 1;
@@ -112,6 +113,7 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
     relativeCurrentContainer.innerText = relativeCurrent.toString()
     const chapterLengthContainer = pageNumberContainer.querySelector(`.${CLASS_NAMES.chapterLength}`) as HTMLSpanElement
     chapterLengthContainer.innerText = chapterLength.toString()
+    const summaryContainer = document.querySelector('custom-script-summary')
     if (summaryContainer) {
         summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'))
         const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`)
@@ -121,7 +123,7 @@ function onSlideChanged(current: number, metadata: SlideshowChapterMetadata[]) {
         }
     }
     updateTabTitle()
-    renderNotes(current)
+    app.notesRendering.renderNotes(current)
 }
 
 function addPageNumberContainer(): HTMLSpanElement {
@@ -181,7 +183,6 @@ function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, 
         return
     }
     const linksMetadata = getMetadataFromLinks(wrappers)
-    chapterMetadata = linksMetadata
     cb(linksMetadata)
 }
 

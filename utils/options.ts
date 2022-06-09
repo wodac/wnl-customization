@@ -1,5 +1,5 @@
 ///<reference path="common.ts" />
-///<reference path="keyboard.ts" />
+///<reference path="Keyboard.ts" />
 interface OptionState<T> extends OptionConstructorOption<any> {
     value: T
     [k: string]: any
@@ -168,7 +168,7 @@ type OptionsTypes = {
     useNotes: OptionState<boolean>
 }
 
-options = new Options([
+const getOptionsConfig: (app: App) => OptionConstructorOption<any>[] = app => [
     {
         name: "increaseFontSize",
         desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
@@ -223,12 +223,12 @@ options = new Options([
         },
         update: state => {
             if (state.value) {
-                Keyboard.setupControl()
+                Keyboard.setupControl(app)
             }
             else {
                 document.querySelectorAll('sub.small').forEach(sub => sub.remove())
                 Keyboard.disableControl()
-                if (slideObserver) slideObserver.disconnect()
+                if (app.slideObserver) app.slideObserver.disconnect()
             }
         },
         defaultValue: true,
@@ -335,8 +335,8 @@ options = new Options([
                 })
             }
             const toRun = _toRun.bind(this)
-            toRunOnLoaded.push(toRun)
+            app.addEventListener('loaded',toRun)
         },
         key: 'p'
     }
-], `.${CLASS_NAMES.settingsContainer}>div`)
+]

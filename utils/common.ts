@@ -1,21 +1,9 @@
 ///<reference path="../interfaces.d.ts" />
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="PresentationMetadata.ts" />
+///<reference path="TabOpener.ts" />
 
 document = unsafeWindow.document
-let thisTabIndex: number
-let toRunOnLoaded: Function[] = [], summaryContainer: HTMLDivElement
-let slideOptionsContainer: HTMLDivElement, additionalOptionsContainer: HTMLDivElement
-let options: Options, tools: Options, chapterMetadata: SlideshowChapterMetadata[]
-type PresentationMetadata = {
-    currentSlideNumber: number,
-    screenID: number,
-    name: string,
-    currentSlideTitle: string,
-    lessonID: number
-}
-const presentationMetadata = {} as PresentationMetadata
-let notesCollection: Notes.Collections.Presentation, currentSlideNotes: Notes.Collections.Slide
-
-let slideNumberObserver: MutationObserver, slideObserver: MutationObserver
 
 const WNL_LESSON_LINK = 'https://lek.wiecejnizlek.pl/app/courses/1/lessons'
 const inSVG = (s: TemplateStringsArray) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`
@@ -157,6 +145,8 @@ class ClassToggler {
 namespace Toggles {
     export const summaryHidden = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
         if (!t.state) {
+            const summaryContainer = document.querySelector('custom-script-summary')
+            if (!summaryContainer) return
             summaryContainer.classList.remove('custom-script-hidden')
             const activeLink = summaryContainer.querySelector('.active') as HTMLElement
             if (activeLink) {
@@ -165,36 +155,16 @@ namespace Toggles {
         }
     })
 
+    export const searchHidden = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+        if (!t.state) setTimeout(() => {
+            (document.querySelector('.custom-script-search input.custom-search-result') as HTMLInputElement).focus()
+        }, 100)
+    })
+
     const optionsHidden = new ClassToggler('custom-script-hidden', '.custom-script-additional-options')
     export const optionsActive = new ClassToggler('active', 'a.custom-options-btn', t => {
         optionsHidden.state = !t.state
     })
-}
-
-function goToSlideN(n: number) {
-    const nInput = document.querySelector('.wnl-slideshow-controls input[type=number]') as HTMLInputElement
-    if (nInput) {
-        nInput.value = n.toString()
-        nInput.dispatchEvent(new InputEvent('input'))
-        return true
-    }
-    return false
-}
-
-function onAttributeChange(element: Element, attributeName: string, callback: (attributeValue: string) => any) {
-    const obs = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            if (mutation.attributeName === attributeName) {
-                const attr = (mutation.target as Element).attributes.getNamedItem(attributeName)
-                callback(attr ? attr.value : null)
-            }
-            // console.log({mutation})
-        }
-    });
-    obs.observe(element, {
-        attributes: true
-    });
-    return obs
 }
 
 function downloadFile(mimetype: string, name: string, data: string | Buffer) {
@@ -252,116 +222,16 @@ function getIndexedDB(name: string, version: number, setupCb: (ev: IDBVersionCha
     })
 }
 
-function observeSlideNumber(cb: (page: number) => any) {
-    //console.log('observe slide number')
-    const appDiv = document.querySelector(SELECTORS.appDiv)
-    slideNumberObserver = onAttributeChange(appDiv, 'slide', value => cb(parseInt(value)))
-}
-
-function getCurrentLessonID(): number {
-    const element = document.querySelector('[lesson-id]')
-    if (!element) return NaN
-    const attr = element.attributes.getNamedItem('lesson-id')
-    if (!attr) return NaN
-    return parseInt(attr.value)
-}
-
 function updateTabTitle() {
-    let currentTitleHeader = document.querySelector('.present .sl-block-content h2')
-    if (currentTitleHeader !== null) presentationMetadata.currentSlideTitle = currentTitleHeader.textContent
-
-    if (GM_getValue('option_changeTitle')) {
+    if (GM_getValue('option_changeTitle') && presentationMetadata) {
         let mainTitle: string
-        mainTitle = presentationMetadata.name && presentationMetadata.name.match(/\w/) ? `${presentationMetadata.name} - ` : ''
+        mainTitle = presentationMetadata.presentationName 
+        mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : ''
 
-        const slideTitle = presentationMetadata.currentSlideTitle && presentationMetadata.currentSlideTitle.match(/\w/) ? `${presentationMetadata.currentSlideTitle} - ` : ''
+        let slideTitle = presentationMetadata.slideTitle 
+        slideTitle = slideTitle && slideTitle.match(/\w/) ? `${slideTitle} - ` : ''
 
-        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK'
+        const originalTitle = 'LEK - Kurs - Więcej niż LEK'
         document.title = slideTitle + mainTitle + originalTitle
-    }
-}
-
-type CustomEventListener<Event> = (ev: Event) => any
-
-type CustomEventListeners<Events> = {
-    [Name in keyof Events]: CustomEventListener<Events[Name]>[]
-}
-
-class CustomEventEmmiter<Events> {
-    private listeners = {} as CustomEventListeners<Events>
-
-    addEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>, once?: boolean) {
-        if (!this.listeners[eventName]) this.listeners[eventName] = []
-        if (once) {
-            listener = event => {
-                listener.bind(this)(event)
-                this.removeEventListener(eventName, listener)
-            }
-        }
-        this.listeners[eventName].push(listener.bind(this))
-    }
-
-    removeEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>) {
-        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString())
-        if (i && i >= 0) return this.listeners[eventName].splice(i, 1)
-    }
-
-    removeAllListeners() {
-        this.listeners = {} as CustomEventListeners<Events>
-    }
-
-
-    trigger<EventName extends keyof Events>(eventName: EventName, event: Events[EventName] = {} as Events[EventName]) {
-        console.log(`triggering ${eventName} with data`, event, 'on', this)
-        this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event))
-    }
-}
-
-function focusTab() {
-    if (document.hidden) {
-        const w = GM_openInTab('about:blank', { active: true, setParent: true })
-        setTimeout(() => w.close(), 0)
-    }
-}
-
-function openSlideInTab(toOpen: { lessonID: number; screenID: number; slide: number; currentTab: number; }) {
-    if (toOpen) {
-        console.log({ toOpen })
-        if (toOpen.currentTab === -1) return
-        if (toOpen.lessonID === presentationMetadata.lessonID &&
-            toOpen.screenID === presentationMetadata.screenID &&
-            toOpen.slide) {
-            focusTab()
-            goToSlideN(toOpen.slide);
-            GM_setValue('openInTab', {
-                lessonID: presentationMetadata.lessonID,
-                screenID: presentationMetadata.screenID,
-                slide: presentationMetadata.currentSlideNumber,
-                currentTab: -1
-            });
-        } else if (toOpen.currentTab === -2 || toOpen.currentTab === thisTabIndex) {
-            GM_getTabs(tabsObject => {
-                console.log({ tabsObject })
-                const tabs = Object.values(tabsObject)
-                let nextIndex = 1000;
-                tabs.forEach(tab => {
-                    if (tab && tab.index > toOpen.currentTab && tab.index < nextIndex)
-                        nextIndex = tab.index;
-                });
-                if (nextIndex === 1000) {
-                    nextIndex = -1;
-                    openWindow()
-                }
-                toOpen.currentTab = nextIndex
-                console.log('setting', { toOpen })
-                GM_setValue('openInTab', toOpen);
-            });
-        }
-    }
-
-    function openWindow() {
-        const path = [WNL_LESSON_LINK, toOpen.lessonID, toOpen.screenID, toOpen.slide]
-        console.log('opening', path)
-        return GM_openInTab(path.join('/'), { active: true, setParent: true })
     }
 }

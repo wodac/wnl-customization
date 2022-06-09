@@ -313,7 +313,10 @@ namespace Notes {
         ) { }
     }
 
-    type NoteType = 'regular' | 'tag'
+    export enum NoteType {
+        Regular = 'regular',
+        Tag = 'tag'
+    }
 
     class NoteMetadata extends SlideMetadata {
         constructor(
@@ -422,12 +425,12 @@ namespace Notes {
             }
 
             addNote(options: NewNoteOptions): RegularNote {
-                options.type = 'regular'
+                options.type = NoteType.Regular
                 return this.addAnyNote(options, RegularNote)
             }
 
             addTag(options: NewNoteOptions): TagNote {
-                options.type = 'tag'
+                options.type = NoteType.Tag
                 return this.addAnyNote(options, TagNote)
             }
 

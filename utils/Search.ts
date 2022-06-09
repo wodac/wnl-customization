@@ -1,57 +1,63 @@
-namespace Search {
-    const getSearchURL = (q: string) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
-    const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/'
+type QueryInterpretation = {
+    query: string
+    rawQuery: string
+    mustContain?: string[]
+    musntContain?: string[]
+}
 
-    let searchContainer: HTMLDivElement, searchResultsContainer: HTMLDivElement
-    export function addSearchContainer() {
-        searchContainer = document.createElement('div')
-        searchContainer.className = 'custom-script-search custom-script-hidden'
-        searchContainer.innerHTML = `
+class SearchConstructor {
+    private getSearchURL(q: string) {
+        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
+    }
+    static WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/'
+
+    searchContainer: HTMLDivElement
+    searchResultsContainer: HTMLDivElement
+
+    constructor(private app: App) {}
+
+    addSearchContainer() {
+        this.searchContainer = document.createElement('div')
+        this.searchContainer.className = 'custom-script-search custom-script-hidden'
+        this.searchContainer.innerHTML = `
         <input class="custom-search-result" style="width: 80%;display: inline-block;">
         <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
         `
         const closeBtn = document.createElement('div')
         closeBtn.className = 'custom-script-summary-close'
         closeBtn.innerHTML = SVGIcons.chevronUp
-        searchContainer.prepend(closeBtn)
-        closeBtn.addEventListener('click', () => hiddenToggle.state = true)
-        searchResultsContainer = document.createElement('div')
-        searchContainer.append(searchResultsContainer)
-        document.querySelector('.order-number-container').after(searchContainer)
-        const searchInput = searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
-        searchInput.addEventListener('change', () => performSearch())
+        this.searchContainer.prepend(closeBtn)
+        closeBtn.addEventListener('click', () => Toggles.searchHidden.state = true)
+        this.searchResultsContainer = document.createElement('div')
+        this.searchContainer.append(this.searchResultsContainer)
+        document.querySelector('.order-number-container').after(this.searchContainer)
+        const searchInput = this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
+        searchInput.addEventListener('change', () => this.performSearch())
         searchInput.addEventListener('keyup', ev => {
             if (ev.key === 'Escape') {
                 ev.preventDefault()
                 ev.stopImmediatePropagation()
-                hiddenToggle.state = true
+                Toggles.searchHidden.state = true
             }
         })
-        searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch())
+        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch())
     }
 
-    function performSearch() {
-        if (!searchContainer) return
-        const q = (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
-        const interpretation = interpretQuery(q)
-        searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
-        getSearchResponseHTML(interpretation).then(resp => {
-            if (searchResultsContainer) {
-                searchResultsContainer.innerHTML = ''
-                searchResultsContainer.append(...resp)
+    performSearch() {
+        if (!this.searchContainer) return
+        const q = (this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
+        const interpretation = this.interpretQuery(q)
+        this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
+        this.getSearchResponseHTML(interpretation).then(resp => {
+            if (this.searchResultsContainer) {
+                this.searchResultsContainer.innerHTML = ''
+                this.searchResultsContainer.append(...resp)
             }
-            hiddenToggle.state = false
+            Toggles.searchHidden.state = false
         })
     }
 
-    type QueryInterpretation = {
-        query: string
-        rawQuery: string
-        mustContain?: string[]
-        musntContain?: string[]
-    }
-
-    function interpretQuery(rawQuery: string): QueryInterpretation {
+    interpretQuery(rawQuery: string): QueryInterpretation {
         let query = rawQuery.replace(/"/g, '')
         rawQuery = rawQuery.toLowerCase()
         const quotesRegExp = /"([^"]+)"/g
@@ -67,8 +73,8 @@ namespace Search {
         return { query, rawQuery, mustContain, musntContain }
     }
 
-    async function getSearchResponseHTML(q: QueryInterpretation): Promise<HTMLElement[]> {
-        const response = await searchRequest(q)
+    async getSearchResponseHTML(q: QueryInterpretation): Promise<HTMLElement[]> {
+        const response = await this.searchRequest(q)
         if (response.length) {
             return response.map(el => {
                 const link = document.createElement('a')
@@ -81,7 +87,7 @@ namespace Search {
                 link.className = 'custom-search-result'
                 link.addEventListener('click', ev => {
                     ev.preventDefault()
-                    openSlideInTab({
+                    this.app.tabOpener.openSlide({
                         currentTab: -2,
                         lessonID: el.context.lesson.id,
                         screenID: el.context.screen.id,
@@ -108,21 +114,15 @@ namespace Search {
                     return [WNL_LESSON_LINK, ...path].join('/')
                 }
             }
-            if (el.id) return WNL_DYNAMIC_SLIDES + el.id
+            if (el.id) return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id
             return '#'
         }
     }
 
-    export const hiddenToggle = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
-        if (!t.state) setTimeout(() => {
-            (searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).focus()
-        }, 100)
-    })
-
-    function searchRequest(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
+    searchRequest(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
-                url: getSearchURL(q.query),
+                url: this.getSearchURL(q.query),
                 method: 'GET',
                 responseType: "json",
                 onload: ({ response }: { response: SearchResults }) => {
@@ -136,14 +136,14 @@ namespace Search {
                             id: el.id
                         }
                     })
-                    resolve(filterSearch(parsed, q))
+                    resolve(this.filterSearch(parsed, q))
                 },
                 onerror: reject
             })
         })
     }
 
-    async function filterSearch(parsed: ParsedSearchResult[], q: QueryInterpretation): Promise<ParsedSearchResult[]> {
+    async filterSearch(parsed: ParsedSearchResult[], q: QueryInterpretation): Promise<ParsedSearchResult[]> {
         let filtered = parsed
         if (q.mustContain) {
             filtered = parsed.filter(result => {
@@ -159,20 +159,20 @@ namespace Search {
         function sortUpSome<T>(predicate: (val: T) => boolean) {
             return (val1: T, val2: T) => predicate(val1) && !predicate(val2) ? -1 : 1
         }
-        return (await getTagsAsResults(q)).concat(filtered)
+        return (await this.getTagsAsResults(q)).concat(filtered)
 
         function hasSomePhrases(result: ParsedSearchResult, phrases: string[]) {
             return phrases.map(toSearch => {
                 return Object.values(result.highlight).some(highlighted => {
-                    return highlighted.some(s => stripHTMLTags(s).includes(toSearch))
+                    return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch))
                 })
             })
         }
     }
 
-    async function getTagsAsResults(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
-        if (!notesCollection) return []
-        const tags = await notesCollection.getAllTagsWithName(q.query)
+    async getTagsAsResults(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
+        if (!this.app.notesCollection) return []
+        const tags = await this.app.notesCollection.getAllTagsWithName(q.query)
         return tags.map(tag => {
             return {
                 highlight: {
@@ -193,12 +193,9 @@ namespace Search {
         })
     }
 
-    function stripHTMLTags(s: string) {
+    stripHTMLTags(s: string) {
         const tagStripper = /<[^>]+>/g
         return s.toLowerCase().replace(tagStripper, '')
     }
 }
 
-namespace Toggles {
-    export const searchHidden = Search.hiddenToggle
-}
