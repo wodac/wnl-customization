@@ -172,11 +172,17 @@ class SearchConstructor {
 
     async getTagsAsResults(q: QueryInterpretation): Promise<ParsedSearchResult[]> {
         if (!this.app.notesCollection) return []
+        const tagColors = this.app.notesCollection.tags
         const tags = await this.app.notesCollection.getAllTagsWithName(q.query)
         return tags.map(tag => {
+            const record = tagColors.find(record => record.name === tag.content)
             return {
                 highlight: {
-                    "snippet.content": [`<div title='${tag.content}' class='custom-tag'>${tag.content}</div>`]
+                    "snippet.content": [
+                        `<div title='${tag.content}'
+                         style='background:${record.color};color:${getForegroundColor(record.color)}'
+                         class='custom-tag'>${tag.content}</div>`
+                    ]
                 },
                 details: {
                     header: tag.presentationTitle,

@@ -98,7 +98,7 @@ namespace Notes {
             if (this._editing) {
                 this._editing = false
                 this._element.classList.remove('editing')
-                this.trigger('edited', { newContent: this.content })
+                if (this._lastValue !== this.content) this.trigger('edited', { newContent: this.content })
                 if (!this._content.trim().length) {
                     if (this._edited) this.remove()
                     else this._edited = true
