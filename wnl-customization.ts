@@ -8,6 +8,8 @@
 ///<reference path="style.ts" />
 (function () {
     'use strict';
+    //@ts-ignore
+    __SENTRY__.hub.getClient().getOptions().enabled = false;
 
     function onLoaded() {
         if (!appDiv) {
