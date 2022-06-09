@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization
 // @namespace    http://tampermonkey.net/
-// @version      1.10.0
+// @version      1.10.1
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
@@ -1657,6 +1657,8 @@ function getMetadataFromLinks(wrappers) {
 }
 (function () {
     'use strict';
+    //@ts-ignore
+    __SENTRY__.hub.getClient().getOptions().enabled = false;
     function onLoaded() {
         console.log('loaded');
         if (!appDiv) {
