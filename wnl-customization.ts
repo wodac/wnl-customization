@@ -1,7 +1,7 @@
 (function () {
     'use strict';
-    //@ts-ignore
     try {
+    //@ts-ignore
      __SENTRY__.hub.getClient().getOptions().enabled = false;
     } catch (err) {}
 
