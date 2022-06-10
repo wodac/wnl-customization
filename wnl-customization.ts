@@ -1,7 +1,9 @@
 (function () {
     'use strict';
     //@ts-ignore
-    if (__SENTRY__ && __SENTRY__.hub) __SENTRY__.hub.getClient().getOptions().enabled = false;
+    try {
+     __SENTRY__.hub.getClient().getOptions().enabled = false;
+    } catch (err) {}
 
     function onLoaded() {
         console.log('loaded')
