@@ -1,3 +1,6 @@
+///<reference path="common.ts" />
+///<reference path="../App.ts" />
+
 type QueryInterpretation = {
     query: string
     rawQuery: string
@@ -155,7 +158,7 @@ class SearchConstructor {
                 return !hasSomePhrases(result, q.musntContain).some(includes => includes)
             })
         }
-        filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID))
+        filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID))
         function sortUpSome<T>(predicate: (val: T) => boolean) {
             return (val1: T, val2: T) => predicate(val1) && !predicate(val2) ? -1 : 1
         }

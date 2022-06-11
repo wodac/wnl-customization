@@ -64,8 +64,8 @@ namespace Notes {
             noteContentInput.value = this.content
             noteContentInput.addEventListener('blur', ev => {
                 this.endEditing()
-            })
-            noteContentInput.addEventListener('keyup', (ev: KeyboardEvent) => {
+            });
+            (noteContentInput as HTMLInputElement).addEventListener('keyup', (ev: KeyboardEvent) => {
                 if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
                     ev.stopImmediatePropagation()
                     ev.preventDefault()

@@ -32,7 +32,13 @@ class CustomEventEmmiter<Events> {
 
 
     trigger<EventName extends keyof Events>(eventName: EventName, event: Events[EventName] = {} as Events[EventName]) {
-        console.log(`triggering ${eventName} with data`, event, 'on', this);
-        this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event));
+        // console.log(`triggering ${eventName} with data`, event, 'on', this);
+        this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
+            try {
+                setTimeout(() => listener(event), 0)
+            } catch (err) {
+                console.error(`triggering ${eventName} with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`)
+            }
+        });
     }
 }

@@ -1,4 +1,5 @@
 ///<reference path="common.ts" />
+///<reference path="../App.ts" />
 ///<reference path="Search.ts" />
 namespace Keyboard {
     type KeyboardShortcut = {
@@ -138,6 +139,7 @@ namespace Keyboard {
 
 
     function addSubToRef(ref: Element, counter: number) {
+        if (ref.className.includes('sub-id-')) return
         const sub = document.createElement('sub')
         sub.innerText = counter.toString()
         sub.className = `small`

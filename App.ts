@@ -4,6 +4,9 @@
 ///<reference path="utils/PresentationMetadata.ts" />
 ///<reference path="utils/CustomEventEmmiter.ts" />
 ///<reference path="utils/TabOpener.ts" />
+///<reference path="utils/options.ts" />
+///<reference path="utils/options2.ts" />
+///<reference path="utils/Settings.ts" />
 ///<reference path="utils/tools.ts" />
 ///<reference path="utils/Keyboard.ts" />
 ///<reference path="utils/slideshowOptions.ts" />
@@ -11,13 +14,14 @@
 type AppEvents = {
     loaded: {}
     unloaded: {}
+    slideChange: number
 }
 
 class App extends CustomEventEmmiter<AppEvents> {
     appDiv: Element
     lessonView: Element
-    options: Options
-    tools: Options
+    options: Settings
+    tools: Settings
     metadata: SlideshowChapterMetadata[]
     tabOpener: TabOpener
     search: SearchConstructor
@@ -25,22 +29,33 @@ class App extends CustomEventEmmiter<AppEvents> {
     currentSlideNotes: Notes.Collections.Slide
     notesRendering: NotesRendering
     slideObserver: MutationObserver
+    presentationMetadata: PresentationMetadata
+    slideshowChapters: SlideshowChapters
+    breakTimer: BreakTimer
+    originalTitle: any
+
+    public get slideNumber(): number {
+        return this.presentationMetadata.slideNumber
+    }
+    public set slideNumber(value: number) {
+        this.presentationMetadata.slideNumber = value
+    }
 
     onLoaded() {
-        this.options = new Options(getOptionsConfig(this), `.${CLASS_NAMES.settingsContainer}`)
+        this.slideshowChapters = this.presentationMetadata.slideshowChapters
+        
+        this.options.addSettings(optionsGen(this))
         this.notesRendering = new NotesRendering(this)
-        this.tools = new Options(getToolsConfig(this), `.${CLASS_NAMES.toolsContainer}`)
-
-        presentationMetadata.observe()
-        this.tabOpener = new TabOpener()
+        this.tools.addSettings(getToolsConfig(this))
 
         if (!this.appDiv) {
             this.appDiv = document.querySelector(SELECTORS.appDiv)
+            if (!this.appDiv) return
         }
 
-        if (this.appDiv) {
-            presentationMetadata.addEventListener('screenidChange', this.checkUnloaded)
-        }
+        this.presentationMetadata.observe()
+        this.presentationMetadata.addEventListener('slideChange', slide => this.trigger('slideChange', slide))
+        this.tabOpener = new TabOpener(this)
 
         let background = document.querySelector(SELECTORS.background)
         if (background !== null) {
@@ -63,15 +78,32 @@ class App extends CustomEventEmmiter<AppEvents> {
 
         addSlideOptions(this)
 
-        if (this.tools && this.tools.state.useNotes.value) {
+        if (this.tools && this.tools.getValue('useNotes')) {
             this.notesRendering.loadNotes()
+            this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
         }
+
+        this.addEventListener('slideChange', () => this.updateTabTitle())
         
         this.trigger('loaded')
 
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload()
         })
+    }
+
+    updateTabTitle() {
+        if (GM_getValue('option_changeTitle') && this.presentationMetadata) {
+            let mainTitle: string
+            mainTitle = this.presentationMetadata.presentationName 
+            mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : ''
+    
+            let slideTitle = this.presentationMetadata.slideTitle 
+            slideTitle = slideTitle && slideTitle.match(/\w/) ? `${slideTitle} - ` : ''
+    
+            const originalTitle = this.originalTitle || 'LEK - Kurs - Więcej niż LEK'
+            document.title = slideTitle + mainTitle + originalTitle
+        }
     }
 
     addSliderContainer() {
@@ -85,11 +117,11 @@ class App extends CustomEventEmmiter<AppEvents> {
             );
         (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-increase`) as HTMLAnchorElement)
             .addEventListener('click', () => {
-                this.options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
+                this.options.setValue('percentIncrease', (state: number) => state + 5);
             });
         (sliderContainer.querySelector(`.${CLASS_NAMES.fontSizeInput}-decrease`) as HTMLAnchorElement)
             .addEventListener('click', () => {
-                this.options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
+                this.options.setValue('percentIncrease', (state: number) => state - 5);
             });
     }
 
@@ -102,26 +134,32 @@ class App extends CustomEventEmmiter<AppEvents> {
             <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
             <div></div>`;
         this.lessonView.appendChild(toolsContainer);
-        this.tools.rerender()
+        toolsContainer.append(this.tools.render())
     }
 
     addSettingsContainer() {
         const test = document.querySelector(`.${CLASS_NAMES.settingsContainer}`)
         if (test) return
-        const sidebarSettingsContainer = document.createElement('div');
-        sidebarSettingsContainer.classList.add(CLASS_NAMES.settingsContainer);
-        sidebarSettingsContainer.innerHTML = `
+        const optionsContainer = document.createElement('div');
+        optionsContainer.classList.add(CLASS_NAMES.settingsContainer);
+        optionsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
             <div></div>`;
-        this.lessonView.appendChild(sidebarSettingsContainer);
-        this.options.rerender();
+        this.lessonView.appendChild(optionsContainer);
+        optionsContainer.append(this.options.render())
+        const pIncr = this.options.getSetting('percentIncrease') as NumberSetting
+        pIncr.lowerLimit = 60
+        pIncr.upperLimit = 200
     }
 
     private isAwaiting = false
     init() {
+        this.options = new Settings(this)
+        this.tools = new Settings(this)
         this.awaitLoad()
         this.appDiv = document.querySelector(SELECTORS.appDiv)
-        if (this.appDiv) presentationMetadata.addEventListener('screenidChange', this.checkUnloaded)
+        this.presentationMetadata = new PresentationMetadata(this)
+        if (this.appDiv) this.presentationMetadata.addEventListener('screenidChange', this.checkUnloaded)
     }
 
     awaitLoad() {
@@ -154,9 +192,9 @@ class App extends CustomEventEmmiter<AppEvents> {
     }
 
     onUnload() {
-        if (this.options && this.options.state.changeTitle.value) {
-            const { originalTitle } = this.options.state.changeTitle
-            document.title = originalTitle
+        this.trigger('unloaded')
+        if (this.options && this.options.getValue('changeTitle')) {
+            document.title = this.originalTitle
         }
         if (this.currentSlideNotes) {
             this.currentSlideNotes.commitChanges().then(() => {
@@ -164,8 +202,7 @@ class App extends CustomEventEmmiter<AppEvents> {
                 this.currentSlideNotes = undefined
             })
         }
-        presentationMetadata.removeAllListeners('slideChange')
-        if (this.slideObserver) this.slideObserver.disconnect()
-        if (BreakTimer.timer) clearTimeout(BreakTimer.timer)
+        this.presentationMetadata.removeAllListeners('slideChange')
+        if (this.slideObserver) this.slideObserver.disconnect()        
     }
 }

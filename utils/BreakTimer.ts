@@ -1,18 +1,22 @@
-namespace BreakTimer {
-    export let timer: NodeJS.Timeout;
-    export function start() {
-        clearTimeout(timer);
+///<reference path="common.ts" />
+class BreakTimer {
+    constructor(public app: App) {
+        app.addEventListener('unloaded', () => this.timer && clearTimeout(this.timer))
+    }
+    timer: NodeJS.Timeout;
+    start() {
+        clearTimeout(this.timer);
         //console.log('starting suggestBreak timer...')
-        timer = setTimeout(() => {
+        this.timer = setTimeout(() => {
             alert('Pora na przerwę 🔔');
-        }, 1000 * 60 * 7);
+        }, 1000 * 60 * this.app.tools.getValue('breakTime'));
     }
-    export function endListening() {
-        presentationMetadata.removeEventListener('slideChange', start);
-        if (timer)
-            clearTimeout(timer);
+    endListening() {
+        this.app.presentationMetadata.removeEventListener('slideChange', this.start);
+        if (this.timer)
+            clearTimeout(this.timer);
     }
-    export function startListening() {
-        presentationMetadata.addEventListener('slideChange', start);
+    startListening() {
+        this.app.presentationMetadata.addEventListener('slideChange', this.start);
     }
 }

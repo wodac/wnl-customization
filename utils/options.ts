@@ -246,7 +246,7 @@ const getOptionsConfig: (app: App) => OptionConstructorOption<any>[] = app => [
                 if (state.originalTitle) unsafeWindow.document.title = state.originalTitle
                 // unsafeWindow.removeEventListener('popstate', updateTabTitle)
             }
-            updateTabTitle()
+            app.updateTabTitle()
         },
         init: state => {
             state.originalTitle = unsafeWindow.document.title

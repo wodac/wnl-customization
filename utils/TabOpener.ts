@@ -25,7 +25,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
         return this._tabIndex;
     }
     
-    constructor() {
+    constructor(public app: App) {
         super()
         this.getTabIndex()
         this.setInitialStoreVal()
@@ -67,9 +67,9 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
 
     setInitialStoreVal() {
         GM_setValue('openInTab', {
-            lessonID: presentationMetadata.lessonID,
-            screenID: presentationMetadata.screenID,
-            slide: presentationMetadata.slideNumber,
+            lessonID: this.app.presentationMetadata.lessonID,
+            screenID: this.app.presentationMetadata.screenID,
+            slide: this.app.presentationMetadata.slideNumber,
             currentTab: -1
         })
     }
@@ -100,7 +100,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
             if (toOpen.currentTab === TabOpenerIndexes.noAction) return
             if (this.isSlideInCurrentSlideshow(toOpen)) {
                 this.focusThisTab()
-                presentationMetadata.slideNumber = toOpen.slide
+                this.app.presentationMetadata.slideNumber = toOpen.slide
                 this.setInitialStoreVal()
             } else if (toOpen.currentTab === TabOpenerIndexes.findTab ||
                 toOpen.currentTab === this.tabIndex) {
@@ -110,8 +110,8 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
     }
 
     private isSlideInCurrentSlideshow(toOpen: SlideToOpen) {
-        return toOpen.lessonID === presentationMetadata.lessonID &&
-            toOpen.screenID === presentationMetadata.screenID &&
+        return toOpen.lessonID === this.app.presentationMetadata.lessonID &&
+            toOpen.screenID === this.app.presentationMetadata.screenID &&
             toOpen.slide
     }
 }

@@ -28,6 +28,7 @@ interface StoredValueType {
     [key: `option_${string}`]: any
     [key: `option_is${string}`]: boolean
     [key: `option_${string}Number`]: number
+    [key: string]: any
 }
 /**
  * @param name is the name of the observed variable.

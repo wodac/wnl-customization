@@ -1,20 +1,25 @@
 ///<reference path="enums.ts" />
 ///<reference path="common.ts" />
+///<reference path="ChapterMetadata.ts" />
 
-type PresentationEvents = {
+interface PresentationEvents {
     slideChange: number
     screenidChange: number
     lessonidChange: number
 }
 
 class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
-    constructor() {
+    slideshowChapters: SlideshowChapters
+
+    constructor(public app: App) {
         super()
         this.createObserver()
+        this.slideshowChapters = new SlideshowChapters(app)
     }    
 
     observe() {
         this.observer.observe(this.appDiv, { attributes: true })
+        this.addEventListener('slideChange', slide => this.slideshowChapters.setCurrentPage(slide))
     }
 
     get appDiv() {
@@ -49,12 +54,16 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
 
     public get presentationName(): string {
         const mainHeaderElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
-        return mainHeaderElem && mainHeaderElem.textContent
+        return mainHeaderElem && 
+                mainHeaderElem.textContent && 
+                mainHeaderElem.textContent.trim()
     }
 
     public get slideTitle(): string {
         const currentTitleHeader = document.querySelector('.present .sl-block-content h2')
-        return currentTitleHeader && currentTitleHeader.textContent
+        return currentTitleHeader && 
+                currentTitleHeader.textContent && 
+                currentTitleHeader.textContent.trim() 
     }
     
     get lessonID(): number {
@@ -88,4 +97,4 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     }
 }
 
-const presentationMetadata = new PresentationMetadata()
+// const presentationMetadata = new PresentationMetadata()
