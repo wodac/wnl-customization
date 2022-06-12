@@ -529,8 +529,51 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     display: flex!important;
 }
 
+.custom-main-nav-container>a svg {
+    transition: transform 0.5s;
+    transform: rotateX(180deg);
+}
+
+.custom-main-nav-container>a {    
+    display: flex;
+    padding: 15px;
+    width: 100%;
+    gap: 0.4rem;
+    text-align: center;
+    align-items: center;
+    font-size: 11px;
+}
+
+.custom-main-nav-container.active>a svg {
+    transform: none;
+}
+
+.custom-main-nav-container>div {
+    transition: height 0.6s;
+    height: 0;
+    overflow: hidden;
+}
+
+.custom-main-nav-container.active>div {
+    height: 100%;
+    overflow: auto;
+}
+
+.custom-main-nav-container.active {
+    height: 100%;
+}
+
+.custom-main-nav-container {
+    transition: height 0.6s;
+    height: 3.3rem;
+    padding-bottom: 3.3rem;
+}
+
 .${BODY_CLASS_NAMES.hideChat} .wnl-chat-toggle {
     display: none!important;
+}
+.${BODY_CLASS_NAMES.hideChat} .wnl-course-content.wnl-column {
+    max-width: initial!important;
 }
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {

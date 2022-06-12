@@ -33,6 +33,8 @@ interface SettingInit<T> {
     onchange?: (this: SettingElement<T>, event: SettingEvents<T>["change"]) => any
 }
 
+type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined>
+
 class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
     name: string
     private _value: T

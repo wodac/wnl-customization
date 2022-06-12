@@ -56,16 +56,8 @@ function addSlideOptions(app: App) {
 }
 
 function addSummary(app: App) {
-    // const linksHTML = metadata.map((e, i) =>
-    //     `<a class='custom-script-summary-link' href='${e.href}'
-    //        data-start-page=${e.startPage} data-index=${i}>
-    //            <span>${e.name} </span>
-    //            <span class='small'>(${e.chapterLength})</span>
-    //    </a>`
-    // ).join('')
     const summaryContainer = document.createElement('div')
     summaryContainer.className = 'custom-script-summary custom-script-hidden'
-    // summaryContainer.innerHTML = linksHTML
     const closeBtn = document.createElement('div')
     closeBtn.className = 'custom-script-summary-close'
     closeBtn.innerHTML = SVGIcons.chevronUp
@@ -73,29 +65,19 @@ function addSummary(app: App) {
     closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true)
     app.slideshowChapters.render(summaryContainer)
     document.querySelector('.order-number-container').after(summaryContainer)
-    // const links = summaryContainer.querySelectorAll('a.custom-script-summary-link') as NodeListOf<HTMLAnchorElement>
-    // links.forEach(link => {
-    //     link.addEventListener('click', event => {
-    //         event.preventDefault()
-    //         const { startPage } = link.dataset
-    //         presentationMetadata.slideNumber = parseInt(startPage)
-    //         return false
-    //     })
-    // })
 }
 
 function addChapterInfo(app: App) {
     addPageNumberContainer();
     addSummary(app);
 
-    app.presentationMetadata.addEventListener('slideChange', page => onSlideChanged(page, app));
-    const slideNumberSpan = document.querySelector('.order-number-container') as HTMLSpanElement;
-    onSlideChanged(parseInt(slideNumberSpan.innerText), app);
+    app.slideshowChapters.addEventListener('activeChange', () => updateChapterProgress(app));
+    app.slideshowChapters.setCurrentPage(app.slideNumber)
 }
 
-async function onSlideChanged(current: number, app: App) {
-    if (current === NaN) return
+async function updateChapterProgress(app: App) {
     const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
+    if (!pageNumberContainer) return
     const chapterPath = app.slideshowChapters.getProgress()
     if (chapterPath) {
         let progress: ChapterProgress
@@ -124,73 +106,3 @@ function addPageNumberContainer(): HTMLSpanElement {
     spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle())
     return spans[0]
 }
-
-// function openMenu() {
-//     const menuBtn = document.querySelector(SELECTORS.menuBtn) as HTMLElement
-//     if (menuBtn) {
-//         menuBtn.click()
-//         return true
-//     }
-// }
-
-// function getMetadata(cb: (metadata: SlideshowChapterMetadata[] | false) => any, menuOpened?: boolean) {
-//     const menu = document.querySelector('aside.sidenav-aside')
-//     if (!menu) {
-//         if (menuOpened) {
-//             cb(false)
-//             return
-//         }
-//         openMenu()
-//         setTimeout(() => getMetadata(cb, true), 100)
-//         return
-//     }
-//     const active = menu.querySelector('.item-wrapper.is-active')
-//     if (!active) {
-//         cb(false)
-//         return
-//     }
-//     const listParent = active.parentElement
-//     if (!listParent) {
-//         cb(false)
-//         return
-//     }
-//     const list = Array.from(listParent.children)
-//     if (menuOpened) closeMenu()
-//     if (list.length === 0) {
-//         cb(false)
-//         return
-//     }
-//     const wrappers = list.filter(el => el.nodeName === 'DIV') as HTMLElement[]
-//     if (wrappers.length === 0) {
-//         cb(false)
-//         return
-//     }
-//     const linksMetadata = getMetadataFromLinks(wrappers)
-//     cb(linksMetadata)
-// }
-
-// function closeMenu() {
-//     (document.querySelector('.topNavContainer__close') as HTMLElement).click()
-// }
-
-// function getMetadataFromLinks(wrappers: HTMLElement[]): SlideshowChapterMetadata[] {
-//     const links = wrappers.map(div => div.querySelector('a'))
-//     const getLength = (t: string) => parseInt(t.slice(1, -1))
-//     return links.map((a, i) => {
-//         if (!a.href)
-//             return {}
-//         const chapterLength = getLength((a.querySelector('span span.sidenav-item-meta') as HTMLSpanElement).innerText)
-//         if (chapterLength > 75) {
-//             const subwrappers: NodeListOf<HTMLDivElement> = wrappers[i].querySelectorAll('div')
-//             if (subwrappers.length) {
-//                 return getMetadataFromLinks(Array.from(subwrappers))
-//             }
-//         }
-//         return {
-//             href: a.href,
-//             name: (a.querySelector('span span') as HTMLSpanElement).innerText,
-//             chapterLength,
-//             startPage: parseInt(a.href.split('/').pop())
-//         }
-//     }).flat(1)
-// }

@@ -1,7 +1,9 @@
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />
 ///<reference path="Settings.ts" />
-const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
+///<reference path="CourseSidebar.ts" />
+///<reference path="../App.ts" />
+const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
     {
         name: "increaseFontSize",
         type: SettingType.Checkbox,
@@ -21,10 +23,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "increaseAnnotations",
-        icon: {  
+        icon: {
             emoji: "📄",
             html: SVGIcons.fileRichText
-        }, 
+        },
         desc: "Zwiększ wielkość czcionki w przypisach",
         type: SettingType.Checkbox,
         onchange: state => toggleBodyClass(BODY_CLASS_NAMES.increaseAnnotations, state.value),
@@ -33,10 +35,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "hideChat",
-        icon: {  
+        icon: {
             emoji: "💬",
             html: SVGIcons.chat
-        }, 
+        },
         desc: "Ukryj czat",
         type: SettingType.Checkbox,
         onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideChat, state.value),
@@ -45,10 +47,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "smoothScroll",
-        icon: {  
+        icon: {
             emoji: "↕️",
             html: SVGIcons.chevronExpand
-        }, 
+        },
         desc: "Płynne przewijanie strzałkami",
         type: SettingType.Checkbox,
         defaultValue: false,
@@ -56,10 +58,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "keyboardControl",
-        icon: {  
+        icon: {
             emoji: "⌨️",
             html: SVGIcons.keyboard
-        }, 
+        },
         desc: "Sterowanie klawiaturą",
         type: SettingType.Checkbox,
         onchange: state => {
@@ -77,10 +79,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "changeTitle",
-        icon: {  
+        icon: {
             emoji: "🆎",
             html: SVGIcons.capitalT
-        }, 
+        },
         desc: "Zmień tytuł karty",
         type: SettingType.Checkbox,
         onchange: state => {
@@ -97,10 +99,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "uniformFontSize",
-        icon: {  
+        icon: {
             emoji: "🔤",
             html: SVGIcons.type
-        }, 
+        },
         desc: "Ujednolicona wielkość czcionki",
         type: SettingType.Checkbox,
         onchange: function (state) {
@@ -114,10 +116,10 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
     },
     {
         name: "invertImages",
-        icon: {  
+        icon: {
             emoji: "🔃",
             html: SVGIcons.pallete
-        }, 
+        },
         desc: "Odwróć kolory obrazów",
         type: SettingType.Checkbox,
         defaultValue: false,
@@ -125,12 +127,49 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
         key: 'i'
     },
     {
+        name: "showMainCourseSidebar",
+        icon: {
+            emoji: "📗",
+            html: SVGIcons.viewStack
+        },
+        desc: "Pokaż nawigację całego kursu w panelu bocznym",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                if (!app.courseSidebar) {
+                    app.courseSidebar = new CourseSidebar()
+                    const sidenav = document.querySelector('aside.course-sidenav')
+                    if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                        app.courseSidebar.attach(sidenav)
+                    } else {
+                        app.setupObserveSidenav()
+                        app.addEventListener('sidenavOpened', opened => {
+                            if (opened) {
+                                const sidenav = document.querySelector('aside.course-sidenav')
+                                app.courseSidebar.attach(sidenav)
+                            }
+                        })
+                    }
+                    app.courseSidebar.addEventListener('urlChange', url => {
+                        app.tabOpener.openURLinTab(url)
+                    })
+                    app.addEventListener('unloaded', () => app.courseSidebar.destroy())
+                }
+                app.courseSidebar.show()
+            } else {
+                if (app.courseSidebar) app.courseSidebar.hide()
+            }
+        },
+        key: 'i'
+    },
+    {
         name: "percentIncrease",
         type: SettingType.Percent,
-        icon: {  
+        icon: {
             emoji: "➕",
             html: SVGIcons.zoomIn
-        }, 
+        },
         desc: "Zmień powiększenie",
         isInRange: nextValue => nextValue !== NaN && nextValue > 10 && nextValue < 300,
         defaultValue: 110,
@@ -139,8 +178,8 @@ const optionsGen: (app: App) => SettingInit<any>[] = (app) => [
             const rangeInput = document.querySelector(`input.${CLASS_NAMES.fontSizeInput}`) as HTMLInputElement
             const rangeLabel = document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLLabelElement
             if (rangeInput) {
-                rangeInput.value = state.value
-                rangeInput.title = state.value
+                rangeInput.value = state.value.toString()
+                rangeInput.title = state.value.toString()
             }
             if (rangeLabel) rangeLabel.innerText = `${state.value}%`
         },

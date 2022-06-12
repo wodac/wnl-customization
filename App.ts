@@ -4,9 +4,9 @@
 ///<reference path="utils/PresentationMetadata.ts" />
 ///<reference path="utils/CustomEventEmmiter.ts" />
 ///<reference path="utils/TabOpener.ts" />
-///<reference path="utils/options.ts" />
-///<reference path="utils/options2.ts" />
+///<reference path="utils/Options.ts" />
 ///<reference path="utils/Settings.ts" />
+///<reference path="utils/CourseSidebar.ts" />
 ///<reference path="utils/tools.ts" />
 ///<reference path="utils/Keyboard.ts" />
 ///<reference path="utils/slideshowOptions.ts" />
@@ -15,6 +15,7 @@ type AppEvents = {
     loaded: {}
     unloaded: {}
     slideChange: number
+    sidenavOpened: boolean
 }
 
 class App extends CustomEventEmmiter<AppEvents> {
@@ -32,8 +33,13 @@ class App extends CustomEventEmmiter<AppEvents> {
     presentationMetadata: PresentationMetadata
     slideshowChapters: SlideshowChapters
     breakTimer: BreakTimer
-    originalTitle: any
-
+    courseSidebar: CourseSidebar
+    originalTitle: string
+    private _loaded = false
+    sidenavObserver: MutationObserver
+    public get loaded(): boolean {
+        return this._loaded
+    }
     public get slideNumber(): number {
         return this.presentationMetadata.slideNumber
     }
@@ -43,8 +49,8 @@ class App extends CustomEventEmmiter<AppEvents> {
 
     onLoaded() {
         this.slideshowChapters = this.presentationMetadata.slideshowChapters
-        
-        this.options.addSettings(optionsGen(this))
+
+        this.options.addSettings(getOptions(this))
         this.notesRendering = new NotesRendering(this)
         this.tools.addSettings(getToolsConfig(this))
 
@@ -84,23 +90,47 @@ class App extends CustomEventEmmiter<AppEvents> {
         }
 
         this.addEventListener('slideChange', () => this.updateTabTitle())
-        
+
+        this._loaded = true
         this.trigger('loaded')
 
+        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded(), true)
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload()
         })
     }
 
+    setupObserveSidenav() {
+        if (this.sidenavObserver) return
+        function findSideNav(nodeList: NodeList) {
+            if (nodeList) {
+                for (const node of nodeList) {
+                    if ((node as HTMLElement).classList && 
+                        (node as HTMLElement).classList.contains('wnl-sidenav-slot')) {
+                        return node
+                    }
+                }
+            }
+        }
+        this.sidenavObserver = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                if (findSideNav(mutation.addedNodes)) this.trigger('sidenavOpened', true)
+                if (findSideNav(mutation.removedNodes)) this.trigger('sidenavOpened', false)
+            }
+        })
+        this.sidenavObserver.observe(this.appDiv, { childList: true })
+        this.addEventListener('unloaded', () => this.sidenavObserver.disconnect())
+    }
+
     updateTabTitle() {
         if (GM_getValue('option_changeTitle') && this.presentationMetadata) {
             let mainTitle: string
-            mainTitle = this.presentationMetadata.presentationName 
+            mainTitle = this.presentationMetadata.presentationName
             mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : ''
-    
-            let slideTitle = this.presentationMetadata.slideTitle 
+
+            let slideTitle = this.presentationMetadata.slideTitle
             slideTitle = slideTitle && slideTitle.match(/\w/) ? `${slideTitle} - ` : ''
-    
+
             const originalTitle = this.originalTitle || 'LEK - Kurs - Więcej niż LEK'
             document.title = slideTitle + mainTitle + originalTitle
         }
@@ -159,7 +189,6 @@ class App extends CustomEventEmmiter<AppEvents> {
         this.awaitLoad()
         this.appDiv = document.querySelector(SELECTORS.appDiv)
         this.presentationMetadata = new PresentationMetadata(this)
-        if (this.appDiv) this.presentationMetadata.addEventListener('screenidChange', this.checkUnloaded)
     }
 
     awaitLoad() {
@@ -182,16 +211,15 @@ class App extends CustomEventEmmiter<AppEvents> {
     }
 
     checkUnloaded() {
-        //console.log('unloaded??')
         const testExtensionLoaded = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
         if (!this.isAwaiting && !testExtensionLoaded) {
-            //console.log('unloaded!!!')
             this.onUnload()
             this.awaitLoad()
         }
     }
 
     onUnload() {
+        this._loaded = false
         this.trigger('unloaded')
         if (this.options && this.options.getValue('changeTitle')) {
             document.title = this.originalTitle
@@ -203,6 +231,6 @@ class App extends CustomEventEmmiter<AppEvents> {
             })
         }
         this.presentationMetadata.removeAllListeners('slideChange')
-        if (this.slideObserver) this.slideObserver.disconnect()        
+        if (this.slideObserver) this.slideObserver.disconnect()
     }
 }

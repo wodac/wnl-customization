@@ -129,8 +129,9 @@ class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
     }
 
     setCurrentPage(page: number) {
-        this.currentPage = page
         if (!this.chapterElements) return
+        if (!page || page < 1 || page > this.slideCount) return
+        this.currentPage = page
         if (this.currentChapterPath) this.currentChapterPath.forEach(el => el.active = false)
         this.currentChapterPath = []
         function findChapter(chapters: ChapterListElement[]) {
