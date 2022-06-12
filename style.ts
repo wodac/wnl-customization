@@ -1,3 +1,4 @@
+///<reference path="globals.d.ts" />
 ///<reference path="utils/enums.ts" />
 const styles = `
 :root {
@@ -86,6 +87,17 @@ sub.small {
     font-size: 0.8rem;
 }
 
+.custom-script-setting {
+    padding: 0.3rem;    
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.custom-script-setting>* {
+    display: inline-flex;
+    margin-right: 0!important;
+}
+
 .${CLASS_NAMES.pageNumberContainer} {
     position: absolute;
     top: 30px;
@@ -115,6 +127,18 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     margin: 0.2rem;
     border-radius: 5px;
     height: 16px;
+}
+
+.custom-script-summary-link-container ul {
+    margin-left: 1rem;
+}
+
+.custom-script-summary-link-container:not(.active) ul {
+    display: none;
+}
+
+.custom-script-summary-link-container.active>a {
+    font-weight: 700;
 }
 
 .custom-script-summary{
@@ -227,18 +251,18 @@ a.custom-options-btn.active svg {transform: none;}
     vertical-align: sub;
 }
 
-.${CLASS_NAMES.fontSizeInput} {
+.${CLASS_NAMES.fontSizeInput}, .custom-script-setting input[type=range] {
     -webkit-appearance: none;
     appearance: none;
     margin-right: 0.9em;
     outline: none;
     height: 0.6rem;
-    background: #96dbdf;
+    background: #96dbdf!important;
     border-radius: 5px;
     vertical-align: middle;
 }
 
-.${CLASS_NAMES.fontSizeInput}::-webkit-slider-thumb {
+.${CLASS_NAMES.fontSizeInput}::-webkit-slider-thumb, .custom-script-setting input::-webkit-slider-thumb {
     -webkit-appearance: none; 
     appearance: none;
     cursor: pointer;
@@ -505,8 +529,51 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     display: flex!important;
 }
 
+.custom-main-nav-container>a svg {
+    transition: transform 0.5s;
+    transform: rotateX(180deg);
+}
+
+.custom-main-nav-container>a {    
+    display: flex;
+    padding: 15px;
+    width: 100%;
+    gap: 0.4rem;
+    text-align: center;
+    align-items: center;
+    font-size: 11px;
+}
+
+.custom-main-nav-container.active>a svg {
+    transform: none;
+}
+
+.custom-main-nav-container>div {
+    transition: height 0.6s;
+    height: 0;
+    overflow: hidden;
+}
+
+.custom-main-nav-container.active>div {
+    height: 100%;
+    overflow: auto;
+}
+
+.custom-main-nav-container.active {
+    height: 100%;
+}
+
+.custom-main-nav-container {
+    transition: height 0.6s;
+    height: 3.3rem;
+    padding-bottom: 3.3rem;
+}
+
 .${BODY_CLASS_NAMES.hideChat} .wnl-chat-toggle {
     display: none!important;
+}
+.${BODY_CLASS_NAMES.hideChat} .wnl-course-content.wnl-column {
+    max-width: initial!important;
 }
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {

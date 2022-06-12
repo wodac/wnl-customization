@@ -28,6 +28,7 @@ interface StoredValueType {
     [key: `option_${string}`]: any
     [key: `option_is${string}`]: boolean
     [key: `option_${string}Number`]: number
+    [key: string]: any
 }
 /**
  * @param name is the name of the observed variable.
@@ -49,7 +50,7 @@ declare let GM_getTab: ( callback: (tab: TabObject) => any ) => any
 /**
  * Get all tab objects as a hash to communicate with other script instances.
  */
-declare let GM_getTabs: ( callback: (tabs: TabObject[]) => any ) => any
+declare let GM_getTabs: ( callback: (tabs: TabObject) => any ) => any
 declare let GM_setValue: <K extends keyof StoredValueType> (name: K, value: StoredValueType[K]) => any
 /**
  * Copies data into the clipboard. The parameter 'info' can be an object like "{ type: 'text', mimetype: 'text/plain'}" or just a string expressing the type ("text" or "html").

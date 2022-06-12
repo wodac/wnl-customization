@@ -64,8 +64,8 @@ namespace Notes {
             noteContentInput.value = this.content
             noteContentInput.addEventListener('blur', ev => {
                 this.endEditing()
-            })
-            noteContentInput.addEventListener('keyup', (ev: KeyboardEvent) => {
+            });
+            (noteContentInput as HTMLInputElement).addEventListener('keyup', (ev: KeyboardEvent) => {
                 if (ev.key === 'Enter' && !ev.shiftKey && !ev.altKey) {
                     ev.stopImmediatePropagation()
                     ev.preventDefault()
@@ -98,7 +98,7 @@ namespace Notes {
             if (this._editing) {
                 this._editing = false
                 this._element.classList.remove('editing')
-                this.trigger('edited', { newContent: this.content })
+                if (this._lastValue !== this.content) this.trigger('edited', { newContent: this.content })
                 if (!this._content.trim().length) {
                     if (this._edited) this.remove()
                     else this._edited = true
@@ -313,7 +313,10 @@ namespace Notes {
         ) { }
     }
 
-    type NoteType = 'regular' | 'tag'
+    export enum NoteType {
+        Regular = 'regular',
+        Tag = 'tag'
+    }
 
     class NoteMetadata extends SlideMetadata {
         constructor(
@@ -422,12 +425,12 @@ namespace Notes {
             }
 
             addNote(options: NewNoteOptions): RegularNote {
-                options.type = 'regular'
+                options.type = NoteType.Regular
                 return this.addAnyNote(options, RegularNote)
             }
 
             addTag(options: NewNoteOptions): TagNote {
-                options.type = 'tag'
+                options.type = NoteType.Tag
                 return this.addAnyNote(options, TagNote)
             }
 
