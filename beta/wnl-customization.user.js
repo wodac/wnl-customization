@@ -25,24 +25,29 @@ class CustomEventEmmiter {
         this.listeners = {};
     }
     addEventListener(eventName, listener, once) {
-        let toAdd;
-        if (!this.listeners[eventName])
+        if (!this.listeners[eventName]) {
             this.listeners[eventName] = [];
+        }
         if (once) {
-            toAdd = event => {
+            const toAdd = event => {
                 listener.bind(this)(event);
                 this.removeEventListener(eventName, toAdd);
             };
+            this.listeners[eventName].push(toAdd);
         }
         else {
-            toAdd = listener.bind(this);
+            this.listeners[eventName].push(listener); //.bind(this)
         }
-        this.listeners[eventName].push(toAdd);
     }
     removeEventListener(eventName, listener) {
-        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString());
-        if (i && i >= 0)
-            return this.listeners[eventName].splice(i, 1);
+        if (!this.listeners[eventName])
+            return;
+        const i = this.listeners[eventName].findIndex(cb => cb == listener);
+        console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this);
+        if (i >= 0) {
+            const toRemove = this.listeners[eventName].splice(i, 1);
+            return toRemove[0];
+        }
     }
     removeAllListeners(eventName) {
         if (eventName)
@@ -52,14 +57,16 @@ class CustomEventEmmiter {
     }
     trigger(eventName, event = {}) {
         // console.log(`triggering`, eventName, `with data`, event, 'on', this);
-        this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
-            try {
-                setTimeout(() => listener(event), 0);
-            }
-            catch (err) {
-                console.error('triggering', eventName, `with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`);
-            }
-        });
+        setTimeout(() => {
+            this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
+                try {
+                    listener.bind(this)(event);
+                }
+                catch (err) {
+                    console.error('triggering', eventName, `with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`);
+                }
+            });
+        }, 0);
     }
 }
 ///<reference path="CustomEventEmmiter.ts" />
@@ -381,7 +388,9 @@ class TabOpener extends CustomEventEmmiter {
         this.getTabIndex();
         this.setInitialStoreVal();
         GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
-            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
+            if (remote && toOpen.currentTab >= 0) {
+                this.trigger('remoteOpenRequest', toOpen);
+            }
             this.openSlide(toOpen);
         });
     }
@@ -447,6 +456,9 @@ class TabOpener extends CustomEventEmmiter {
     }
     openSlide(toOpen) {
         if (toOpen) {
+            if (typeof toOpen.currentTab !== 'number') {
+                toOpen.currentTab = TabOpenerIndexes.findTab;
+            }
             if (toOpen.currentTab === TabOpenerIndexes.noAction)
                 return;
             if (this.isSlideInCurrentSlideshow(toOpen)) {
@@ -1173,8 +1185,10 @@ class Setting extends CustomEventEmmiter {
     set value(value) {
         if (this.type === SettingType.Button || this._value === value)
             return;
-        if (this.isInRange && !this.isInRange(value))
+        if (this.isInRange && !this.isInRange(value)) {
+            this.trigger('change', { value: this._value, oldValue: this._value, remote: false });
             return;
+        }
         const oldValue = this._value;
         this._value = value;
         GM_setValue(this.name, value);
@@ -1340,10 +1354,13 @@ class NumberSetting extends SettingElement {
             this.input.addEventListener('input', () => valueEl.innerText = `${this.input.value}%`);
         }
         this.addEventListener('change', ({ value }) => this.input.value = value.toString());
-        this.input.addEventListener('change', (ev) => this.value = parseInt(this.input.value));
-        this.input.addEventListener('input', (ev) => this.trigger('input', { value: parseInt(this.input.value) }));
+        this.input.addEventListener('change', (ev) => this.value = this.parse(this.input.value));
+        this.input.addEventListener('input', (ev) => this.trigger('input', { value: this.parse(this.input.value) }));
         this.trigger('rendered');
         return this.element;
+    }
+    parse(value) {
+        return parseFloat(value.replace(',', '.'));
     }
     renderSimple() {
         const percentSymb = this.type === SettingType.Percent ? '%' : '';
@@ -1487,9 +1504,26 @@ class CourseSidebar extends ExternalFragment {
             if (!el)
                 return;
             this.container.append(el);
-        }, true);
+        });
+        this.setupOpenLinks();
+    }
+    setupOpenLinks() {
+        this.lastURLUpdate = Date.now();
+        const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/;
         this.addEventListener('iframeURLChange', newURL => {
-            this.trigger('urlChange', newURL);
+            const now = Date.now();
+            console.log({ now });
+            if (now - this.lastURLUpdate < 500)
+                return;
+            const matching = urlRegExp.exec(newURL);
+            if (!matching)
+                return;
+            this.trigger('urlChange', {
+                url: newURL,
+                lessonID: parseInt(matching[1]),
+                screenID: parseInt(matching[2]),
+                slide: parseInt(matching[3]),
+            });
             this.load();
         });
     }
@@ -1510,11 +1544,15 @@ class CourseSidebar extends ExternalFragment {
     hide() {
         this.container && (this.container.style.display = 'none');
     }
+    destroy() {
+        this.container.remove();
+        super.destroy();
+    }
 }
 CourseSidebar.CONTAINER_HTML = `
     <a>
         ${SVGIcons.chevronUp}
-        <span>GŁÓWNE MENU</span>
+        <span>CAŁY KURS</span>
     </a>`;
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />
@@ -1658,30 +1696,35 @@ const getOptions = (app) => [
         onchange: state => {
             if (state.value) {
                 if (!app.courseSidebar) {
-                    app.courseSidebar = new CourseSidebar();
-                    const sidenav = document.querySelector('aside.course-sidenav');
-                    if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
-                        app.courseSidebar.attach(sidenav);
-                    }
-                    else {
-                        app.setupObserveSidenav();
-                        app.addEventListener('sidenavOpened', opened => {
-                            if (opened) {
-                                const sidenav = document.querySelector('aside.course-sidenav');
-                                app.courseSidebar.attach(sidenav);
-                            }
-                        });
-                    }
-                    app.courseSidebar.addEventListener('urlChange', url => {
-                        app.tabOpener.openURLinTab(url);
-                    });
+                    setupSidebar();
                     app.addEventListener('unloaded', () => app.courseSidebar.destroy());
                 }
+                app.addEventListener('loaded', setupSidebar);
                 app.courseSidebar.show();
             }
             else {
+                app.removeEventListener('loaded', setupSidebar);
                 if (app.courseSidebar)
                     app.courseSidebar.hide();
+            }
+            function setupSidebar() {
+                app.courseSidebar = new CourseSidebar();
+                const sidenav = document.querySelector('aside.course-sidenav');
+                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                    app.courseSidebar.attach(sidenav);
+                }
+                else {
+                    app.setupObserveSidenav();
+                    app.addEventListener('sidenavOpened', opened => {
+                        if (opened) {
+                            const sidenav = document.querySelector('aside.course-sidenav');
+                            app.courseSidebar.attach(sidenav);
+                        }
+                    });
+                }
+                app.courseSidebar.addEventListener('urlChange', toOpen => {
+                    app.tabOpener.openSlide(toOpen);
+                });
             }
         },
         key: 'i'
@@ -3022,7 +3065,7 @@ class App extends CustomEventEmmiter {
         this.addEventListener('slideChange', () => this.updateTabTitle());
         this._loaded = true;
         this.trigger('loaded');
-        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded(), true);
+        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded());
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload();
         });
