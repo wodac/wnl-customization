@@ -20,15 +20,457 @@
 // @grant        GM_openInTab
 // @run-at document-body
 // ==/UserScript==
+class CustomEventEmmiter {
+    constructor() {
+        this.listeners = {};
+    }
+    addEventListener(eventName, listener, once) {
+        let toAdd;
+        if (!this.listeners[eventName])
+            this.listeners[eventName] = [];
+        if (once) {
+            toAdd = event => {
+                listener.bind(this)(event);
+                this.removeEventListener(eventName, toAdd);
+            };
+        }
+        else {
+            toAdd = listener.bind(this);
+        }
+        this.listeners[eventName].push(toAdd);
+    }
+    removeEventListener(eventName, listener) {
+        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString());
+        if (i && i >= 0)
+            return this.listeners[eventName].splice(i, 1);
+    }
+    removeAllListeners(eventName) {
+        if (eventName)
+            this.listeners[eventName] = [];
+        else
+            this.listeners = {};
+    }
+    trigger(eventName, event = {}) {
+        // console.log(`triggering`, eventName, `with data`, event, 'on', this);
+        this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
+            try {
+                setTimeout(() => listener(event), 0);
+            }
+            catch (err) {
+                console.error('triggering', eventName, `with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`);
+            }
+        });
+    }
+}
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="common.ts" />
+///<reference path="enums.ts" />
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+class ChapterListElement extends CustomEventEmmiter {
+    constructor(metadata, parent) {
+        super();
+        this.metadata = metadata;
+        this.parent = parent;
+        if (metadata.children) {
+            this.children = metadata.children.map(meta => new ChapterListElement(meta, parent));
+        }
+        this.active = false;
+    }
+    get active() {
+        return this._active;
+    }
+    set active(value) {
+        this._active = value;
+        this.trigger('activeChange', value);
+        if (this.activeToggler)
+            this.activeToggler.state = value;
+    }
+    getHTML() {
+        return `<a class='custom-script-summary-link' href='${this.metadata.href}'>
+           <span>${this.metadata.name} </span>
+           <span class='small'>(${this.metadata.chapterLength})</span>
+        </a>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.classList.add('custom-script-summary-link-container');
+        this.element.innerHTML = this.getHTML();
+        if (this.children) {
+            const list = document.createElement('ul');
+            const listElems = this.children.map(child => {
+                const li = document.createElement('li');
+                li.append(child.render());
+                return li;
+            });
+            list.append(...listElems);
+            this.element.append(list);
+        }
+        this.activeToggler = new ClassToggler('active', this.element);
+        const link = this.element.querySelector('a');
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            this.parent.app.slideNumber = this.metadata.startPage;
+        });
+        this.trigger('rendered');
+        return this.element;
+    }
+}
+class SlideshowChapters extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+    }
+    render(parentElement) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.getMetadata();
+            if (this._rendered || !this.chapterMetadata)
+                return;
+            this.element = document.createElement('div');
+            this.chapterElements = this.chapterMetadata.map(meta => {
+                const el = new ChapterListElement(meta, this);
+                return el;
+            });
+            this.element.append(...this.chapterElements.map(el => el.render()));
+            if (parentElement)
+                parentElement.append(this.element);
+            this._rendered = true;
+            this.trigger('rendered');
+            setTimeout(() => this.setCurrentPage(this.app.slideNumber), 0);
+            return this.element;
+        });
+    }
+    getProgress() {
+        if (!this.currentChapterPath)
+            return;
+        return this.currentChapterPath.map(chapter => {
+            return Object.assign(Object.assign({}, chapter.metadata), { current: this.currentPage - chapter.metadata.startPage + 1, actualLength: chapter.metadata.endPage - chapter.metadata.startPage + 1 });
+        });
+    }
+    setCurrentPage(page) {
+        if (!this.chapterElements)
+            return;
+        if (!page || page < 1 || page > this.slideCount)
+            return;
+        this.currentPage = page;
+        if (this.currentChapterPath)
+            this.currentChapterPath.forEach(el => el.active = false);
+        this.currentChapterPath = [];
+        function findChapter(chapters) {
+            return chapters.find(chapter => {
+                return chapter.metadata.startPage <= page && chapter.metadata.endPage >= page;
+            });
+        }
+        let chapter = findChapter(this.chapterElements);
+        if (!chapter)
+            return [];
+        let children;
+        while (true) {
+            this.currentChapterPath.push(chapter);
+            children = chapter.children;
+            if (children) {
+                chapter = findChapter(children);
+                if (!chapter)
+                    break;
+            }
+            else
+                break;
+        }
+        if (this.scrollIntoView && chapter)
+            chapter.element.scrollIntoView({ behavior: "smooth" });
+        this.trigger('activeChange', { path: this.currentChapterPath });
+        this.currentChapterPath.forEach(el => el.active = true);
+        return this.currentChapterPath;
+    }
+    getEndPages(chapters, length) {
+        let chapterEnd = length, currentChapter;
+        for (let index = chapters.length - 1; index >= 0; index--) {
+            if (currentChapter)
+                chapterEnd = currentChapter.startPage - 1;
+            currentChapter = chapters[index];
+            currentChapter.endPage = chapterEnd;
+            if (currentChapter.children) {
+                currentChapter.children = this.getEndPages(currentChapter.children, currentChapter.endPage);
+            }
+        }
+        return chapters;
+    }
+    openMenu() {
+        const menuBtn = document.querySelector(".topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint" /* menuBtn */);
+        if (menuBtn) {
+            menuBtn.click();
+            this.menuOpened = true;
+        }
+    }
+    getMetadata() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.chapterMetadata)
+                return this.chapterMetadata;
+            const menu = yield this.getMenu();
+            if (!menu)
+                return;
+            const active = menu.querySelector('.item-wrapper.is-active');
+            if (!active) {
+                return;
+            }
+            this.slideCount = this.getSlideCount(active);
+            const listParent = active.parentElement;
+            if (!listParent) {
+                return;
+            }
+            const list = Array.from(listParent.children);
+            if (this.menuOpened)
+                this.closeMenu();
+            if (list.length === 0) {
+                return;
+            }
+            const wrappers = list.filter(el => el.nodeName === 'DIV');
+            if (wrappers.length === 0) {
+                return;
+            }
+            const chapters = this.getMetadataFromLinks(wrappers);
+            // console.log({chapters})
+            this.chapterMetadata = this.getEndPages(chapters, this.slideCount);
+            this.trigger('dataRetrieved', this.chapterMetadata);
+            return this.chapterMetadata;
+        });
+    }
+    closeMenu() {
+        document.querySelector('.topNavContainer__close').click();
+    }
+    getSlideCount(a) {
+        const t = a.querySelector('span span.sidenav-item-meta').innerText;
+        return parseInt(t.slice(1, -1));
+    }
+    getMetadataFromLinks(wrappers) {
+        const links = wrappers.map(div => div.querySelector('a'));
+        // console.log({links})
+        return links.map((a, i) => {
+            if (!a.href)
+                return {};
+            const chapterLength = this.getSlideCount(a);
+            let children;
+            const subwrappers = wrappers[i].querySelectorAll('div');
+            if (subwrappers.length) {
+                children = this.getMetadataFromLinks(Array.from(subwrappers));
+            }
+            return {
+                href: a.href,
+                name: a.querySelector('span span').innerText,
+                chapterLength, children,
+                startPage: parseInt(a.href.split('/').pop())
+            };
+        });
+    }
+    getMenu() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => {
+                const menu = document.querySelector('aside.sidenav-aside');
+                if (!menu) {
+                    if (this.menuOpened) {
+                        resolve(false);
+                        return;
+                    }
+                    this.openMenu();
+                    setTimeout(() => resolve(this.getMenu()), 100);
+                }
+                else {
+                    resolve(menu);
+                }
+            });
+        });
+    }
+}
+///<reference path="enums.ts" />
+///<reference path="common.ts" />
+///<reference path="ChapterMetadata.ts" />
+class PresentationMetadata extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+        this.createObserver();
+        this.slideshowChapters = new SlideshowChapters(app);
+    }
+    observe() {
+        this.observer.observe(this.appDiv, { attributes: true });
+        this.addEventListener('slideChange', slide => this.slideshowChapters.setCurrentPage(slide));
+    }
+    get appDiv() {
+        return document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+    }
+    getAttrVal(name) {
+        const el = document.querySelector(`[${name}]`);
+        const attr = el && el.attributes.getNamedItem(name);
+        return attr ? attr.value : null;
+    }
+    get slideNumber() {
+        const n = this.getAttrVal('slide');
+        return parseInt(n);
+    }
+    set slideNumber(n) {
+        const nInput = document.querySelector('.wnl-slideshow-controls input[type=number]');
+        if (nInput) {
+            nInput.value = n.toString();
+            nInput.dispatchEvent(new InputEvent('input'));
+        }
+        else {
+            throw Error('Unable to set slide number!');
+        }
+    }
+    get screenID() {
+        return parseInt(this.getAttrVal('screenid'));
+    }
+    get presentationName() {
+        const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
+        return mainHeaderElem &&
+            mainHeaderElem.textContent &&
+            mainHeaderElem.textContent.trim();
+    }
+    get slideTitle() {
+        const currentTitleHeader = document.querySelector('.present .sl-block-content h2');
+        return currentTitleHeader &&
+            currentTitleHeader.textContent &&
+            currentTitleHeader.textContent.trim();
+    }
+    get lessonID() {
+        return parseInt(this.getAttrVal('lesson-id'));
+    }
+    createObserver() {
+        this.observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                const value = this.getAttrFromMutation(mutation);
+                switch (mutation.attributeName) {
+                    case 'screenid':
+                        this.trigger('screenidChange', parseInt(value));
+                        break;
+                    case 'slide':
+                        this.trigger('slideChange', parseInt(value));
+                        break;
+                }
+            }
+        });
+    }
+    getAttrFromMutation(mutation) {
+        const attr = mutation.target.attributes.getNamedItem(mutation.attributeName);
+        return attr ? attr.value : null;
+    }
+    stopObserving() {
+        this.observer.disconnect();
+    }
+}
+// const presentationMetadata = new PresentationMetadata()
+///<reference path="../globals.d.ts" />
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="PresentationMetadata.ts" />
+var TabOpenerIndexes;
+(function (TabOpenerIndexes) {
+    TabOpenerIndexes[TabOpenerIndexes["noAction"] = -1] = "noAction";
+    TabOpenerIndexes[TabOpenerIndexes["findTab"] = -2] = "findTab";
+})(TabOpenerIndexes || (TabOpenerIndexes = {}));
+class TabOpener extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+        this.getTabIndex();
+        this.setInitialStoreVal();
+        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
+            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
+            this.openSlide(toOpen);
+        });
+    }
+    get tabIndex() {
+        return this._tabIndex;
+    }
+    getTabIndex() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tabs = yield this.getTabs();
+            let maxIndex = 0;
+            if (tabs) {
+                tabs.forEach(tab => {
+                    if (tab && tab.index > maxIndex)
+                        maxIndex = tab.index;
+                });
+                maxIndex++;
+            }
+            GM_saveTab({ index: maxIndex });
+            this._tabIndex = maxIndex;
+        });
+    }
+    getTabs() {
+        return new Promise(resolve => {
+            GM_getTabs(tabs => resolve(Object.values(tabs)));
+        });
+    }
+    focusThisTab() {
+        if (document.hidden) {
+            const w = GM_openInTab('about:blank', { active: true, setParent: true });
+            setTimeout(() => w.close(), 0);
+        }
+    }
+    openURLinTab(url) {
+        return GM_openInTab(url, { active: true, setParent: true });
+    }
+    setInitialStoreVal() {
+        GM_setValue('openInTab', {
+            lessonID: this.app.presentationMetadata.lessonID,
+            screenID: this.app.presentationMetadata.screenID,
+            slide: this.app.presentationMetadata.slideNumber,
+            currentTab: -1
+        });
+    }
+    findTabToOpen(toOpen) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tabs = yield this.getTabs();
+            let nextIndex = 1000;
+            tabs.forEach(tab => {
+                if (tab && tab.index > toOpen.currentTab && tab.index < nextIndex)
+                    nextIndex = tab.index;
+            });
+            if (nextIndex === 1000) {
+                nextIndex = -1;
+                this.openURLinTab(this.generateURL(toOpen));
+            }
+            toOpen.currentTab = nextIndex;
+            GM_setValue('openInTab', toOpen);
+        });
+    }
+    generateURL(toOpen) {
+        const path = [WNL_LESSON_LINK, toOpen.lessonID, toOpen.screenID, toOpen.slide];
+        return path.join('/');
+    }
+    openSlide(toOpen) {
+        if (toOpen) {
+            if (toOpen.currentTab === TabOpenerIndexes.noAction)
+                return;
+            if (this.isSlideInCurrentSlideshow(toOpen)) {
+                this.focusThisTab();
+                this.app.presentationMetadata.slideNumber = toOpen.slide;
+                this.setInitialStoreVal();
+            }
+            else if (toOpen.currentTab === TabOpenerIndexes.findTab ||
+                toOpen.currentTab === this.tabIndex) {
+                this.findTabToOpen(toOpen);
+            }
+        }
+    }
+    isSlideInCurrentSlideshow(toOpen) {
+        return toOpen.lessonID === this.app.presentationMetadata.lessonID &&
+            toOpen.screenID === this.app.presentationMetadata.screenID &&
+            toOpen.slide;
+    }
+}
 ///<reference path="../interfaces.d.ts" />
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="PresentationMetadata.ts" />
+///<reference path="TabOpener.ts" />
 document = unsafeWindow.document;
-let thisTabIndex;
-let toRunOnLoaded = [], summaryContainer;
-let slideOptionsContainer, additionalOptionsContainer;
-let options, tools, chapterMetadata;
-const presentationMetadata = {};
-let notesCollection, currentSlideNotes;
-let slideNumberObserver, slideObserver;
 const WNL_LESSON_LINK = 'https://lek.wiecejnizlek.pl/app/courses/1/lessons';
 const inSVG = (s) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`;
 const SVGIcons = {
@@ -66,6 +508,23 @@ const SVGIcons = {
     <ellipse cx="8" cy="8" rx="2.25" ry="2.25" fill="none" opacity="1" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>`,
     pallete: inSVG `<path d="M8 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm4 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM5.5 7a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
     <path d="M16 8c0 3.15-1.866 2.585-3.567 2.07C11.42 9.763 10.465 9.473 10 10c-.603.683-.475 1.819-.351 2.92C9.826 14.495 9.996 16 8 16a8 8 0 1 1 8-8zm-8 7c.611 0 .654-.171.655-.176.078-.146.124-.464.07-1.119-.014-.168-.037-.37-.061-.591-.052-.464-.112-1.005-.118-1.462-.01-.707.083-1.61.704-2.314.369-.417.845-.578 1.272-.618.404-.038.812.026 1.16.104.343.077.702.186 1.025.284l.028.008c.346.105.658.199.953.266.653.148.904.083.991.024C14.717 9.38 15 9.161 15 8a7 7 0 1 0-7 7z"/>`,
+    minusCircle: inSVG `<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+    <path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z"/>`,
+    stopwatch: inSVG `<path d="M8.5 5.6a.5.5 0 1 0-1 0v2.9h-3a.5.5 0 0 0 0 1H8a.5.5 0 0 0 .5-.5V5.6z"/>
+    <path d="M6.5 1A.5.5 0 0 1 7 .5h2a.5.5 0 0 1 0 1v.57c1.36.196 2.594.78 3.584 1.64a.715.715 0 0 1 .012-.013l.354-.354-.354-.353a.5.5 0 0 1 .707-.708l1.414 1.415a.5.5 0 1 1-.707.707l-.353-.354-.354.354a.512.512 0 0 1-.013.012A7 7 0 1 1 7 2.071V1.5a.5.5 0 0 1-.5-.5zM8 3a6 6 0 1 0 .001 12A6 6 0 0 0 8 3z"/>`,
+    chat: inSVG `<path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>`,
+    capitalT: inSVG `<path d="M12.258 3h-8.51l-.083 2.46h.479c.26-1.544.758-1.783 2.693-1.845l.424-.013v7.827c0 .663-.144.82-1.3.923v.52h4.082v-.52c-1.162-.103-1.306-.26-1.306-.923V3.602l.431.013c1.934.062 2.434.301 2.693 1.846h.479L12.258 3z"/>`,
+    keyboard: inSVG `<path d="M14 5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h12zM2 4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2z"/>
+    <path d="M13 10.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm0-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm-5 0A.25.25 0 0 1 8.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 8 8.75v-.5zm2 0a.25.25 0 0 1 .25-.25h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5a.25.25 0 0 1-.25-.25v-.5zm1 2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm-5-2A.25.25 0 0 1 6.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 6 8.75v-.5zm-2 0A.25.25 0 0 1 4.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 4 8.75v-.5zm-2 0A.25.25 0 0 1 2.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 2 8.75v-.5zm11-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm-2 0a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm-2 0A.25.25 0 0 1 9.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 9 6.75v-.5zm-2 0A.25.25 0 0 1 7.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 7 6.75v-.5zm-2 0A.25.25 0 0 1 5.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 5 6.75v-.5zm-3 0A.25.25 0 0 1 2.25 6h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5A.25.25 0 0 1 2 6.75v-.5zm0 4a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25v-.5zm2 0a.25.25 0 0 1 .25-.25h5.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25v-.5z"/>`,
+    fileRichText: inSVG `<path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+    <path d="M4.5 12.5A.5.5 0 0 1 5 12h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0-2A.5.5 0 0 1 5 10h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm1.639-3.708 1.33.886 1.854-1.855a.25.25 0 0 1 .289-.047l1.888.974V8.5a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V8s1.54-1.274 1.639-1.208zM6.25 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5z"/>`,
+    chevronExpand: inSVG `<path fill-rule="evenodd" d="M3.646 9.146a.5.5 0 0 1 .708 0L8 12.793l3.646-3.647a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 0-.708zm0-2.292a.5.5 0 0 0 .708 0L8 3.207l3.646 3.647a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 0 0 0 .708z"/>`,
+    bell: inSVG `<path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>`,
+    type: inSVG `<path d="m2.244 13.081.943-2.803H6.66l.944 2.803H8.86L5.54 3.75H4.322L1 13.081h1.244zm2.7-7.923L6.34 9.314H3.51l1.4-4.156h.034zm9.146 7.027h.035v.896h1.128V8.125c0-1.51-1.114-2.345-2.646-2.345-1.736 0-2.59.916-2.666 2.174h1.108c.068-.718.595-1.19 1.517-1.19.971 0 1.518.52 1.518 1.464v.731H12.19c-1.647.007-2.522.8-2.522 2.058 0 1.319.957 2.18 2.345 2.18 1.06 0 1.716-.43 2.078-1.011zm-1.763.035c-.752 0-1.456-.397-1.456-1.244 0-.65.424-1.115 1.408-1.115h1.805v.834c0 .896-.752 1.525-1.757 1.525z"/>`,
+    import: inSVG `<path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
+    <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>`,
+    export: inSVG `<path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
+    <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>`,
 };
 const zoomSliderHTML = `
     <div class='${"custom-script-zoom-slider-container" /* zoomSliderContainer */}'>
@@ -160,6 +619,9 @@ var Toggles;
 (function (Toggles) {
     Toggles.summaryHidden = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
         if (!t.state) {
+            const summaryContainer = document.querySelector('custom-script-summary');
+            if (!summaryContainer)
+                return;
             summaryContainer.classList.remove('custom-script-hidden');
             const activeLink = summaryContainer.querySelector('.active');
             if (activeLink) {
@@ -167,35 +629,17 @@ var Toggles;
             }
         }
     });
+    Toggles.searchHidden = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+        if (!t.state)
+            setTimeout(() => {
+                document.querySelector('.custom-script-search input.custom-search-result').focus();
+            }, 100);
+    });
     const optionsHidden = new ClassToggler('custom-script-hidden', '.custom-script-additional-options');
     Toggles.optionsActive = new ClassToggler('active', 'a.custom-options-btn', t => {
         optionsHidden.state = !t.state;
     });
 })(Toggles || (Toggles = {}));
-function goToSlideN(n) {
-    const nInput = document.querySelector('.wnl-slideshow-controls input[type=number]');
-    if (nInput) {
-        nInput.value = n.toString();
-        nInput.dispatchEvent(new InputEvent('input'));
-        return true;
-    }
-    return false;
-}
-function onAttributeChange(element, attributeName, callback) {
-    const obs = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            if (mutation.attributeName === attributeName) {
-                const attr = mutation.target.attributes.getNamedItem(attributeName);
-                callback(attr ? attr.value : null);
-            }
-            // console.log({mutation})
-        }
-    });
-    obs.observe(element, {
-        attributes: true
-    });
-    return obs;
-}
 function downloadFile(mimetype, name, data) {
     let dataText;
     if (typeof data === 'string')
@@ -246,164 +690,56 @@ function getIndexedDB(name, version, setupCb) {
         });
     });
 }
-function observeSlideNumber(cb) {
-    //console.log('observe slide number')
-    const appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-    slideNumberObserver = onAttributeChange(appDiv, 'slide', value => cb(parseInt(value)));
-}
-function getCurrentLessonID() {
-    const element = document.querySelector('[lesson-id]');
-    if (!element)
-        return NaN;
-    const attr = element.attributes.getNamedItem('lesson-id');
-    if (!attr)
-        return NaN;
-    return parseInt(attr.value);
-}
-function updateTabTitle() {
-    let currentTitleHeader = document.querySelector('.present .sl-block-content h2');
-    if (currentTitleHeader !== null)
-        presentationMetadata.currentSlideTitle = currentTitleHeader.textContent;
-    if (GM_getValue('option_changeTitle')) {
-        let mainTitle;
-        mainTitle = presentationMetadata.name && presentationMetadata.name.match(/\w/) ? `${presentationMetadata.name} - ` : '';
-        const slideTitle = presentationMetadata.currentSlideTitle && presentationMetadata.currentSlideTitle.match(/\w/) ? `${presentationMetadata.currentSlideTitle} - ` : '';
-        const originalTitle = options ? options.state.changeTitle.originalTitle : 'LEK - Kurs - Więcej niż LEK';
-        document.title = slideTitle + mainTitle + originalTitle;
+///<reference path="common.ts" />
+///<reference path="../App.ts" />
+class SearchConstructor {
+    constructor(app) {
+        this.app = app;
     }
-}
-class CustomEventEmmiter {
-    constructor() {
-        this.listeners = {};
+    getSearchURL(q) {
+        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
     }
-    addEventListener(eventName, listener, once) {
-        if (!this.listeners[eventName])
-            this.listeners[eventName] = [];
-        if (once) {
-            listener = event => {
-                listener.bind(this)(event);
-                this.removeEventListener(eventName, listener);
-            };
-        }
-        this.listeners[eventName].push(listener.bind(this));
-    }
-    removeEventListener(eventName, listener) {
-        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString());
-        if (i && i >= 0)
-            return this.listeners[eventName].splice(i, 1);
-    }
-    removeAllListeners() {
-        this.listeners = {};
-    }
-    trigger(eventName, event = {}) {
-        console.log(`triggering ${eventName} with data`, event, 'on', this);
-        this.listeners[eventName] && this.listeners[eventName].forEach(listener => listener(event));
-    }
-}
-function focusTab() {
-    if (document.hidden) {
-        const w = GM_openInTab('about:blank', { active: true, setParent: true });
-        setTimeout(() => w.close(), 0);
-    }
-}
-function openSlideInTab(toOpen) {
-    if (toOpen) {
-        console.log({ toOpen });
-        if (toOpen.currentTab === -1)
-            return;
-        if (toOpen.lessonID === presentationMetadata.lessonID &&
-            toOpen.screenID === presentationMetadata.screenID &&
-            toOpen.slide) {
-            focusTab();
-            goToSlideN(toOpen.slide);
-            GM_setValue('openInTab', {
-                lessonID: presentationMetadata.lessonID,
-                screenID: presentationMetadata.screenID,
-                slide: presentationMetadata.currentSlideNumber,
-                currentTab: -1
-            });
-        }
-        else if (toOpen.currentTab === -2 || toOpen.currentTab === thisTabIndex) {
-            GM_getTabs(tabsObject => {
-                console.log({ tabsObject });
-                const tabs = Object.values(tabsObject);
-                let nextIndex = 1000;
-                tabs.forEach(tab => {
-                    if (tab && tab.index > toOpen.currentTab && tab.index < nextIndex)
-                        nextIndex = tab.index;
-                });
-                if (nextIndex === 1000) {
-                    nextIndex = -1;
-                    openWindow();
-                }
-                toOpen.currentTab = nextIndex;
-                console.log('setting', { toOpen });
-                GM_setValue('openInTab', toOpen);
-            });
-        }
-    }
-    function openWindow() {
-        const path = [WNL_LESSON_LINK, toOpen.lessonID, toOpen.screenID, toOpen.slide];
-        console.log('opening', path);
-        return GM_openInTab(path.join('/'), { active: true, setParent: true });
-    }
-}
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var Search;
-(function (Search) {
-    const getSearchURL = (q) => `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
-    const WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
-    let searchContainer, searchResultsContainer;
-    function addSearchContainer() {
-        searchContainer = document.createElement('div');
-        searchContainer.className = 'custom-script-search custom-script-hidden';
-        searchContainer.innerHTML = `
+    addSearchContainer() {
+        this.searchContainer = document.createElement('div');
+        this.searchContainer.className = 'custom-script-search custom-script-hidden';
+        this.searchContainer.innerHTML = `
         <input class="custom-search-result" style="width: 80%;display: inline-block;">
         <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
         `;
         const closeBtn = document.createElement('div');
         closeBtn.className = 'custom-script-summary-close';
         closeBtn.innerHTML = SVGIcons.chevronUp;
-        searchContainer.prepend(closeBtn);
-        closeBtn.addEventListener('click', () => Search.hiddenToggle.state = true);
-        searchResultsContainer = document.createElement('div');
-        searchContainer.append(searchResultsContainer);
-        document.querySelector('.order-number-container').after(searchContainer);
-        const searchInput = searchContainer.querySelector('input.custom-search-result');
-        searchInput.addEventListener('change', () => performSearch());
+        this.searchContainer.prepend(closeBtn);
+        closeBtn.addEventListener('click', () => Toggles.searchHidden.state = true);
+        this.searchResultsContainer = document.createElement('div');
+        this.searchContainer.append(this.searchResultsContainer);
+        document.querySelector('.order-number-container').after(this.searchContainer);
+        const searchInput = this.searchContainer.querySelector('input.custom-search-result');
+        searchInput.addEventListener('change', () => this.performSearch());
         searchInput.addEventListener('keyup', ev => {
             if (ev.key === 'Escape') {
                 ev.preventDefault();
                 ev.stopImmediatePropagation();
-                Search.hiddenToggle.state = true;
+                Toggles.searchHidden.state = true;
             }
         });
-        searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => performSearch());
+        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
     }
-    Search.addSearchContainer = addSearchContainer;
-    function performSearch() {
-        if (!searchContainer)
+    performSearch() {
+        if (!this.searchContainer)
             return;
-        const q = searchContainer.querySelector('input.custom-search-result').value;
-        const interpretation = interpretQuery(q);
-        searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
-        getSearchResponseHTML(interpretation).then(resp => {
-            if (searchResultsContainer) {
-                searchResultsContainer.innerHTML = '';
-                searchResultsContainer.append(...resp);
+        const q = this.searchContainer.querySelector('input.custom-search-result').value;
+        const interpretation = this.interpretQuery(q);
+        this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
+        this.getSearchResponseHTML(interpretation).then(resp => {
+            if (this.searchResultsContainer) {
+                this.searchResultsContainer.innerHTML = '';
+                this.searchResultsContainer.append(...resp);
             }
-            Search.hiddenToggle.state = false;
+            Toggles.searchHidden.state = false;
         });
     }
-    function interpretQuery(rawQuery) {
+    interpretQuery(rawQuery) {
         let query = rawQuery.replace(/"/g, '');
         rawQuery = rawQuery.toLowerCase();
         const quotesRegExp = /"([^"]+)"/g;
@@ -421,9 +757,9 @@ var Search;
             musntContain = musntContain.map(s => s.slice(1));
         return { query, rawQuery, mustContain, musntContain };
     }
-    function getSearchResponseHTML(q) {
+    getSearchResponseHTML(q) {
         return __awaiter(this, void 0, void 0, function* () {
-            const response = yield searchRequest(q);
+            const response = yield this.searchRequest(q);
             if (response.length) {
                 return response.map(el => {
                     const link = document.createElement('a');
@@ -436,7 +772,7 @@ var Search;
                     link.className = 'custom-search-result';
                     link.addEventListener('click', ev => {
                         ev.preventDefault();
-                        openSlideInTab({
+                        this.app.tabOpener.openSlide({
                             currentTab: -2,
                             lessonID: el.context.lesson.id,
                             screenID: el.context.screen.id,
@@ -463,21 +799,15 @@ var Search;
                     }
                 }
                 if (el.id)
-                    return WNL_DYNAMIC_SLIDES + el.id;
+                    return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id;
                 return '#';
             }
         });
     }
-    Search.hiddenToggle = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
-        if (!t.state)
-            setTimeout(() => {
-                searchContainer.querySelector('input.custom-search-result').focus();
-            }, 100);
-    });
-    function searchRequest(q) {
+    searchRequest(q) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
-                url: getSearchURL(q.query),
+                url: this.getSearchURL(q.query),
                 method: 'GET',
                 responseType: "json",
                 onload: ({ response }) => {
@@ -491,13 +821,13 @@ var Search;
                             id: el.id
                         };
                     });
-                    resolve(filterSearch(parsed, q));
+                    resolve(this.filterSearch(parsed, q));
                 },
                 onerror: reject
             });
         });
     }
-    function filterSearch(parsed, q) {
+    filterSearch(parsed, q) {
         return __awaiter(this, void 0, void 0, function* () {
             let filtered = parsed;
             if (q.mustContain) {
@@ -510,29 +840,35 @@ var Search;
                     return !hasSomePhrases(result, q.musntContain).some(includes => includes);
                 });
             }
-            filtered.sort(sortUpSome(res => res.context.screen.id === presentationMetadata.screenID));
+            filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID));
             function sortUpSome(predicate) {
                 return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
             }
-            return (yield getTagsAsResults(q)).concat(filtered);
+            return (yield this.getTagsAsResults(q)).concat(filtered);
             function hasSomePhrases(result, phrases) {
                 return phrases.map(toSearch => {
                     return Object.values(result.highlight).some(highlighted => {
-                        return highlighted.some(s => stripHTMLTags(s).includes(toSearch));
+                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
                     });
                 });
             }
         });
     }
-    function getTagsAsResults(q) {
+    getTagsAsResults(q) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!notesCollection)
+            if (!this.app.notesCollection)
                 return [];
-            const tags = yield notesCollection.getAllTagsWithName(q.query);
+            const tagColors = this.app.notesCollection.tags;
+            const tags = yield this.app.notesCollection.getAllTagsWithName(q.query);
             return tags.map(tag => {
+                const record = tagColors.find(record => record.name === tag.content);
                 return {
                     highlight: {
-                        "snippet.content": [`<div title='${tag.content}' class='custom-tag'>${tag.content}</div>`]
+                        "snippet.content": [
+                            `<div title='${tag.content}'
+                         style='background:${record.color};color:${getForegroundColor(record.color)}'
+                         class='custom-tag'>${tag.content}</div>`
+                        ]
                     },
                     details: {
                         header: tag.presentationTitle,
@@ -549,17 +885,15 @@ var Search;
             });
         });
     }
-    function stripHTMLTags(s) {
+    stripHTMLTags(s) {
         const tagStripper = /<[^>]+>/g;
         return s.toLowerCase().replace(tagStripper, '');
     }
-})(Search || (Search = {}));
-var Toggles;
-(function (Toggles) {
-    Toggles.searchHidden = Search.hiddenToggle;
-})(Toggles || (Toggles = {}));
+}
+SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
 ///<reference path="common.ts" />
-///<reference path="search.ts" />
+///<reference path="../App.ts" />
+///<reference path="Search.ts" />
 var Keyboard;
 (function (Keyboard) {
     let keyboardShortcuts = [
@@ -641,7 +975,7 @@ var Keyboard;
             }
         }
     });
-    function setupControl() {
+    function setupControl(app) {
         const slides = document.querySelectorAll('.slides .stack');
         if (!slides.length)
             return;
@@ -650,7 +984,7 @@ var Keyboard;
             const icons = slide.querySelectorAll('.a-icon');
             icons.forEach(icon => addSubToRef(icon, counter++));
         });
-        observeSlides(addSubsToRefs);
+        observeSlides(app, addSubsToRefs);
         // document.body.addEventListener('click', updateTabTitle)
         // document.body.addEventListener('keyup', updateTabTitle)
         document.body.addEventListener('keydown', event => {
@@ -674,10 +1008,10 @@ var Keyboard;
         document.body.removeEventListener('keyup', shortcutListener);
     }
     Keyboard.disableControl = disableControl;
-    function observeSlides(cb) {
+    function observeSlides(app, cb) {
         //console.log('observeSlides')
-        slideObserver = new MutationObserver(cb);
-        slideObserver.observe(document.querySelector('div.slides'), {
+        app.slideObserver = new MutationObserver(cb);
+        app.slideObserver.observe(document.querySelector('div.slides'), {
             childList: true,
             subtree: true
         });
@@ -697,6 +1031,8 @@ var Keyboard;
         });
     }
     function addSubToRef(ref, counter) {
+        if (ref.className.includes('sub-id-'))
+            return;
         const sub = document.createElement('sub');
         sub.innerText = counter.toString();
         sub.className = `small`;
@@ -786,174 +1122,449 @@ var Keyboard;
             document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
     }
 })(Keyboard || (Keyboard = {}));
-///<reference path="common.ts" />
-///<reference path="keyboard.ts" />
-class Options {
-    constructor(options, settingsContainerSelector) {
-        const document = unsafeWindow.document;
-        this.state = Object.fromEntries(options.map(option => [option.name, Object.assign(Object.assign({}, option), { value: option.defaultValue, handle: null })]));
-        this.settingsContainerSelector = settingsContainerSelector;
-        this.restoreState();
-        this.init();
-        this.update();
-        this.storeState();
-        this.rerender();
-    }
-    get settingsContainer() {
-        return document.querySelector(this.settingsContainerSelector);
-    }
-    _rerenderSettings() {
-        //console.log('trying to render sidebar', this.settingsContainer)
-        if (this.settingsContainer) {
-            //console.log('rendering sidebar', this.settingsContainer)
-            const optionDivs = this.settingsContainer.querySelectorAll(`div.${"custom-script-option-container" /* optionContainer */}`);
-            optionDivs.forEach(el => el.remove());
-            Object.values(this.state).forEach(option => this.settingsContainer.appendChild(this._getSettingsOption(option)));
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="../globals.d.ts" />
+var SettingType;
+(function (SettingType) {
+    SettingType[SettingType["Checkbox"] = 0] = "Checkbox";
+    SettingType[SettingType["Percent"] = 1] = "Percent";
+    SettingType[SettingType["Integer"] = 2] = "Integer";
+    SettingType[SettingType["Button"] = 3] = "Button";
+})(SettingType || (SettingType = {}));
+class Setting extends CustomEventEmmiter {
+    constructor(options, parent) {
+        super();
+        this.options = options;
+        this.parent = parent;
+        this.name = options.name;
+        this.type = options.type;
+        if (this.type !== SettingType.Button) {
+            GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
+                if (this._value === value)
+                    return;
+                this._value = value;
+                this.trigger('change', { oldValue, remote, value });
+            });
+            this._value = GM_getValue(this.name, options.defaultValue);
+            if (options.isInRange)
+                this.isInRange = options.isInRange;
         }
     }
-    _getSettingsOption(option) {
-        const optionContainer = document.createElement('div');
-        optionContainer.classList.add("custom-script-option-container" /* optionContainer */);
-        const getOption = (desc) => `<a class="custom-script-option" href="#">${desc}</a>`;
-        const desc = typeof option.desc === 'function' ? option.desc.apply(this, [option, this.state]) : option.desc;
-        optionContainer.innerHTML = getOption(desc);
-        const optionLink = optionContainer.querySelector('a');
-        optionLink.addEventListener('click', event => {
-            event.preventDefault();
-            this._runCallback(option);
-        });
-        return optionContainer;
+    get value() {
+        return this._value;
     }
-    rerender() {
-        let rerender = (name) => {
-            const state = this.state[name];
-            GM_unregisterMenuCommand(state.handle);
-            const desc = typeof state.desc === 'function' ? state.desc(state) : state.desc;
-            this.state[name].handle = GM_registerMenuCommand(desc, () => this._runCallback(state), state.key);
-        };
-        rerender = rerender.bind(this);
-        Object.keys(this.state).forEach(rerender);
-        this._rerenderSettings();
-    }
-    _runCallback(option) {
-        const result = option.callback.apply(this, [option, this.state]);
-        if (typeof result === 'object')
-            this.setOptionState(Object.assign({ name: option.name }, result));
-    }
-    setOptionState(state, name) {
-        if (!name)
-            name = state.name;
-        if (typeof state === 'function') {
-            const result = state.apply(this, [this.state[name]]);
-            this._setOptionState(Object.assign(Object.assign({}, this.state[name]), result));
-        }
-        else
-            this._setOptionState(Object.assign(Object.assign({}, state), { name }));
-    }
-    _setOptionState(state) {
-        const name = state.name;
-        this.state[name] = Object.assign(Object.assign({}, this.state[state.name]), state);
-        this.storeState(name);
-        const updateCb = this.state[name].update;
-        if (updateCb)
-            updateCb.apply(this, [state, this.state]);
-        this.rerender();
-    }
-    storeState(optionName) {
-        const saveOptionState = name => GM_setValue(`option_${name}`, this.state[name].value);
-        if (typeof optionName === 'string') {
-            saveOptionState(optionName);
+    set value(value) {
+        if (this.type === SettingType.Button || this._value === value)
             return;
-        }
-        Object.keys(this.state).forEach(saveOptionState);
-    }
-    restoreState(optionName) {
-        const restoreOptionState = (name) => {
-            this.state[name].value = GM_getValue(`option_${name}`, this.state[name].value);
-        };
-        if (typeof optionName === 'string') {
-            restoreOptionState(optionName);
+        if (this.isInRange && !this.isInRange(value))
             return;
-        }
-        Object.keys(this.state).forEach(restoreOptionState);
-    }
-    _runOnAllOptions(functionName) {
-        Object.keys(this.state).forEach(optionName => {
-            const option = this.state[optionName];
-            const callback = option[functionName];
-            if (typeof callback === 'function')
-                callback.apply(this, [option, this.state]);
-        });
-    }
-    update() { this._runOnAllOptions('update'); }
-    init() {
-        this._runOnAllOptions('init');
-        this._rerenderSettings();
+        const oldValue = this._value;
+        this._value = value;
+        GM_setValue(this.name, value);
+        this.trigger('change', { value, oldValue, remote: false });
     }
 }
-const getCheckboxEmoji = isOn => isOn ? "☑️ " : "🔲 ";
-options = new Options([
+class SettingElement extends Setting {
+    constructor(options, parent) {
+        super(options, parent);
+        if (options.onchange)
+            this.addEventListener('change', options.onchange);
+        if (options.onrender)
+            this.addEventListener('rendered', options.onrender);
+        if (options.onclick)
+            this.addEventListener('tmMenuClicked', options.onclick);
+    }
+    getIconHTML() {
+        if (this.options.icon) {
+            if (this.options.icon.html) {
+                return this.options.icon.html;
+            }
+            else if (this.options.icon.emoji) {
+                return `<span class='custom-script-emoji'>${this.options.icon.emoji}</span>`;
+            }
+        }
+        return '';
+    }
+    getIconEmoji() {
+        if (this.options.icon && this.options.icon.emoji) {
+            return this.options.icon.emoji + ' ';
+        }
+        return '';
+    }
+    removeFromTMMenu() {
+        GM_unregisterMenuCommand(this.tmHandle);
+    }
+    set disabled(val) {
+        if (this._disabled === val)
+            return;
+        this._disabled = val;
+        if (val)
+            this.removeFromTMMenu();
+        if (this.element) {
+            if (val)
+                this.element.style.display = 'none';
+            else
+                this.element.style.display = '';
+        }
+        this.trigger('disabled', val);
+    }
+    addToTMMenu() {
+        if (this._disabled)
+            return;
+        this.tmHandle = GM_registerMenuCommand(this.renderSimple(), () => this.trigger('tmMenuClicked'), this.options.key);
+    }
+}
+class CheckboxSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.addEventListener('tmMenuClicked', () => {
+            this.value = !this.value;
+        });
+    }
+    getHTML() {
+        return `
+        <input type='checkbox' id='custom-input-${this.name}' name='${this.name}' />
+        ${this.getIconHTML()}
+        <label for='custom-input-${this.name}'>${this.options.desc}</label>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.input = this.element.querySelector('input');
+        this.input.checked = this.value;
+        this.addEventListener('change', ({ value }) => this.input.checked = value);
+        this.input.addEventListener('change', (ev) => this.value = this.input.checked);
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return CheckboxSetting.getCheckboxEmoji(this.value) + ' ' +
+            this.getIconEmoji() + this.options.desc;
+    }
+}
+CheckboxSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
+class ButtonSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+    }
+    getHTML() {
+        let inner = this.getIconHTML();
+        inner += this.options.desc;
+        return `<a name='${this.name}'>${inner}</a>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.btn = this.element.querySelector('a');
+        this.btn.addEventListener('click', () => this.trigger('tmMenuClicked'));
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc;
+    }
+}
+ButtonSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
+class NumberSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.addEventListener('tmMenuClicked', () => {
+            const isPercent = options.type === SettingType.Percent;
+            this.value = parseInt(prompt(`Podaj wartość ${isPercent ? "procentową " : ''}dla ustawienia (obecnie ${this.value}${isPercent ? '%' : ''}):\n${this.options.desc}`));
+        });
+    }
+    set upperLimit(ul) {
+        this.input && (this.input.max = ul.toString());
+    }
+    set lowerLimit(ll) {
+        this.input && (this.input.min = ll.toString());
+    }
+    getHTML() {
+        return `
+        ${this.getIconHTML()}
+        <label>${this.options.desc}</label>
+        <input type='${this.type === SettingType.Integer ? 'number' : 'range'}' name='${this.name}' />`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.input = this.element.querySelector('input');
+        this.input.value = this.value.toString();
+        if (this.type === SettingType.Percent) {
+            const valueEl = document.createElement('span');
+            valueEl.classList.add('custom-range-val');
+            valueEl.innerText = `${this.value}%`;
+            const btns = [SVGIcons.minusCircle, SVGIcons.plusCircle];
+            const btnElems = btns.map(icon => {
+                const el = document.createElement('a');
+                el.innerHTML = icon;
+                return el;
+            });
+            this.input.before(btnElems[0]);
+            this.input.after(btnElems[1], valueEl);
+            btnElems.forEach((btn, i) => {
+                btn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    const delta = Math.ceil(this.value * 0.05);
+                    this.value = this.value + (i ? delta : -delta);
+                });
+            });
+            this.addEventListener('change', ({ value }) => valueEl.innerText = `${value}%`);
+            this.input.addEventListener('input', () => valueEl.innerText = `${this.input.value}%`);
+        }
+        this.addEventListener('change', ({ value }) => this.input.value = value.toString());
+        this.input.addEventListener('change', (ev) => this.value = parseInt(this.input.value));
+        // this.input.addEventListener('input', (ev) => this.trigger('input'))
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        const percentSymb = this.type === SettingType.Percent ? '%' : '';
+        return this.getIconEmoji() + this.options.desc + ` (${this.value}${percentSymb})`;
+    }
+}
+class Settings extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+        this.settings = [];
+    }
+    addSettings(settings) {
+        settings.forEach(sett => this.addSetting(sett));
+    }
+    addSetting(setting) {
+        let sett;
+        if (setting instanceof SettingElement) {
+            setting.parent = this;
+            sett = setting;
+        }
+        else if (setting.type === SettingType.Checkbox) {
+            sett = new CheckboxSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Button) {
+            sett = new ButtonSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
+            sett = new NumberSetting(setting, this);
+        }
+        if (!sett)
+            return;
+        this.settings.push(sett);
+        this.app.addEventListener('loaded', () => sett.trigger('change', {
+            value: sett.value,
+            oldValue: sett.options.defaultValue,
+            remote: false
+        }));
+        sett.addEventListener('change', () => {
+            this.renderInTMMenu();
+        });
+    }
+    setValue(name, value) {
+        let toSave;
+        if (typeof value === "function")
+            toSave = value(this.getValue(name));
+        else
+            toSave = value;
+        GM_setValue(name, value);
+    }
+    getValue(name) {
+        return GM_getValue(name);
+    }
+    getSetting(name) {
+        return this.settings.find(s => s.name === name);
+    }
+    renderInTMMenu() {
+        this.settings.forEach(setting => {
+            setting.removeFromTMMenu();
+            setting.addToTMMenu();
+        });
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.append(...this.settings.map(setting => setting.render()));
+        return this.element;
+    }
+}
+///<reference path="CustomEventEmmiter.ts" />
+class ExternalFragment extends CustomEventEmmiter {
+    constructor(initialURL, selector) {
+        super();
+        this.initialURL = initialURL;
+        this.selector = selector;
+        this.iframe = document.createElement('iframe');
+        this.iframe.width = '1300';
+        this.iframe.height = '800';
+        this.iframe.style.position = 'absolute';
+        this.iframe.style.bottom = '100%';
+        document.body.append(this.iframe);
+        this.load();
+    }
+    load() {
+        if (this.interval)
+            clearInterval(this.interval);
+        if (this.element)
+            this.element.remove();
+        this.iframe.src = this.initialURL;
+        this.triesLeft = 20;
+        this.iframe.addEventListener('load', (ev) => __awaiter(this, void 0, void 0, function* () {
+            this.element = yield this.getElement();
+            this.setupURLChangeDetection();
+            this.trigger('loaded', this.element);
+        }), { once: true });
+        this.childWindow = this.iframe.contentWindow;
+    }
+    getElement() {
+        return new Promise(resolve => {
+            const doc = this.iframe.contentDocument;
+            if (!doc)
+                return resolve(null);
+            const interval = setInterval(() => {
+                const element = doc.querySelector(this.selector);
+                if (!element && this.triesLeft--)
+                    return;
+                clearInterval(interval);
+                resolve(element);
+            }, 100);
+        });
+    }
+    setupURLChangeDetection() {
+        if (!this.childWindow)
+            return;
+        this.url = this.childWindow.location.href;
+        this.interval = setInterval(() => {
+            if (!this.childWindow)
+                return;
+            if (this.url === this.childWindow.location.href)
+                return;
+            this.url = this.childWindow.location.href;
+            console.log({ changedURL: this.url });
+            this.trigger('iframeURLChange', this.url);
+        }, 100);
+    }
+    destroy() {
+        clearInterval(this.interval);
+        this.iframe.remove();
+        this.element.remove();
+        this.element = this.iframe = this.childWindow = this.url = null;
+    }
+}
+///<reference path="ExternalFragment.ts" />
+///<reference path="../globals.d.ts" />
+class CourseSidebar extends ExternalFragment {
+    constructor() {
+        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div');
+        this.prepareContainer();
+        this.addEventListener('loaded', el => {
+            if (!el)
+                return;
+            this.container.append(el);
+        }, true);
+        this.addEventListener('iframeURLChange', newURL => {
+            this.trigger('urlChange', newURL);
+            this.load();
+        });
+    }
+    prepareContainer() {
+        this.container = document.createElement('div');
+        this.container.innerHTML = CourseSidebar.CONTAINER_HTML;
+        this.container.classList.add('custom-main-nav-container');
+        this.collapseToggler = new ClassToggler('active', this.container);
+        this.container.querySelector('a').addEventListener('click', () => this.collapseToggler.toggle());
+        // sidenav.prepend(this.container)
+    }
+    attach(parent) {
+        parent.prepend(this.container);
+    }
+    show() {
+        this.container && (this.container.style.display = '');
+    }
+    hide() {
+        this.container && (this.container.style.display = 'none');
+    }
+}
+CourseSidebar.CONTAINER_HTML = `
+    <a>
+        ${SVGIcons.chevronUp}
+        <span>GŁÓWNE MENU</span>
+    </a>`;
+///<reference path="common.ts" />
+///<reference path="Keyboard.ts" />
+///<reference path="Settings.ts" />
+///<reference path="CourseSidebar.ts" />
+///<reference path="../App.ts" />
+const getOptions = (app) => [
     {
         name: "increaseFontSize",
-        desc: state => getCheckboxEmoji(state.value) + "🔎 Zwiększ wielkość czcionki",
-        callback: function (state) {
-            if (!state.value) {
-                this.setOptionState({
-                    name: "uniformFontSize",
-                    value: false
-                });
-            }
-            return { value: !state.value };
+        type: SettingType.Checkbox,
+        desc: "Zwiększ wielkość czcionki",
+        icon: {
+            emoji: "🔎",
+            html: SVGIcons.zoomIn
         },
-        update: state => toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value),
+        onchange: function (state) {
+            if (state.value) {
+                this.parent.setValue("uniformFontSize", false);
+            }
+            toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value);
+        },
         defaultValue: true,
         key: 'f'
     },
     {
         name: "increaseAnnotations",
-        desc: state => getCheckboxEmoji(state.value) + "📄 Zwiększ wielkość czcionki w przypisach",
-        callback: function (state) {
-            return { value: !state.value };
+        icon: {
+            emoji: "📄",
+            html: SVGIcons.fileRichText
         },
-        update: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
+        desc: "Zwiększ wielkość czcionki w przypisach",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
         defaultValue: false,
         key: 'a'
     },
     {
         name: "hideChat",
-        desc: state => getCheckboxEmoji(state.value) + "💬 Ukryj czat",
-        callback: function (state) {
-            return { value: !state.value };
+        icon: {
+            emoji: "💬",
+            html: SVGIcons.chat
         },
-        update: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
+        desc: "Ukryj czat",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
         defaultValue: false,
         key: 'c'
     },
     {
         name: "smoothScroll",
-        desc: state => getCheckboxEmoji(state.value) + "↕️ Płynne przewijanie strzałkami",
-        callback: function (state) {
-            return { value: !state.value };
+        icon: {
+            emoji: "↕️",
+            html: SVGIcons.chevronExpand
         },
-        update: () => null,
+        desc: "Płynne przewijanie strzałkami",
+        type: SettingType.Checkbox,
         defaultValue: false,
         key: 's'
     },
     {
         name: "keyboardControl",
-        desc: state => getCheckboxEmoji(state.value) + "⌨️ Sterowanie klawiaturą",
-        callback: function (state) {
-            return { value: !state.value };
+        icon: {
+            emoji: "⌨️",
+            html: SVGIcons.keyboard
         },
-        update: state => {
+        desc: "Sterowanie klawiaturą",
+        type: SettingType.Checkbox,
+        onchange: state => {
             if (state.value) {
-                Keyboard.setupControl();
+                Keyboard.setupControl(app);
             }
             else {
                 document.querySelectorAll('sub.small').forEach(sub => sub.remove());
                 Keyboard.disableControl();
-                if (slideObserver)
-                    slideObserver.disconnect();
+                if (app.slideObserver)
+                    app.slideObserver.disconnect();
             }
         },
         defaultValue: true,
@@ -961,112 +1572,147 @@ options = new Options([
     },
     {
         name: "changeTitle",
-        desc: state => getCheckboxEmoji(state.value) + "🆎 Zmień tytuł karty",
-        callback: function (state) {
-            return Object.assign(Object.assign({}, state), { value: !state.value });
+        icon: {
+            emoji: "🆎",
+            html: SVGIcons.capitalT
         },
-        update: state => {
-            //console.log('changeTitle update', { state })
+        desc: "Zmień tytuł karty",
+        type: SettingType.Checkbox,
+        onchange: state => {
             if (!state.value) {
-                if (state.originalTitle)
-                    unsafeWindow.document.title = state.originalTitle;
-                // unsafeWindow.removeEventListener('popstate', updateTabTitle)
+                if (app.originalTitle)
+                    unsafeWindow.document.title = app.originalTitle;
             }
-            updateTabTitle();
+            app.updateTabTitle();
         },
-        init: state => {
-            state.originalTitle = unsafeWindow.document.title;
-            // unsafeWindow.addEventListener('popstate', updateTabTitle);
+        onrender: () => {
+            app.originalTitle = unsafeWindow.document.title;
         },
         defaultValue: false,
         key: 't'
     },
     {
         name: "uniformFontSize",
-        desc: state => getCheckboxEmoji(state.value) + "🔤 Ujednolicona wielkość czcionki",
-        callback: function (state) {
-            if (!state.value) {
-                this.setOptionState({
-                    name: "increaseFontSize",
-                    value: false
-                });
-            }
-            return { value: !state.value };
+        icon: {
+            emoji: "🔤",
+            html: SVGIcons.type
         },
-        update: state => toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value),
+        desc: "Ujednolicona wielkość czcionki",
+        type: SettingType.Checkbox,
+        onchange: function (state) {
+            if (state.value) {
+                this.parent.setValue("increaseFontSize", false);
+            }
+            toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value);
+        },
         defaultValue: false,
         key: 'u'
     },
     {
         name: "invertImages",
-        desc: state => getCheckboxEmoji(state.value) + "🔃 Odwróć kolory obrazów",
-        callback: function (state) {
-            return { value: !state.value };
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.pallete
         },
+        desc: "Odwróć kolory obrazów",
+        type: SettingType.Checkbox,
         defaultValue: false,
-        update: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
+        onchange: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
+        key: 'i'
+    },
+    {
+        name: "showMainCourseSidebar",
+        icon: {
+            emoji: "📗",
+            html: SVGIcons.viewStack
+        },
+        desc: "Pokaż nawigację całego kursu w panelu bocznym",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                if (!app.courseSidebar) {
+                    app.courseSidebar = new CourseSidebar();
+                    const sidenav = document.querySelector('aside.course-sidenav');
+                    if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                        app.courseSidebar.attach(sidenav);
+                    }
+                    else {
+                        app.setupObserveSidenav();
+                        app.addEventListener('sidenavOpened', opened => {
+                            if (opened) {
+                                const sidenav = document.querySelector('aside.course-sidenav');
+                                app.courseSidebar.attach(sidenav);
+                            }
+                        });
+                    }
+                    app.courseSidebar.addEventListener('urlChange', url => {
+                        app.tabOpener.openURLinTab(url);
+                    });
+                    app.addEventListener('unloaded', () => app.courseSidebar.destroy());
+                }
+                app.courseSidebar.show();
+            }
+            else {
+                if (app.courseSidebar)
+                    app.courseSidebar.hide();
+            }
+        },
         key: 'i'
     },
     {
         name: "percentIncrease",
-        type: "button",
-        desc: state => `➕ Zmień powiększenie (${state.value}%)`,
-        callback: (state) => {
-            const input = prompt(`Określ powiększenie czcionki (w %, obecnie ${state.value}%):`, state.value);
-            if (typeof input === "string") {
-                let nextValue = parseInt(input, 10);
-                if (nextValue !== NaN && nextValue > 10 && nextValue < 300) {
-                    return { value: nextValue };
-                }
-            }
+        type: SettingType.Percent,
+        icon: {
+            emoji: "➕",
+            html: SVGIcons.zoomIn
         },
+        desc: "Zmień powiększenie",
+        isInRange: nextValue => nextValue !== NaN && nextValue > 10 && nextValue < 300,
         defaultValue: 110,
-        update: state => {
+        onchange: state => {
             updateFontSize(state.value);
             const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
             const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
             if (rangeInput) {
-                rangeInput.value = state.value;
-                rangeInput.title = state.value;
+                rangeInput.value = state.value.toString();
+                rangeInput.title = state.value.toString();
             }
             if (rangeLabel)
                 rangeLabel.innerText = `${state.value}%`;
         },
-        init: function (state) {
-            function _toRun() {
-                const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-                const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
-                if (rangeInput) {
-                    rangeInput.value = state.value;
-                    rangeLabel.innerText = `${state.value}%`;
-                    rangeInput.addEventListener('change', event => {
-                        const value = parseInt(rangeInput.value);
-                        this.setOptionState({ name: "percentIncrease", value });
-                    });
-                    rangeInput.addEventListener('input', event => {
-                        const value = rangeInput.value;
-                        updateFontSize(parseInt(value));
-                    });
-                }
-                state.increaseBy = (n) => {
-                    const current = this.state.percentIncrease.value;
-                    this.setOptionState({ value: current + n }, 'percentIncrease');
+        onrender: function () {
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
+            if (rangeInput) {
+                rangeInput.value = this.value.toString();
+                rangeLabel.innerText = `${this.value}%`;
+                rangeInput.addEventListener('change', event => {
+                    const value = parseInt(rangeInput.value);
+                    this.value = value;
+                });
+                const oninput = () => {
+                    const value = rangeInput.value;
+                    updateFontSize(parseInt(value));
                 };
-                Keyboard.registerShortcut({
-                    keys: ['-'],
-                    callback: () => state.increaseBy(-5)
-                });
-                Keyboard.registerShortcut({
-                    keys: ['+', '='],
-                    callback: () => state.increaseBy(5)
-                });
+                rangeInput.addEventListener('input', oninput);
+                this.addEventListener('input', oninput);
             }
-            const toRun = _toRun.bind(this);
-            toRunOnLoaded.push(toRun);
+            const increaseBy = (n) => {
+                this.value += n;
+            };
+            Keyboard.registerShortcut({
+                keys: ['-'],
+                callback: () => increaseBy(-5)
+            });
+            Keyboard.registerShortcut({
+                keys: ['+', '='],
+                callback: () => increaseBy(5)
+            });
         },
         key: 'p'
     }
-], `.${"custom-script-settings-container" /* settingsContainer */}>div`);
+];
 ///<reference path="common.ts" />
 var Notes;
 (function (Notes) {
@@ -1144,7 +1790,8 @@ var Notes;
             if (this._editing) {
                 this._editing = false;
                 this._element.classList.remove('editing');
-                this.trigger('edited', { newContent: this.content });
+                if (this._lastValue !== this.content)
+                    this.trigger('edited', { newContent: this.content });
                 if (!this._content.trim().length) {
                     if (this._edited)
                         this.remove();
@@ -1338,6 +1985,11 @@ var Notes;
             this.lessonID = lessonID;
         }
     }
+    let NoteType;
+    (function (NoteType) {
+        NoteType["Regular"] = "regular";
+        NoteType["Tag"] = "tag";
+    })(NoteType = Notes.NoteType || (Notes.NoteType = {}));
     class NoteMetadata extends SlideMetadata {
         constructor(id, type, slideMetadata, position, textContext, color = '#95b9f9') {
             super(slideMetadata.slide, slideMetadata.screenid, slideMetadata.slideTitle, slideMetadata.presentationTitle, slideMetadata.lessonID);
@@ -1406,11 +2058,11 @@ var Notes;
                 return note;
             }
             addNote(options) {
-                options.type = 'regular';
+                options.type = NoteType.Regular;
                 return this.addAnyNote(options, RegularNote);
             }
             addTag(options) {
-                options.type = 'tag';
+                options.type = NoteType.Tag;
                 return this.addAnyNote(options, TagNote);
             }
             removeNoteByQuery(query) {
@@ -1693,28 +2345,32 @@ var Notes;
 })(Notes || (Notes = {}));
 // PresentationNotesCollection.createAsync(892).then(collection => console.log(collection))
 ///<reference path="common.ts" />
-///<reference path="options.ts" />
-///<reference path="notes.ts" />
-var BreakTimer;
-(function (BreakTimer) {
-    function start() {
-        clearTimeout(BreakTimer.timer);
-        //console.log('starting suggestBreak timer...')
-        BreakTimer.timer = setTimeout(() => {
-            alert('Pora na przerwę 🔔');
-        }, 1000 * 60 * 7);
+class BreakTimer {
+    constructor(app) {
+        this.app = app;
+        app.addEventListener('unloaded', () => this.timer && clearTimeout(this.timer));
     }
-    BreakTimer.start = start;
-    toRunOnLoaded.push(() => {
-        BreakTimer.observer = onAttributeChange(document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */), 'slide', () => {
-            start();
-        });
-        tools && !tools.state.suggestBreak.value && BreakTimer.observer.disconnect();
-    });
-})(BreakTimer || (BreakTimer = {}));
+    start() {
+        clearTimeout(this.timer);
+        //console.log('starting suggestBreak timer...')
+        this.timer = setTimeout(() => {
+            alert('Pora na przerwę 🔔');
+        }, 1000 * 60 * this.app.tools.getValue('breakTime'));
+    }
+    endListening() {
+        this.app.presentationMetadata.removeEventListener('slideChange', this.start);
+        if (this.timer)
+            clearTimeout(this.timer);
+    }
+    startListening() {
+        this.app.presentationMetadata.addEventListener('slideChange', this.start);
+    }
+}
+///<reference path="common.ts" />
+///<reference path="Notes.ts" />
+///<reference path="BreakTimer.ts" />
 let noteTarget;
-const notesBtnsAndTags = ` 
-    <div class='custom-tags-and-btns-container'>
+const notesBtnsAndTags = `
         <div class='custom-tags-container'> 
             <a class='custom-new-tag custom-tag'>${SVGIcons.plusCircle}</a>  
         </div>
@@ -1772,311 +2428,330 @@ const notesBtnsAndTags = `
                     ${SVGIcons.tagsFill}
                 </div>
             </a>
-        </div>
-    </div>`;
-function loadNotes() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-        notesCollection = yield Notes.Collections.Presentation.createAsync(presentationMetadata.screenID, presentationMetadata.lessonID);
-        if (tools && tools.state.useNotes.value) {
-            setupTagsNamesAndColors();
-            const slideNumber = appDiv.attributes.getNamedItem('slide').value;
-            return renderNotes(parseInt(slideNumber));
-        }
-    });
-}
-const tagColorsStyles = document.createElement('style');
-document.head.append(tagColorsStyles);
-function setupTagsNamesAndColors() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const tags = yield notesCollection.getAllTagNames();
-        addTagStyle(tags);
-        const tagToOption = (tag) => {
-            const opt = document.createElement('option');
-            opt.value = tag.name;
-            opt.style.background = tag.color;
-            opt.innerHTML = tag.name;
-            return opt;
-        };
-        const suggestions = tags.map(tagToOption);
-        const suggestionsContainer = document.createElement('datalist');
-        suggestionsContainer.id = 'custom-tags-list';
-        suggestionsContainer.append(...suggestions);
-        document.body.append(suggestionsContainer);
-        notesCollection.addEventListener('changedTags', desc => {
-            if (desc.added && desc.added.length) {
-                addTagStyle(desc.added);
-                suggestionsContainer.append(...desc.added.map(tagToOption));
-            }
-            if (desc.changed && desc.changed.length) {
-                desc.changed.forEach(setTagColor);
-            }
-        });
-    });
-}
-function addTagStyle(tags) {
-    tags.forEach((tag) => __awaiter(this, void 0, void 0, function* () {
-        const rule = yield getRuleFromTag(tag);
-        //console.log({ rule })
-        tagColorsStyles.sheet.insertRule(rule);
-    }));
-}
-function getRuleFromTag(tag) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const varName = yield setTagColor(tag);
-        return `.custom-tag[title="${tag.name}"] { 
-        background: var(${varName}-bg); 
-        color: var(${varName}-color) 
-    }`;
-    });
-}
-const btnsContainerNoTags = new ClassToggler('custom-no-tags', '.custom-notes-btns-container');
-const btnsContainerNoNotes = new ClassToggler('custom-no-notes', '.custom-notes-btns-container');
-function getRandomTagColor() {
-    const colors = ["#6e8898", "#606c38", "#fabc2a", "#c3423f", "#011936"];
-    return getRandomElement(colors);
-}
-function setTagColor(tag) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const varName = yield getTagVarName(tag);
-        root.style.setProperty(`${varName}-bg`, tag.color);
-        root.style.setProperty(`${varName}-color`, getForegroundColor(tag.color));
-        return varName;
-    });
-}
-function getTagVarName(tag) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const subtleCrypto = unsafeWindow.crypto.subtle;
-        const encoder = new TextEncoder();
-        const toDigest = encoder.encode(tag.name);
-        const hashBuffer = yield subtleCrypto.digest('SHA-1', toDigest);
-        const hashArray = new Uint8Array(hashBuffer);
-        const hash = hashArray.map(v => v.toString(16).padStart(2, '0')).slice(0, 15).join('');
-        return `--custom-tag-${hash}`;
-    });
-}
-function renderNotes(slideNumber) {
-    if (currentSlideNotes) {
-        currentSlideNotes.commitChanges();
-        const removedListener = currentSlideNotes.removeEventListener('change', slideNotesChanged);
-        //console.log({ removedListener })
-    }
-    if (tools && tools.state.useNotes.value && notesCollection) {
-        if (noteTarget)
-            noteTarget.innerHTML = '';
-        const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
-        const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
-        return notesCollection.getNotesBySlide(slideNumber).then(notes => {
-            currentSlideNotes = notes;
-            renderTags();
-            btnsContainerNoNotes.state = !notes.notes.length;
-            if (!noteTarget && notesOverlayElem)
-                return notes.notes.map(n => n.element);
-            //console.log({ currentSlideNotes })
-            currentSlideNotes.addEventListener('change', slideNotesChanged);
-            return addNoteElems(notes.notes);
-        });
-    }
-}
-function renderTags() {
-    const tagContainer = document.querySelector('.custom-tags-container');
-    const toRemove = Array.from(tagContainer.children);
-    toRemove.pop();
-    toRemove.forEach(el => el.remove());
-    const tags = currentSlideNotes.tags;
-    if (tags.length) {
-        tags.forEach(tag => {
-            tag.render(tagContainer);
-            tag.addEventListener('colorChange', ({ newColor }) => {
-                setTagColor({ color: newColor, name: tag.content });
-            });
-        });
-    }
-    btnsContainerNoTags.state = !tags.length;
-}
-function slideNotesChanged(change) {
-    if (change.added) {
-        const regular = change.added.filter(note => note instanceof Notes.RegularNote);
-        if (regular.length)
-            addNoteElems(regular);
-        const tags = change.added.filter(note => note instanceof Notes.TagNote);
-        btnsContainerNoTags.state && (btnsContainerNoTags.state = !tags.length);
-        const tagContainer = document.querySelector('.custom-tags-container');
-        tags.forEach(tag => {
-            const tagElem = tag.render(tagContainer);
-            tagElem.click();
-        });
-    }
-    if (change.deleted && !currentSlideNotes.notes.length) {
-        btnsContainerNoNotes.state = true;
-    }
-}
-function addNoteElems(notes) {
-    if (!notes.length)
+        </div>`;
+function createNotesBtnsAndTags() {
+    const slideshowContainer = document.querySelector('.slideshow-container');
+    if (!slideshowContainer)
         return;
-    btnsContainerNoNotes.state = false;
-    let parent;
-    const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
-    if (noteTarget) {
-        parent = noteTarget;
-    }
-    else {
-        let notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
-        if (!notesOverlayElem) {
-            notesOverlayElem = document.createElement('div');
-            notesOverlayElem.classList.add('custom-notes-overlay');
-        }
-        currentSlide.prepend(notesOverlayElem);
-        parent = notesOverlayElem;
-    }
-    return notes.map(note => {
-        const noteElem = note.render(parent);
-        const textContext = note.metadata.textContext;
-        if (textContext && textContext.trim().length) {
-            const allNodes = currentSlide.querySelectorAll('*');
-            const contextElem = Array.from(allNodes).find(node => {
-                return node.innerText && node.innerText.trim() === textContext.trim();
-            });
-            if (contextElem)
-                setupContextElem(contextElem, note);
-        }
-        return noteElem;
-    });
+    if (document.querySelector('.custom-tags-and-btns-container'))
+        return;
+    const el = document.createElement('div');
+    el.innerHTML = notesBtnsAndTags;
+    el.className = 'custom-tags-and-btns-container';
+    slideshowContainer.append(el);
 }
-const addNoteBtnHandler = (event) => {
-    if (currentSlideNotes) {
-        const slide = document.querySelector(".present .present" /* currentSlideContainer */);
-        slide.style.cursor = `copy`;
-        const newNote = currentSlideNotes.addNote({
-            content: '', position: { x: 0, y: 1 },
-            presentationTitle: presentationMetadata.name,
-            slideTitle: presentationMetadata.currentSlideTitle,
-            type: 'regular'
+class NotesRendering {
+    constructor(app) {
+        this.app = app;
+        this.notesChangedListener = (change) => this.slideNotesChanged(change);
+        this.addNoteBtnHandler = (event) => {
+            if (this.app.currentSlideNotes) {
+                const slide = document.querySelector(".present .present" /* currentSlideContainer */);
+                slide.style.cursor = `copy`;
+                const newNote = this.app.currentSlideNotes.addNote({
+                    content: '', position: { x: 0, y: 1 },
+                    presentationTitle: this.app.presentationMetadata.presentationName,
+                    slideTitle: this.app.presentationMetadata.slideTitle
+                });
+                newNote.startFollowingMouse({ x: 0, y: 10 });
+                slide.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    newNote.endFollowingMouse();
+                    slide.style.cursor = '';
+                    const contextElem = event.target;
+                    this.setupContextElem(contextElem, newNote);
+                    const textContext = contextElem.innerText;
+                    newNote.metadata.textContext = textContext;
+                    newNote.element.click();
+                }, { once: true });
+            }
+        };
+        this.btnsContainerNoTags = new ClassToggler('custom-no-tags', '.custom-notes-btns-container');
+        this.btnsContainerNoNotes = new ClassToggler('custom-no-notes', '.custom-notes-btns-container');
+    }
+    loadNotes() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const presentationMetadata = this.app.presentationMetadata;
+            this.app.notesCollection = yield Notes.Collections.Presentation.createAsync(presentationMetadata.screenID, presentationMetadata.lessonID);
+            if (this.app.tools && this.app.tools.getValue('useNotes')) {
+                this.setupTagsNamesAndColors();
+                return this.renderNotes(this.app.slideNumber);
+            }
         });
-        newNote.startFollowingMouse({ x: 0, y: 10 });
-        slide.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            newNote.endFollowingMouse();
-            slide.style.cursor = '';
-            const contextElem = event.target;
-            setupContextElem(contextElem, newNote);
-            const textContext = contextElem.innerText;
-            newNote.metadata.textContext = textContext;
-            newNote.element.click();
-        }, { once: true });
     }
-};
-function setupContextElem(contextElem, note) {
-    const noteElem = note.element;
-    contextElem.title = `Notatka: ${note.content}`;
-    note.addEventListener('change', ({ newContent }) => contextElem.title = `Notatka: ${newContent}`);
-    note.addEventListener('remove', () => contextElem.title = '');
-    noteElem.addEventListener('mouseenter', () => {
-        if (note.isMoving)
+    setupTagsNamesAndColors() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tags = yield this.app.notesCollection.getAllTagNames();
+            const tagToOption = (tag) => {
+                const opt = document.createElement('option');
+                opt.value = tag.name;
+                opt.style.background = tag.color;
+                opt.innerHTML = tag.name;
+                return opt;
+            };
+            const suggestions = tags.map(tagToOption);
+            const suggestionsContainer = document.createElement('datalist');
+            suggestionsContainer.id = 'custom-tags-list';
+            suggestionsContainer.append(...suggestions);
+            document.body.append(suggestionsContainer);
+            this.app.notesCollection.addEventListener('changedTags', desc => {
+                if (desc.added && desc.added.length) {
+                    suggestionsContainer.append(...desc.added.map(tagToOption));
+                }
+            });
+        });
+    }
+    getRandomTagColor() {
+        const colors = ["#6e8898", "#606c38", "#fabc2a", "#c3423f", "#011936"];
+        return getRandomElement(colors);
+    }
+    renderNotes(slideNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.app.currentSlideNotes) {
+                this.app.currentSlideNotes.commitChanges();
+                this.app.currentSlideNotes.removeEventListener('change', this.notesChangedListener);
+            }
+            if (this.app.tools && this.app.tools.getValue('useNotes') && this.app.notesCollection) {
+                if (noteTarget)
+                    noteTarget.innerHTML = '';
+                const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
+                if (!currentSlide)
+                    return;
+                const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
+                return this.app.notesCollection.getNotesBySlide(slideNumber).then(notes => {
+                    this.app.currentSlideNotes = notes;
+                    this.renderTags();
+                    this.btnsContainerNoNotes.state = !notes.notes.length;
+                    if (!noteTarget && notesOverlayElem)
+                        return notes.notes.map(n => n.element);
+                    //console.log({ currentSlideNotes })
+                    this.app.currentSlideNotes.addEventListener('change', this.notesChangedListener);
+                    return this.addNoteElems(notes.notes);
+                });
+            }
+        });
+    }
+    renderTags() {
+        const tagContainer = document.querySelector('.custom-tags-container');
+        const toRemove = Array.from(tagContainer.children);
+        toRemove.pop();
+        toRemove.forEach(el => el.remove());
+        const tags = this.app.currentSlideNotes.tags;
+        if (tags.length) {
+            tags.forEach(tag => {
+                tag.render(tagContainer);
+            });
+        }
+        this.btnsContainerNoTags.state = !tags.length;
+    }
+    slideNotesChanged(change) {
+        if (change.added) {
+            const regular = change.added.filter(note => note instanceof Notes.RegularNote);
+            if (regular.length)
+                this.addNoteElems(regular);
+            const tags = change.added.filter(note => note instanceof Notes.TagNote);
+            this.btnsContainerNoTags.state = this.btnsContainerNoTags.state && !tags.length;
+            const tagContainer = document.querySelector('.custom-tags-container');
+            tags.forEach(tag => {
+                const tagElem = tag.render(tagContainer);
+                tagElem.click();
+            });
+        }
+        if (change.deleted && !this.app.currentSlideNotes.notes.length) {
+            this.btnsContainerNoNotes.state = true;
+        }
+    }
+    addNoteElems(notes) {
+        if (!notes.length)
             return;
-        contextElem.style.border = 'solid 1px black';
-    });
-    noteElem.addEventListener('mouseleave', () => {
-        contextElem.style.border = '';
-    });
-    note.addEventListener('remove', () => {
-        contextElem.style.border = '';
-    });
+        this.btnsContainerNoNotes.state = false;
+        let parent;
+        const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
+        if (!currentSlide)
+            return;
+        if (noteTarget) {
+            parent = noteTarget;
+        }
+        else {
+            let notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
+            if (!notesOverlayElem) {
+                notesOverlayElem = document.createElement('div');
+                notesOverlayElem.classList.add('custom-notes-overlay');
+            }
+            currentSlide.prepend(notesOverlayElem);
+            parent = notesOverlayElem;
+        }
+        return notes.map(note => {
+            const noteElem = note.render(parent);
+            const textContext = note.metadata.textContext;
+            if (textContext && textContext.trim().length) {
+                const allNodes = currentSlide.querySelectorAll('*');
+                const contextElem = Array.from(allNodes).find(node => {
+                    return node.innerText && node.innerText.trim() === textContext.trim();
+                });
+                if (contextElem)
+                    this.setupContextElem(contextElem, note);
+            }
+            return noteElem;
+        });
+    }
+    setupContextElem(contextElem, note) {
+        const noteElem = note.element;
+        contextElem.title = `Notatka: ${note.content}`;
+        note.addEventListener('change', ({ newContent }) => contextElem.title = `Notatka: ${newContent}`);
+        note.addEventListener('remove', () => contextElem.title = '');
+        noteElem.addEventListener('mouseenter', () => {
+            if (note.isMoving)
+                return;
+            contextElem.style.border = 'solid 1px black';
+        });
+        noteElem.addEventListener('mouseleave', () => {
+            contextElem.style.border = '';
+        });
+        note.addEventListener('remove', () => {
+            contextElem.style.border = '';
+        });
+    }
+    addNotesColumn() {
+        const notesContainer = document.createElement('div');
+        notesContainer.classList.add('custom-script-notes-column', 'custom-script-hidden');
+        const numberContainer = document.querySelector('.order-number-container');
+        if (!numberContainer)
+            return;
+        numberContainer.after(notesContainer);
+        return notesContainer;
+    }
 }
-function addNotesColumn() {
-    const notesContainer = document.createElement('div');
-    notesContainer.classList.add('custom-script-notes-column', 'custom-script-hidden');
-    document.querySelector('.order-number-container').after(notesContainer);
-    return notesContainer;
-}
+///<reference path="../App.ts" />
+///<reference path="NotesRendering.ts" />
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible');
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column');
-toRunOnLoaded.push(() => {
-    if (tools && tools.state.useNotes.value) {
-        addNotesColumn();
-        setupNotesBtns();
-    }
-});
-tools = new Options([
+let uploadInput;
+const getToolsConfig = app => [
     {
         name: "suggestBreak",
-        desc: state => `${getCheckboxEmoji(state.value)}🔔 Sugeruj przerwę przy dłuższym braku aktywności`,
-        defaultValue: false,
-        callback: function (state) {
-            return { value: !state.value };
+        type: SettingType.Checkbox,
+        desc: "Sugeruj przerwę przy dłuższym braku aktywności",
+        icon: {
+            emoji: '🔔',
+            html: SVGIcons.bell
         },
-        update: state => {
-            //console.log('update suggestBreak', { state, obs: BreakTimer.observer })
-            if (!BreakTimer.observer)
-                return;
+        defaultValue: false,
+        onchange: function (state) {
+            if (!app.breakTimer)
+                app.breakTimer = new BreakTimer(app);
             if (state.value) {
-                BreakTimer.observer.observe(document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */), { attributes: true });
-                BreakTimer.start();
+                app.breakTimer.startListening();
+                app.breakTimer.start();
             }
             else {
-                BreakTimer.observer.disconnect();
-                if (BreakTimer.timer)
-                    clearTimeout(BreakTimer.timer);
+                app.breakTimer.endListening();
             }
+            this.parent.getSetting('breakTime').disabled = !state.value;
+        },
+        onrender: () => {
+            app.addEventListener('loaded', () => {
+                app.breakTimer = new BreakTimer(app);
+            });
         }
     },
     {
-        name: "useNotes",
-        desc: state => `${getCheckboxEmoji(state.value)}📝 Używaj notatek i tagów`,
-        defaultValue: false,
-        callback: function (state) {
-            return { value: !state.value };
+        name: 'breakTime',
+        desc: "Czas przerwy (w minutach)",
+        type: SettingType.Integer,
+        defaultValue: 7,
+        icon: {
+            html: SVGIcons.stopwatch,
+            emoji: '⌚'
         },
-        update: state => {
-            toggleBodyClass('custom-script-use-notes', state.value);
-            if (presentationMetadata.screenID && state.value && !notesCollection) {
-                addNotesColumn();
-                setupNotesBtns();
-                loadNotes();
+        onchange: function (event) {
+            if (app.breakTimer.timer) {
+                app.breakTimer.start();
             }
         },
-        init: state => {
+        isInRange: val => val > 2 && val < 200
+    },
+    {
+        name: "useNotes",
+        type: SettingType.Checkbox,
+        desc: "Używaj notatek i tagów",
+        icon: {
+            emoji: '📝',
+            html: SVGIcons.stickies
+        },
+        defaultValue: false,
+        onchange: function (state) {
+            toggleBodyClass('custom-script-use-notes', state.value);
+            if (app.notesRendering && app.presentationMetadata.screenID && state.value && !app.notesCollection) {
+                app.notesRendering.addNotesColumn();
+                setupNotesBtns(app);
+                app.notesRendering.loadNotes();
+            }
+            this.parent.getSetting('exportNotes').disabled = !state.value;
+            this.parent.getSetting('importNotes').disabled = !state.value;
+        },
+        onrender: function () {
+            const onLoaded = () => {
+                if (this.value) {
+                    app.notesRendering.addNotesColumn();
+                    setupNotesBtns(app);
+                }
+            };
+            if (app.loaded)
+                onLoaded();
+            else
+                app.addEventListener('loaded', onLoaded);
         },
     },
     {
         name: "exportNotes",
-        desc: "📤 Eksportuj notatki",
-        type: 'button',
-        callback: () => {
-            notesCollection.exportNotes().then(notes => {
+        desc: "Eksportuj notatki",
+        icon: {
+            emoji: '📤',
+            html: SVGIcons.export
+        },
+        type: SettingType.Button,
+        onclick: () => {
+            if (!app.notesCollection)
+                return;
+            app.notesCollection.exportNotes().then(notes => {
                 //console.log({ notes })
-                downloadFile('application/json', `${presentationMetadata.name}-notes.json`, JSON.stringify(notes));
+                downloadFile('application/json', `${app.presentationMetadata.presentationName}-notes.json`, JSON.stringify(notes));
             });
         }
     },
     {
         name: "importNotes",
-        desc: "📥 Importuj notatki",
-        type: 'button',
-        callback: (state) => {
-            const uploadInput = state.uploadInput;
+        desc: "Importuj notatki",
+        icon: {
+            emoji: '📥',
+            html: SVGIcons.import
+        },
+        type: SettingType.Button,
+        onclick: function () {
             uploadInput.addEventListener('change', (ev) => {
-                //console.log({ ev })
+                if (!app.notesCollection)
+                    return;
                 if (uploadInput.files.length) {
                     const file = uploadInput.files.item(0);
-                    file.text().then(imported => notesCollection.importNotes(JSON.parse(imported))).then(() => unsafeWindow.location.reload());
+                    file.text().then(imported => app.notesCollection.importNotes(JSON.parse(imported))).then(() => unsafeWindow.location.reload());
                 }
             }, { once: true });
             uploadInput.click();
         },
-        init: (state) => {
-            const uploadInput = document.createElement('input');
+        onrender: function () {
+            uploadInput = document.createElement('input');
             uploadInput.type = 'file';
             uploadInput.name = 'importNotes';
             uploadInput.accept = 'application/json';
             uploadInput.style.display = 'none';
             document.body.appendChild(uploadInput);
-            state.uploadInput = uploadInput;
         }
     }
-], `.${"custom-script-tools-container" /* toolsContainer */}`);
-function setupNotesBtns() {
+];
+function setupNotesBtns(app) {
+    createNotesBtnsAndTags();
     const addBtn = document.querySelector('.custom-add-btn');
     const addBtnContToggle = new ClassToggler('active', '.custom-add-note-btns');
     const addBtnToggle = new ClassToggler('active', addBtn, t => {
@@ -2097,8 +2772,8 @@ function setupNotesBtns() {
     Keyboard.registerShortcut({ keys: ['t'], callback: onAddTag });
     const clearNotesBtn = document.querySelector('.custom-clear-notes-btn');
     clearNotesBtn.addEventListener('click', () => {
-        if (currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${currentSlideNotes.notes.length}) notatki ze slajdu ${currentSlideNotes.metadata.slide}?`))
-            currentSlideNotes.removeAllNotes();
+        if (app.currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${app.currentSlideNotes.notes.length}) notatki ze slajdu ${app.currentSlideNotes.metadata.slide}?`))
+            app.currentSlideNotes.removeAllNotes();
     });
     let viewNotesBtnToggle;
     const viewNotesBtn = document.querySelector('.custom-notes-view-btn');
@@ -2117,8 +2792,8 @@ function setupNotesBtns() {
             noteTarget = null;
             document.querySelectorAll('.custom-notes-overlay').forEach(el => el.remove());
         }
-        currentSlideNotes.commitChanges().then(() => {
-            renderNotes(presentationMetadata.currentSlideNumber);
+        app.currentSlideNotes.commitChanges().then(() => {
+            app.notesRendering.renderNotes(app.presentationMetadata.slideNumber);
         });
     });
     viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
@@ -2130,9 +2805,9 @@ function setupNotesBtns() {
     addNoteBtn.addEventListener('click', (ev) => {
         addBtnToggle.state = false;
         viewNotesBtnToggle.state = true;
-        addNoteBtnHandler(ev);
+        app.notesRendering.addNoteBtnHandler(ev);
     });
-    viewNotesBtnToggle.state = tools && tools.state.useNotes.value;
+    viewNotesBtnToggle.state = app.tools && app.tools.getValue('useNotes');
     viewNotesBtn.addEventListener('click', () => viewNotesBtnToggle.toggle());
     Keyboard.registerShortcut({
         keys: ['n'], callback: () => viewNotesBtnToggle.toggle()
@@ -2141,14 +2816,17 @@ function setupNotesBtns() {
     Keyboard.registerShortcut({
         keys: ['v'], callback: () => viewTypeBtnToggle.toggle()
     });
+    function addTag() {
+        app.currentSlideNotes.addTag({
+            content: '', color: app.notesRendering.getRandomTagColor(),
+            presentationTitle: app.presentationMetadata.presentationName,
+            slideTitle: app.presentationMetadata.slideTitle
+        });
+    }
 }
-function addTag() {
-    currentSlideNotes.addTag({
-        content: '', color: getRandomTagColor(),
-        presentationTitle: presentationMetadata.name,
-        slideTitle: presentationMetadata.currentSlideTitle
-    });
-}
+///<reference path="common.ts" />
+///<reference path="ChapterMetadata.ts" />
+///<reference path="../App.ts" />
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
@@ -2172,14 +2850,14 @@ const slideshowOptions = `
             ${SVGIcons.zoomOut}
         </div>
     </a>`;
-function addSlideOptions() {
+function addSlideOptions(app) {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark');
     if (!bookmarkBtn)
         return;
-    Search.addSearchContainer();
-    slideOptionsContainer = document.createElement('div');
-    slideOptionsContainer.innerHTML = notesBtnsAndTags + slideshowOptionsBtn;
-    additionalOptionsContainer = document.createElement('div');
+    app.search.addSearchContainer();
+    const slideOptionsContainer = document.createElement('div');
+    slideOptionsContainer.innerHTML = slideshowOptionsBtn;
+    const additionalOptionsContainer = document.createElement('div');
     additionalOptionsContainer.className = 'custom-script-hidden custom-script-additional-options';
     additionalOptionsContainer.innerHTML = slideshowOptions;
     slideOptionsContainer.append(additionalOptionsContainer);
@@ -2191,80 +2869,50 @@ function addSlideOptions() {
         Toggles.searchHidden.toggle();
     });
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
-        if (options) {
-            options.state.percentIncrease.increaseBy(5);
+        if (app.options) {
+            app.options.setValue('percentIncrease', (v) => v + 5);
         }
     });
     slideOptionsContainer.querySelector('.custom-zoom-down-btn').addEventListener('click', () => {
-        if (options) {
-            options.state.percentIncrease.increaseBy(-5);
+        if (app.options) {
+            app.options.setValue('percentIncrease', (v) => v - 5);
         }
     });
 }
-function addSummary(metadata) {
-    const linksHTML = metadata.map((e, i) => `<a class='custom-script-summary-link' href='${e.href}'
-           data-start-page=${e.startPage} data-index=${i}>
-               <span>${e.name} </span>
-               <span class='small'>(${e.chapterLength})</span>
-       </a>`).join('');
-    summaryContainer = document.createElement('div');
+function addSummary(app) {
+    const summaryContainer = document.createElement('div');
     summaryContainer.className = 'custom-script-summary custom-script-hidden';
-    summaryContainer.innerHTML = linksHTML;
     const closeBtn = document.createElement('div');
     closeBtn.className = 'custom-script-summary-close';
     closeBtn.innerHTML = SVGIcons.chevronUp;
     summaryContainer.prepend(closeBtn);
     closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true);
+    app.slideshowChapters.render(summaryContainer);
     document.querySelector('.order-number-container').after(summaryContainer);
-    const links = summaryContainer.querySelectorAll('a.custom-script-summary-link');
-    links.forEach(link => {
-        link.addEventListener('click', event => {
-            event.preventDefault();
-            const { startPage } = link.dataset;
-            goToSlideN(parseInt(startPage));
-            return false;
-        });
-    });
 }
-function addChapterInfo() {
-    getMetadata(metadata => {
-        //console.log({ metadata });
-        if (!metadata)
+function addChapterInfo(app) {
+    addPageNumberContainer();
+    addSummary(app);
+    app.slideshowChapters.addEventListener('activeChange', () => updateChapterProgress(app));
+    app.slideshowChapters.setCurrentPage(app.slideNumber);
+}
+function updateChapterProgress(app) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const pageNumberContainer = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+        if (!pageNumberContainer)
             return;
-        addPageNumberContainer();
-        addSummary(metadata);
-        observeSlideNumber(page => onSlideChanged(page, metadata));
-        const slideNumberSpan = document.querySelector('.order-number-container');
-        onSlideChanged(parseInt(slideNumberSpan.innerText), metadata);
-    });
-}
-function onSlideChanged(current, metadata) {
-    if (current === NaN)
-        return;
-    presentationMetadata.currentSlideNumber = current;
-    const pageNumberContainer = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
-    const getChapterIndex = page => {
-        const i = metadata.findIndex(m => m.startPage > page) - 1;
-        return i >= 0 ? i : metadata.length - 1;
-    };
-    const chapterIndex = getChapterIndex(current);
-    const chapterMetadata = metadata[chapterIndex];
-    const relativeCurrent = current - chapterMetadata.startPage + 1;
-    const chapterLength = chapterMetadata.chapterLength;
-    const relativeCurrentContainer = pageNumberContainer.querySelector(`.${"current-number" /* currentChapterPage */}`);
-    relativeCurrentContainer.innerText = relativeCurrent.toString();
-    const chapterLengthContainer = pageNumberContainer.querySelector(`.${"n-of-pages" /* chapterLength */}`);
-    chapterLengthContainer.innerText = chapterLength.toString();
-    if (summaryContainer) {
-        summaryContainer.querySelectorAll('a').forEach(a => a.classList.remove('is-active'));
-        const active = summaryContainer.querySelector(`[data-index="${chapterIndex}"]`);
-        active.classList.add('is-active');
-        if (!summaryContainer.className.includes('custom-script-hidden')) {
-            active.scrollIntoView({ behavior: "smooth" });
+        const chapterPath = app.slideshowChapters.getProgress();
+        if (chapterPath) {
+            let progress;
+            do {
+                progress = chapterPath.pop();
+            } while (chapterPath.length && progress.actualLength < 5);
+            const relativeCurrentContainer = pageNumberContainer.querySelector(`.${"current-number" /* currentChapterPage */}`);
+            relativeCurrentContainer.innerText = progress.current.toString();
+            const chapterLengthContainer = pageNumberContainer.querySelector(`.${"n-of-pages" /* chapterLength */}`);
+            chapterLengthContainer.innerText = progress.actualLength.toString();
         }
-    }
-    updateTabTitle();
-    renderNotes(current);
+    });
 }
 function addPageNumberContainer() {
     const classNames = ["custom-script-page-number-container" /* pageNumberContainer */, "current-number" /* currentChapterPage */, '', "n-of-pages" /* chapterLength */];
@@ -2281,74 +2929,204 @@ function addPageNumberContainer() {
     spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle());
     return spans[0];
 }
-function openMenu() {
-    const menuBtn = document.querySelector(".topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint" /* menuBtn */);
-    if (menuBtn) {
-        menuBtn.click();
-        return true;
+///<reference path="globals.d.ts" />
+///<reference path="utils/enums.ts" />
+///<reference path="utils/common.ts" />
+///<reference path="utils/PresentationMetadata.ts" />
+///<reference path="utils/CustomEventEmmiter.ts" />
+///<reference path="utils/TabOpener.ts" />
+///<reference path="utils/Options.ts" />
+///<reference path="utils/Settings.ts" />
+///<reference path="utils/CourseSidebar.ts" />
+///<reference path="utils/tools.ts" />
+///<reference path="utils/Keyboard.ts" />
+///<reference path="utils/slideshowOptions.ts" />
+class App extends CustomEventEmmiter {
+    constructor() {
+        super(...arguments);
+        this._loaded = false;
+        this.isAwaiting = false;
     }
-}
-function getMetadata(cb, menuOpened) {
-    const menu = document.querySelector('aside.sidenav-aside');
-    if (!menu) {
-        if (menuOpened) {
-            cb(false);
-            return;
+    get loaded() {
+        return this._loaded;
+    }
+    get slideNumber() {
+        return this.presentationMetadata.slideNumber;
+    }
+    set slideNumber(value) {
+        this.presentationMetadata.slideNumber = value;
+    }
+    onLoaded() {
+        this.slideshowChapters = this.presentationMetadata.slideshowChapters;
+        this.options.addSettings(getOptions(this));
+        this.notesRendering = new NotesRendering(this);
+        this.tools.addSettings(getToolsConfig(this));
+        if (!this.appDiv) {
+            this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+            if (!this.appDiv)
+                return;
         }
-        openMenu();
-        setTimeout(() => getMetadata(cb, true), 100);
-        return;
+        this.presentationMetadata.observe();
+        this.presentationMetadata.addEventListener('slideChange', slide => this.trigger('slideChange', slide));
+        this.tabOpener = new TabOpener(this);
+        let background = document.querySelector(".image-custom-background" /* background */);
+        if (background !== null) {
+            background.classList.remove("image-custom-background");
+            background.classList.add("white-custom-background");
+        }
+        this.search = new SearchConstructor(this);
+        this.lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        if (this.lessonView !== null) {
+            this.addSliderContainer();
+            this.addSettingsContainer();
+            this.addToolsContainer();
+        }
+        if (GM_getValue(`option_keyboardControl`))
+            Keyboard.setupControl(this);
+        addChapterInfo(this);
+        addSlideOptions(this);
+        if (this.tools && this.tools.getValue('useNotes')) {
+            this.notesRendering.loadNotes();
+            this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current));
+        }
+        this.addEventListener('slideChange', () => this.updateTabTitle());
+        this._loaded = true;
+        this.trigger('loaded');
+        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded(), true);
+        unsafeWindow.addEventListener('beforeunload', ev => {
+            this.onUnload();
+        });
     }
-    const active = menu.querySelector('.item-wrapper.is-active');
-    if (!active) {
-        cb(false);
-        return;
-    }
-    const listParent = active.parentElement;
-    if (!listParent) {
-        cb(false);
-        return;
-    }
-    const list = Array.from(listParent.children);
-    if (menuOpened)
-        closeMenu();
-    if (list.length === 0) {
-        cb(false);
-        return;
-    }
-    const wrappers = list.filter(el => el.nodeName === 'DIV');
-    if (wrappers.length === 0) {
-        cb(false);
-        return;
-    }
-    const linksMetadata = getMetadataFromLinks(wrappers);
-    chapterMetadata = linksMetadata;
-    cb(linksMetadata);
-}
-function closeMenu() {
-    document.querySelector('.topNavContainer__close').click();
-}
-function getMetadataFromLinks(wrappers) {
-    const links = wrappers.map(div => div.querySelector('a'));
-    const getLength = (t) => parseInt(t.slice(1, -1));
-    return links.map((a, i) => {
-        if (!a.href)
-            return {};
-        const chapterLength = getLength(a.querySelector('span span.sidenav-item-meta').innerText);
-        if (chapterLength > 75) {
-            const subwrappers = wrappers[i].querySelectorAll('div');
-            if (subwrappers.length) {
-                return getMetadataFromLinks(Array.from(subwrappers));
+    setupObserveSidenav() {
+        if (this.sidenavObserver)
+            return;
+        function findSideNav(nodeList) {
+            if (nodeList) {
+                for (const node of nodeList) {
+                    if (node.classList &&
+                        node.classList.contains('wnl-sidenav-slot')) {
+                        return node;
+                    }
+                }
             }
         }
-        return {
-            href: a.href,
-            name: a.querySelector('span span').innerText,
-            chapterLength,
-            startPage: parseInt(a.href.split('/').pop())
-        };
-    }).flat(1);
+        this.sidenavObserver = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                if (findSideNav(mutation.addedNodes))
+                    this.trigger('sidenavOpened', true);
+                if (findSideNav(mutation.removedNodes))
+                    this.trigger('sidenavOpened', false);
+            }
+        });
+        this.sidenavObserver.observe(this.appDiv, { childList: true });
+        this.addEventListener('unloaded', () => this.sidenavObserver.disconnect());
+    }
+    updateTabTitle() {
+        if (GM_getValue('option_changeTitle') && this.presentationMetadata) {
+            let mainTitle;
+            mainTitle = this.presentationMetadata.presentationName;
+            mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : '';
+            let slideTitle = this.presentationMetadata.slideTitle;
+            slideTitle = slideTitle && slideTitle.match(/\w/) ? `${slideTitle} - ` : '';
+            const originalTitle = this.originalTitle || 'LEK - Kurs - Więcej niż LEK';
+            document.title = slideTitle + mainTitle + originalTitle;
+        }
+    }
+    addSliderContainer() {
+        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+        if (test)
+            return;
+        const sliderContainer = document.createElement('div');
+        sliderContainer.innerHTML = zoomSliderHTML;
+        this.lessonView.appendChild(sliderContainer);
+        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
+            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
+            .addEventListener('click', () => {
+            this.options.setValue('percentIncrease', (state) => state + 5);
+        });
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
+            .addEventListener('click', () => {
+            this.options.setValue('percentIncrease', (state) => state - 5);
+        });
+    }
+    addToolsContainer() {
+        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
+        if (test)
+            return;
+        const toolsContainer = document.createElement('div');
+        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
+        toolsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
+            <div></div>`;
+        this.lessonView.appendChild(toolsContainer);
+        toolsContainer.append(this.tools.render());
+    }
+    addSettingsContainer() {
+        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
+        if (test)
+            return;
+        const optionsContainer = document.createElement('div');
+        optionsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
+        optionsContainer.innerHTML = `
+            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <div></div>`;
+        this.lessonView.appendChild(optionsContainer);
+        optionsContainer.append(this.options.render());
+        const pIncr = this.options.getSetting('percentIncrease');
+        pIncr.lowerLimit = 60;
+        pIncr.upperLimit = 200;
+    }
+    init() {
+        this.options = new Settings(this);
+        this.tools = new Settings(this);
+        this.awaitLoad();
+        this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+        this.presentationMetadata = new PresentationMetadata(this);
+    }
+    awaitLoad() {
+        let checkLoadedInterval;
+        this.isAwaiting = true;
+        checkLoadedInterval = setInterval(() => {
+            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+            if (testExtensionLoaded) {
+                this.isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                return;
+            }
+            const testSlideshowLoaded = document.querySelector('.order-number-container');
+            if (testSlideshowLoaded) {
+                this.isAwaiting = false;
+                clearInterval(checkLoadedInterval);
+                this.onLoaded();
+            }
+        }, 300);
+    }
+    checkUnloaded() {
+        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+        if (!this.isAwaiting && !testExtensionLoaded) {
+            this.onUnload();
+            this.awaitLoad();
+        }
+    }
+    onUnload() {
+        this._loaded = false;
+        this.trigger('unloaded');
+        if (this.options && this.options.getValue('changeTitle')) {
+            document.title = this.originalTitle;
+        }
+        if (this.currentSlideNotes) {
+            this.currentSlideNotes.commitChanges().then(() => {
+                this.notesCollection = undefined;
+                this.currentSlideNotes = undefined;
+            });
+        }
+        this.presentationMetadata.removeAllListeners('slideChange');
+        if (this.slideObserver)
+            this.slideObserver.disconnect();
+    }
 }
+///<reference path="globals.d.ts" />
 ///<reference path="utils/enums.ts" />
 const styles = `
 :root {
@@ -2437,6 +3215,17 @@ sub.small {
     font-size: 0.8rem;
 }
 
+.custom-script-setting {
+    padding: 0.3rem;    
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.custom-script-setting>* {
+    display: inline-flex;
+    margin-right: 0!important;
+}
+
 .${"custom-script-page-number-container" /* pageNumberContainer */} {
     position: absolute;
     top: 30px;
@@ -2466,6 +3255,18 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
     margin: 0.2rem;
     border-radius: 5px;
     height: 16px;
+}
+
+.custom-script-summary-link-container ul {
+    margin-left: 1rem;
+}
+
+.custom-script-summary-link-container:not(.active) ul {
+    display: none;
+}
+
+.custom-script-summary-link-container.active>a {
+    font-weight: 700;
 }
 
 .custom-script-summary{
@@ -2578,18 +3379,18 @@ a.custom-options-btn.active svg {transform: none;}
     vertical-align: sub;
 }
 
-.${"custom-script-font-size-input" /* fontSizeInput */} {
+.${"custom-script-font-size-input" /* fontSizeInput */}, .custom-script-setting input[type=range] {
     -webkit-appearance: none;
     appearance: none;
     margin-right: 0.9em;
     outline: none;
     height: 0.6rem;
-    background: #96dbdf;
+    background: #96dbdf!important;
     border-radius: 5px;
     vertical-align: middle;
 }
 
-.${"custom-script-font-size-input" /* fontSizeInput */}::-webkit-slider-thumb {
+.${"custom-script-font-size-input" /* fontSizeInput */}::-webkit-slider-thumb, .custom-script-setting input::-webkit-slider-thumb {
     -webkit-appearance: none; 
     appearance: none;
     cursor: pointer;
@@ -2856,8 +3657,51 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     display: flex!important;
 }
 
+.custom-main-nav-container>a svg {
+    transition: transform 0.5s;
+    transform: rotateX(180deg);
+}
+
+.custom-main-nav-container>a {    
+    display: flex;
+    padding: 15px;
+    width: 100%;
+    gap: 0.4rem;
+    text-align: center;
+    align-items: center;
+    font-size: 11px;
+}
+
+.custom-main-nav-container.active>a svg {
+    transform: none;
+}
+
+.custom-main-nav-container>div {
+    transition: height 0.6s;
+    height: 0;
+    overflow: hidden;
+}
+
+.custom-main-nav-container.active>div {
+    height: 100%;
+    overflow: auto;
+}
+
+.custom-main-nav-container.active {
+    height: 100%;
+}
+
+.custom-main-nav-container {
+    transition: height 0.6s;
+    height: 3.3rem;
+    padding-bottom: 3.3rem;
+}
+
 .${"custom-script-hide-chat" /* hideChat */} .wnl-chat-toggle {
     display: none!important;
+}
+.${"custom-script-hide-chat" /* hideChat */} .wnl-course-content.wnl-column {
+    max-width: initial!important;
 }
 
 .${"custom-script-invert-images" /* invertImages */} img.iv-large-image, .logo-mobile {
@@ -2869,11 +3713,7 @@ stylesheet.innerHTML = styles;
 head.appendChild(stylesheet);
 ///<reference path="packageMetadata.ts" />
 ///<reference path="globals.d.ts" />
-///<reference path="utils/enums.ts" />
-///<reference path="utils/common.ts" />
-///<reference path="utils/tools.ts" />
-///<reference path="utils/keyboard.ts" />
-///<reference path="utils/slideshowOptions.ts" />
+///<reference path="App.ts" />
 ///<reference path="style.ts" />
 (function () {
     'use strict';
@@ -2882,163 +3722,10 @@ head.appendChild(stylesheet);
         __SENTRY__.hub.getClient().getOptions().enabled = false;
     }
     catch (err) { }
-    function onLoaded() {
-        if (!appDiv) {
-            appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-            if (appDiv) {
-                onAttributeChange(appDiv, 'screenid', checkUnloaded);
-                presentationMetadata.screenID = parseInt(appDiv.attributes.getNamedItem('screenid').value);
-                presentationMetadata.lessonID = getCurrentLessonID();
-                //console.log({ screenid: presentationMetadata.screenID })
-                if (tools && tools.state.useNotes.value) {
-                    loadNotes();
-                }
-            }
-        }
-        let background = document.querySelector(".image-custom-background" /* background */);
-        if (background !== null) {
-            background.classList.remove("image-custom-background");
-            background.classList.add("white-custom-background");
-        }
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        if (lessonView !== null) {
-            const mainHeaderElem = document.querySelector('.o-lesson__title__left__header');
-            if (mainHeaderElem !== null)
-                presentationMetadata.name = mainHeaderElem.innerText;
-            addSliderContainer();
-            addSettingsContainer();
-            addToolsContainer();
-        }
-        if (GM_getValue(`option_keyboardControl`))
-            Keyboard.setupControl();
-        addChapterInfo();
-        addSlideOptions();
-        toRunOnLoaded.forEach(cb => cb());
-        GM_getTabs(tabsObject => {
-            console.log({ tabsObject });
-            const tabs = Object.values(tabsObject);
-            let maxIndex = 0;
-            if (tabs) {
-                tabs.forEach(tab => {
-                    if (tab && tab.index > maxIndex)
-                        maxIndex = tab.index;
-                });
-                maxIndex++;
-            }
-            thisTabIndex = maxIndex;
-            console.log({ thisTabIndex });
-            GM_saveTab({ index: maxIndex });
-        });
-        GM_setValue('openInTab', {
-            lessonID: presentationMetadata.lessonID,
-            screenID: presentationMetadata.screenID,
-            slide: presentationMetadata.currentSlideNumber,
-            currentTab: -1
-        });
-        GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
-            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote);
-            openSlideInTab(toOpen);
-        });
-        unsafeWindow.addEventListener('beforeunload', ev => {
-            onUnload();
-        });
+    if (unsafeWindow.top != unsafeWindow.self) {
+        return; //in iframe
     }
-    function addSliderContainer() {
-        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const sliderContainer = document.createElement('div');
-        sliderContainer.innerHTML = zoomSliderHTML;
-        lessonView.appendChild(sliderContainer);
-        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
-            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
-            .addEventListener('click', () => {
-            options.setOptionState(state => { return { value: state.value + 5 }; }, 'percentIncrease');
-        });
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
-            .addEventListener('click', () => {
-            options.setOptionState(state => { return { value: state.value - 5 }; }, 'percentIncrease');
-        });
-    }
-    function addToolsContainer() {
-        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const toolsContainer = document.createElement('div');
-        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
-        toolsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
-            <div></div>`;
-        lessonView.appendChild(toolsContainer);
-        tools.rerender();
-    }
-    function addSettingsContainer() {
-        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
-        if (test)
-            return;
-        const lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
-        const sidebarSettingsContainer = document.createElement('div');
-        sidebarSettingsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
-        sidebarSettingsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
-            <div></div>`;
-        lessonView.appendChild(sidebarSettingsContainer);
-        options.rerender();
-    }
-    let isAwaiting = false;
-    awaitLoad();
-    let appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
-    if (appDiv)
-        onAttributeChange(appDiv, 'screenid', checkUnloaded);
-    function awaitLoad() {
-        let checkLoadedInterval;
-        isAwaiting = true;
-        checkLoadedInterval = setInterval(() => {
-            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
-            if (testExtensionLoaded) {
-                isAwaiting = false;
-                clearInterval(checkLoadedInterval);
-                return;
-            }
-            const testSlideshowLoaded = document.querySelector('.order-number-container');
-            if (testSlideshowLoaded) {
-                isAwaiting = false;
-                clearInterval(checkLoadedInterval);
-                onLoaded();
-            }
-        }, 300);
-    }
-    function checkUnloaded() {
-        //console.log('unloaded??')
-        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
-        if (!isAwaiting && !testExtensionLoaded) {
-            //console.log('unloaded!!!')
-            onUnload();
-            awaitLoad();
-        }
-    }
-    function onUnload() {
-        for (const key in presentationMetadata) {
-            presentationMetadata[key] = undefined;
-        }
-        if (options && options.state.changeTitle.value) {
-            const { originalTitle } = options.state.changeTitle;
-            document.title = originalTitle;
-        }
-        if (currentSlideNotes) {
-            currentSlideNotes.commitChanges().then(() => {
-                notesCollection = undefined;
-                currentSlideNotes = undefined;
-            });
-        }
-        if (slideNumberObserver)
-            slideNumberObserver.disconnect();
-        if (slideObserver)
-            slideObserver.disconnect();
-        if (BreakTimer.timer)
-            clearTimeout(BreakTimer.timer);
-    }
+    const app = new App();
+    app.init();
+    console.log({ app });
 })();
