@@ -12,24 +12,28 @@ class CustomEventEmmiter<Events extends EventsInterface> {
     private listeners = {} as CustomEventListeners<Events>;
 
     addEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>, once?: boolean) {
-        let toAdd: CustomEventListener<Events[EventName]>
-        if (!this.listeners[eventName])
+        if (!this.listeners[eventName]) {
             this.listeners[eventName] = [];
+        }
         if (once) {
-            toAdd = event => {
+            const toAdd = event => {
                 listener.bind(this)(event);
                 this.removeEventListener(eventName, toAdd);
-            };
+            }
+            this.listeners[eventName].push(toAdd)
         } else {
-            toAdd = listener.bind(this)
+            this.listeners[eventName].push(listener) //.bind(this)
         }
-        this.listeners[eventName].push(toAdd);
     }
 
     removeEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>) {
-        const i = this.listeners[eventName] && this.listeners[eventName].findIndex(cb => cb.toString() === listener.toString());
-        if (i && i >= 0)
-            return this.listeners[eventName].splice(i, 1);
+        if (!this.listeners[eventName]) return
+        const i = this.listeners[eventName].findIndex(cb => cb == listener)
+        console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this)
+        if (i >= 0) {
+            const toRemove = this.listeners[eventName].splice(i, 1)
+            return toRemove[0]
+        }
     }
 
     removeAllListeners(eventName?: keyof Events) {
@@ -40,18 +44,20 @@ class CustomEventEmmiter<Events extends EventsInterface> {
 
     trigger<EventName extends keyof Events>(eventName: EventName, event: Events[EventName] = {} as Events[EventName]) {
         // console.log(`triggering`, eventName, `with data`, event, 'on', this);
-        this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
-            try {
-                setTimeout(() => listener(event), 0)
-            } catch (err) {
-                console.error(
-                    'triggering', eventName, 
-                    `with data`, event, 
-                    'on', this, 
-                    'with callback', listener, 
-                    `(${listener.toString()})`
-                )
-            }
-        });
+        setTimeout(() => {
+            this.listeners[eventName] && this.listeners[eventName].forEach(listener => {
+                try {
+                    listener.bind(this)(event)
+                } catch (err) {
+                    console.error(
+                        'triggering', eventName,
+                        `with data`, event,
+                        'on', this,
+                        'with callback', listener,
+                        `(${listener.toString()})`
+                    )
+                }
+            })
+        }, 0)
     }
 }

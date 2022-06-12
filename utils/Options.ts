@@ -138,27 +138,33 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         onchange: state => {
             if (state.value) {
                 if (!app.courseSidebar) {
-                    app.courseSidebar = new CourseSidebar()
-                    const sidenav = document.querySelector('aside.course-sidenav')
-                    if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
-                        app.courseSidebar.attach(sidenav)
-                    } else {
-                        app.setupObserveSidenav()
-                        app.addEventListener('sidenavOpened', opened => {
-                            if (opened) {
-                                const sidenav = document.querySelector('aside.course-sidenav')
-                                app.courseSidebar.attach(sidenav)
-                            }
-                        })
-                    }
-                    app.courseSidebar.addEventListener('urlChange', url => {
-                        app.tabOpener.openURLinTab(url)
-                    })
+                    setupSidebar()
                     app.addEventListener('unloaded', () => app.courseSidebar.destroy())
                 }
+                app.addEventListener('loaded', setupSidebar)
                 app.courseSidebar.show()
             } else {
+                app.removeEventListener('loaded', setupSidebar)
                 if (app.courseSidebar) app.courseSidebar.hide()
+            }
+
+            function setupSidebar() {
+                app.courseSidebar = new CourseSidebar()
+                const sidenav = document.querySelector('aside.course-sidenav')
+                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                    app.courseSidebar.attach(sidenav)
+                } else {
+                    app.setupObserveSidenav()
+                    app.addEventListener('sidenavOpened', opened => {
+                        if (opened) {
+                            const sidenav = document.querySelector('aside.course-sidenav')
+                            app.courseSidebar.attach(sidenav)
+                        }
+                    })
+                }
+                app.courseSidebar.addEventListener('urlChange', toOpen => {
+                    app.tabOpener.openSlide(toOpen)
+                })
             }
         },
         key: 'i'

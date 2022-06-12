@@ -1,10 +1,17 @@
 ///<reference path="ExternalFragment.ts" />
 ///<reference path="../globals.d.ts" />
 class CourseSidebar extends ExternalFragment<{
-    urlChange: string
+    urlChange: {
+        url: string
+        lessonID: number
+        screenID: number
+        slide: number
+    }
 }> {
     container: HTMLElement
     collapseToggler: ClassToggler
+    changeURLInterval
+    lastURLUpdate: number
 
     constructor() {
         super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div')
@@ -14,20 +21,35 @@ class CourseSidebar extends ExternalFragment<{
             el => {
                 if (!el) return
                 this.container.append(el)
-            }, 
-            true
+            }
         )
-        this.addEventListener('iframeURLChange', newURL => {
-            this.trigger('urlChange', newURL)
-            this.load()
-        })
+        this.setupOpenLinks()
     }
 
     static CONTAINER_HTML = `
     <a>
         ${SVGIcons.chevronUp}
-        <span>GŁÓWNE MENU</span>
+        <span>CAŁY KURS</span>
     </a>`
+
+    private setupOpenLinks() {
+        this.lastURLUpdate = Date.now()
+        const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/
+        this.addEventListener('iframeURLChange', newURL => {
+            const now = Date.now()
+            console.log({now})
+            if (now - this.lastURLUpdate < 500) return
+            const matching = urlRegExp.exec(newURL)
+            if (!matching) return
+            this.trigger('urlChange', {
+                url: newURL,
+                lessonID: parseInt(matching[1]),
+                screenID: parseInt(matching[2]),
+                slide: parseInt(matching[3]),
+            })
+            this.load()
+        })
+    }
 
     private prepareContainer() {        
         this.container = document.createElement('div')
@@ -50,5 +72,10 @@ class CourseSidebar extends ExternalFragment<{
 
     hide() {
         this.container && (this.container.style.display = 'none')
+    }
+
+    destroy(): void {
+        this.container.remove()
+        super.destroy()
     }
 }

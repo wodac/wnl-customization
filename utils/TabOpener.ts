@@ -8,7 +8,7 @@ enum TabOpenerIndexes {
 }
 
 type TabOpenerEvents = {
-
+    remoteOpenRequest: SlideToOpen
 }
 
 type SlideToOpen = {
@@ -30,7 +30,9 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
         this.getTabIndex()
         this.setInitialStoreVal()
         GM_addValueChangeListener('openInTab', (name, oldVal, toOpen, remote) => {
-            console.log('GM_ValueChangeListener', name, oldVal, toOpen, remote)
+            if (remote && toOpen.currentTab >= 0) {
+                this.trigger('remoteOpenRequest', toOpen)
+            }
             this.openSlide(toOpen)
         })
     }
@@ -48,7 +50,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
         this._tabIndex = maxIndex
     }
 
-    getTabs() {
+    private getTabs() {
         return new Promise<{ index }[]>(resolve => {
             GM_getTabs(tabs => resolve(Object.values(tabs)))
         })
@@ -65,7 +67,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
         return GM_openInTab(url, { active: true, setParent: true })
     }
 
-    setInitialStoreVal() {
+    private setInitialStoreVal() {
         GM_setValue('openInTab', {
             lessonID: this.app.presentationMetadata.lessonID,
             screenID: this.app.presentationMetadata.screenID,
@@ -74,7 +76,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
         })
     }
 
-    async findTabToOpen(toOpen: SlideToOpen) {
+    private async findTabToOpen(toOpen: SlideToOpen) {
         const tabs = await this.getTabs()
         let nextIndex = 1000
         tabs.forEach(tab => {
@@ -95,16 +97,19 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
     }
 
 
-    openSlide(toOpen: SlideToOpen) {
+    openSlide(toOpen: Omit<SlideToOpen, "currentTab"> & { currentTab?: number }) {
         if (toOpen) {
+            if (typeof toOpen.currentTab !== 'number') {
+                toOpen.currentTab = TabOpenerIndexes.findTab
+            }
             if (toOpen.currentTab === TabOpenerIndexes.noAction) return
-            if (this.isSlideInCurrentSlideshow(toOpen)) {
+            if (this.isSlideInCurrentSlideshow(toOpen as SlideToOpen)) {
                 this.focusThisTab()
                 this.app.presentationMetadata.slideNumber = toOpen.slide
                 this.setInitialStoreVal()
             } else if (toOpen.currentTab === TabOpenerIndexes.findTab ||
                 toOpen.currentTab === this.tabIndex) {
-                this.findTabToOpen(toOpen)
+                this.findTabToOpen(toOpen as SlideToOpen)
             }
         }
     }

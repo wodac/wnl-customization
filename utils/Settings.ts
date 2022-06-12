@@ -62,7 +62,10 @@ class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
     }
     public set value(value: T) {
         if (this.type === SettingType.Button || this._value === value) return
-        if (this.isInRange && !this.isInRange(value)) return
+        if (this.isInRange && !this.isInRange(value)) {
+            this.trigger('change', { value: this._value, oldValue: this._value, remote: false })
+            return
+        }
         const oldValue = this._value
         this._value = value
         GM_setValue(this.name, value)
@@ -280,13 +283,17 @@ class NumberSetting extends SettingElement<number> {
             this.input.addEventListener('input', () => valueEl.innerText = `${this.input.value}%`)
         }
         this.addEventListener('change', ({ value }) => this.input.value = value.toString())
-        this.input.addEventListener('change', (ev) => this.value = parseInt(this.input.value))
+        this.input.addEventListener('change', (ev) => this.value = this.parse(this.input.value))
         this.input.addEventListener(
             'input', 
-            (ev) => this.trigger('input', { value: parseInt(this.input.value) })
+            (ev) => this.trigger('input', { value: this.parse(this.input.value) })
         )
         this.trigger('rendered')
         return this.element
+    }
+
+    parse(value: string): number {
+        return parseFloat(value.replace(',', '.'))
     }
 
     renderSimple() {

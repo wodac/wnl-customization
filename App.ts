@@ -94,7 +94,7 @@ class App extends CustomEventEmmiter<AppEvents> {
         this._loaded = true
         this.trigger('loaded')
 
-        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded(), true)
+        this.presentationMetadata.addEventListener('screenidChange', screenid => this.checkUnloaded())
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload()
         })
