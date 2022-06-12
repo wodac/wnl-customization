@@ -573,8 +573,12 @@ const updateFontSize = (fontSize) => {
     root.style.setProperty("--uniform-font-size", `${getUniformFontSize(fontSize)}em`);
     root.style.setProperty("--scaled-font-size", `${fontSize}%`);
 };
-class ClassToggler {
+function isMobile() {
+    return screen.width < 980;
+}
+class ClassToggler extends CustomEventEmmiter {
     constructor(className, _elementOrSelector = document.body, onchange) {
+        super();
         this.className = className;
         this._elementOrSelector = _elementOrSelector;
         this.onchange = onchange;
@@ -602,11 +606,18 @@ class ClassToggler {
         this._state = val;
         if (this.onchange)
             this.onchange(this);
+        this.trigger('stateChange', val);
         if (val) {
             this.element && this.element.classList.add(this.className);
         }
         else {
             this.element && this.element.classList.remove(this.className);
+        }
+    }
+    flash(milis = 1000) {
+        if (!this._state) {
+            this.state = true;
+            setTimeout(() => this.state = false, milis);
         }
     }
     toggle() {
@@ -922,8 +933,12 @@ var Keyboard;
             callback: () => toggleMouseVisibility()
         },
         {
-            keys: ['o', 's'],
+            keys: ['o'],
             callback: () => Toggles.optionsActive.toggle()
+        },
+        {
+            keys: ['s'],
+            callback: () => Toggles.optionsActive.flash(3000)
         },
         {
             keys: ['?', '/'],
@@ -959,22 +974,24 @@ var Keyboard;
         if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
             numericKeyPressed(event.key);
     }
-    document.addEventListener('fullscreenchange', ev => {
-        if (!document.fullscreenElement) {
-            if (document.querySelector('.o-referenceModal')) {
-                hideModal();
-                toggleFullscreen();
+    if (!isMobile()) {
+        document.addEventListener('fullscreenchange', ev => {
+            if (!document.fullscreenElement) {
+                if (document.querySelector('.o-referenceModal')) {
+                    hideModal();
+                    toggleFullscreen();
+                }
+                else if (!Toggles.searchHidden.state) {
+                    Toggles.searchHidden.state = true;
+                    toggleFullscreen();
+                }
+                else if (!Toggles.summaryHidden.state) {
+                    Toggles.summaryHidden.state = true;
+                    toggleFullscreen();
+                }
             }
-            else if (!Toggles.searchHidden.state) {
-                Toggles.searchHidden.state = true;
-                toggleFullscreen();
-            }
-            else if (!Toggles.summaryHidden.state) {
-                Toggles.summaryHidden.state = true;
-                toggleFullscreen();
-            }
-        }
-    });
+        });
+    }
     function setupControl(app) {
         const slides = document.querySelectorAll('.slides .stack');
         if (!slides.length)
@@ -1424,6 +1441,7 @@ class ExternalFragment extends CustomEventEmmiter {
         this.childWindow = this.iframe.contentWindow;
     }
     getElement() {
+        this.iframe.hidden = false;
         return new Promise(resolve => {
             const doc = this.iframe.contentDocument;
             if (!doc)
@@ -2378,10 +2396,11 @@ class BreakTimer {
 ///<reference path="Notes.ts" />
 ///<reference path="BreakTimer.ts" />
 let noteTarget;
-const notesBtnsAndTags = `
+const tagContainerHTML = `
         <div class='custom-tags-container'> 
             <a class='custom-new-tag custom-tag'>${SVGIcons.plusCircle}</a>  
-        </div>
+        </div>`;
+const notesBtnsHTML = `
         <div class='custom-notes-btns-container'>
             <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
                 <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
@@ -2444,7 +2463,7 @@ function createNotesBtnsAndTags() {
     if (document.querySelector('.custom-tags-and-btns-container'))
         return;
     const el = document.createElement('div');
-    el.innerHTML = notesBtnsAndTags;
+    el.innerHTML = tagContainerHTML + notesBtnsHTML;
     el.className = 'custom-tags-and-btns-container';
     slideshowContainer.append(el);
 }
@@ -2635,7 +2654,7 @@ class NotesRendering {
 ///<reference path="NotesRendering.ts" />
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible');
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column');
-let uploadInput;
+let uploadInput, viewNotesBtnToggle, viewTagsBtnToggle;
 const getToolsConfig = app => [
     {
         name: "suggestBreak",
@@ -2695,6 +2714,10 @@ const getToolsConfig = app => [
                 app.notesRendering.addNotesColumn();
                 setupNotesBtns(app);
                 app.notesRendering.loadNotes();
+                if (isMobile()) {
+                    viewNotesBtnToggle.state = true;
+                    viewTagsBtnToggle.state = true;
+                }
             }
             this.parent.getSetting('exportNotes').disabled = !state.value;
             this.parent.getSetting('importNotes').disabled = !state.value;
@@ -2768,7 +2791,7 @@ function setupNotesBtns(app) {
     addBtn.addEventListener('click', () => addBtnToggle.toggle());
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn');
     const viewTagsToggle = new ClassToggler('custom-script-tags-visible');
-    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state);
+    viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state);
     viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle());
     const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn');
     const onAddTag = () => {
@@ -2783,7 +2806,6 @@ function setupNotesBtns(app) {
         if (app.currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${app.currentSlideNotes.notes.length}) notatki ze slajdu ${app.currentSlideNotes.metadata.slide}?`))
             app.currentSlideNotes.removeAllNotes();
     });
-    let viewNotesBtnToggle;
     const viewNotesBtn = document.querySelector('.custom-notes-view-btn');
     const hiddenBtnsToggle = new ClassToggler('inactive', '.custom-notes-additional-btns');
     const viewTypeBtn = document.querySelector('.custom-notes-view-type-btn');
@@ -3191,6 +3213,17 @@ a.custom-script-option {
    }
 }
 
+@media screen and (max-width: 980px) {
+    .custom-notes-view-btn,
+    .custom-tags-view-btn {
+        display: none!important;
+    }
+
+    div.custom-tag:not(.editing) .custom-remove,
+    div.custom-tag:not(.editing) .custom-change-color {
+        width: 16px;
+    }
+}
 
 .${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference {
     margin-left: 0.5em
