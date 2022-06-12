@@ -1409,7 +1409,7 @@ class Settings extends CustomEventEmmiter {
             toSave = value(this.getValue(name));
         else
             toSave = value;
-        GM_setValue(name, value);
+        GM_setValue(name, toSave);
     }
     getValue(name) {
         return GM_getValue(name);
