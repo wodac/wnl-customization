@@ -349,7 +349,7 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
         let toSave: T
         if (typeof value === "function") toSave = (value as ValueChanger<T>)(this.getValue(name))
         else toSave = value
-        GM_setValue(name, value)
+        GM_setValue(name, toSave)
     }
 
     getValue(name: string) {
