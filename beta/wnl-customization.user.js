@@ -1405,7 +1405,7 @@ class ExternalFragment extends CustomEventEmmiter {
         this.iframe.width = '1300';
         this.iframe.height = '800';
         this.iframe.style.position = 'absolute';
-        this.iframe.style.bottom = '100%';
+        this.iframe.style.bottom = '100vh';
         document.body.append(this.iframe);
         this.load();
     }
