@@ -10,10 +10,6 @@ html {
     scroll-behavior: smooth;
 }
 
-body {
-    overflow: hidden;
-}
-
 .questionsList__paginationContainer {
     /* position: absolute!important; */
     top: 0;

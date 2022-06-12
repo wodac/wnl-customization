@@ -48,6 +48,7 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
                     const element = doc.querySelector(this.selector) as HTMLElement
                     if (!element && this.triesLeft--) return
                     clearInterval(interval)
+                    this.iframe.hidden = true
                     resolve(element)
                 }, 100)
             }
