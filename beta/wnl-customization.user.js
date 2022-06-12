@@ -1433,6 +1433,7 @@ class ExternalFragment extends CustomEventEmmiter {
                 if (!element && this.triesLeft--)
                     return;
                 clearInterval(interval);
+                this.iframe.hidden = true;
                 resolve(element);
             }, 100);
         });
@@ -3143,10 +3144,6 @@ const styles = `
 
 html {
     scroll-behavior: smooth;
-}
-
-body {
-    overflow: hidden;
 }
 
 .questionsList__paginationContainer {
