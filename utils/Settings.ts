@@ -7,7 +7,7 @@ type SettingEvents<T> = {
         oldValue: T
         remote: boolean
     }
-    input: {}
+    input: { value: T }
     rendered: {}
     tmMenuClicked: {}
     disabled: boolean
@@ -239,11 +239,23 @@ class NumberSetting extends SettingElement<number> {
     }
 
     getHTML() {
-        return `
-        ${this.getIconHTML()}
-        <label>${this.options.desc}</label>
-        <input type='${this.type === SettingType.Integer ? 'number' : 'range'
-            }' name='${this.name}' />`
+        const isPercent = this.type === SettingType.Percent
+        if (isPercent) {
+            return `
+                ${this.getIconHTML()}
+                <label>${this.options.desc}</label>
+                <div>
+                    <a>${SVGIcons.minusCircle}</a>
+                    <input type='range' name='${this.name}' />
+                    <a>${SVGIcons.plusCircle}</a>
+                    <span class='custom-range-val'></span>
+                </div>`
+        } else {
+            return `
+                ${this.getIconHTML()}
+                <label>${this.options.desc}</label>
+                <input type='number' name='${this.name}' />`
+        }
     }
 
     render() {
@@ -253,17 +265,10 @@ class NumberSetting extends SettingElement<number> {
         this.input = this.element.querySelector('input')
         this.input.value = this.value.toString()
         if (this.type === SettingType.Percent) {
-            const valueEl = document.createElement('span')
-            valueEl.classList.add('custom-range-val')
+            this.element.style.flexWrap = 'wrap'
+            const valueEl = this.element.querySelector('span')
             valueEl.innerText = `${this.value}%`
-            const btns = [ SVGIcons.minusCircle, SVGIcons.plusCircle ]
-            const btnElems = btns.map(icon => {
-                const el = document.createElement('a')
-                el.innerHTML = icon
-                return el
-            })
-            this.input.before(btnElems[0])
-            this.input.after(btnElems[1], valueEl)
+            const btnElems = this.element.querySelectorAll('a')
             btnElems.forEach((btn, i) => {
                 btn.addEventListener('click', (ev) => {
                     ev.preventDefault()
@@ -276,7 +281,10 @@ class NumberSetting extends SettingElement<number> {
         }
         this.addEventListener('change', ({ value }) => this.input.value = value.toString())
         this.input.addEventListener('change', (ev) => this.value = parseInt(this.input.value))
-        // this.input.addEventListener('input', (ev) => this.trigger('input'))
+        this.input.addEventListener(
+            'input', 
+            (ev) => this.trigger('input', { value: parseInt(this.input.value) })
+        )
         this.trigger('rendered')
         return this.element
     }

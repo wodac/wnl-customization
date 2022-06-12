@@ -93,8 +93,14 @@ sub.small {
     align-items: center;
     gap: 0.6rem;
 }
-.custom-script-setting>* {
+.custom-script-setting svg {
+    flex-shrink: 0;
+}
+
+.custom-script-setting * {
     display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
     margin-right: 0!important;
 }
 
