@@ -3,7 +3,7 @@
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible')
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column')
 
-let uploadInput
+let uploadInput, viewNotesBtnToggle: ClassToggler, viewTagsBtnToggle: ClassToggler
 
 const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
     {
@@ -65,6 +65,10 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
                 app.notesRendering.addNotesColumn()
                 setupNotesBtns(app)
                 app.notesRendering.loadNotes()
+                if (isMobile()) {
+                    viewNotesBtnToggle.state = true
+                    viewTagsBtnToggle.state = true
+                }
             }
             this.parent.getSetting('exportNotes').disabled = !state.value
             this.parent.getSetting('importNotes').disabled = !state.value
@@ -138,7 +142,7 @@ function setupNotesBtns(app: App) {
 
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn') as HTMLElement
     const viewTagsToggle = new ClassToggler('custom-script-tags-visible')
-    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state)
+    viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state)
     viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle())
 
     const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn')
@@ -157,7 +161,6 @@ function setupNotesBtns(app: App) {
     })
 
 
-    let viewNotesBtnToggle: ClassToggler
     const viewNotesBtn = document.querySelector('.custom-notes-view-btn')
     const hiddenBtnsToggle = new ClassToggler('inactive', '.custom-notes-additional-btns')
 

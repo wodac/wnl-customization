@@ -114,7 +114,17 @@ const updateFontSize = (fontSize: number) => {
     root.style.setProperty("--scaled-font-size", `${fontSize}%`)
 }
 
-class ClassToggler {
+function isMobile() {
+    return screen.width < 980
+}
+
+namespace ClassToggler {
+    export type Events = {
+        stateChange: boolean
+    }
+}
+
+class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     private _unresolved = false
 
     constructor(
@@ -122,6 +132,7 @@ class ClassToggler {
         private _elementOrSelector: Element | string = document.body,
         public onchange?: (toggler: ClassToggler) => any
     ) {
+        super()
         if (this.element) this._getClassState()
         else this._unresolved = true
     }
@@ -146,10 +157,18 @@ class ClassToggler {
         if (this._state === val) return
         this._state = val
         if (this.onchange) this.onchange(this)
+        this.trigger('stateChange', val)
         if (val) {
             this.element && this.element.classList.add(this.className)
         } else {
             this.element && this.element.classList.remove(this.className)
+        }
+    }
+
+    flash(milis = 1000) {
+        if (!this._state) {
+            this.state = true
+            setTimeout(() => this.state = false, milis)
         }
     }
 

@@ -55,6 +55,17 @@ a.custom-script-option {
    }
 }
 
+@media screen and (max-width: 980px) {
+    .custom-notes-view-btn,
+    .custom-tags-view-btn {
+        display: none!important;
+    }
+
+    div.custom-tag:not(.editing) .custom-remove,
+    div.custom-tag:not(.editing) .custom-change-color {
+        width: 16px;
+    }
+}
 
 .${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference {
     margin-left: 0.5em

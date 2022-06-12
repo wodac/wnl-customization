@@ -39,7 +39,8 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
         this.childWindow = this.iframe.contentWindow
     }
 
-    getElement() {
+    getElement() {        
+        this.iframe.hidden = false
         return new Promise<HTMLElement | null>(
             resolve => {
                 const doc = this.iframe.contentDocument

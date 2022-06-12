@@ -2,10 +2,12 @@
 ///<reference path="Notes.ts" />
 ///<reference path="BreakTimer.ts" />
 let noteTarget: HTMLElement
-const notesBtnsAndTags = `
+
+const tagContainerHTML = `
         <div class='custom-tags-container'> 
             <a class='custom-new-tag custom-tag'>${SVGIcons.plusCircle}</a>  
-        </div>
+        </div>`
+const notesBtnsHTML =`
         <div class='custom-notes-btns-container'>
             <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
                 <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
@@ -67,7 +69,7 @@ function createNotesBtnsAndTags() {
     if (!slideshowContainer) return
     if (document.querySelector('.custom-tags-and-btns-container')) return
     const el = document.createElement('div')
-    el.innerHTML = notesBtnsAndTags
+    el.innerHTML = tagContainerHTML + notesBtnsHTML
     el.className = 'custom-tags-and-btns-container'
     slideshowContainer.append(el)
 }

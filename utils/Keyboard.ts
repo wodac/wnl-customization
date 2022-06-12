@@ -33,8 +33,12 @@ namespace Keyboard {
             callback: () => toggleMouseVisibility()
         },
         {
-            keys: ['o', 's'],
+            keys: ['o'],
             callback: () => Toggles.optionsActive.toggle()
+        },
+        {
+            keys: ['s'],
+            callback: () => Toggles.optionsActive.flash(3000)
         },
         {
             keys: ['?', '/'],
@@ -66,20 +70,22 @@ namespace Keyboard {
         const charCode = event.keyCode
         if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105)) numericKeyPressed(event.key)
     }
-    document.addEventListener('fullscreenchange', ev => {
-        if (!document.fullscreenElement) {
-            if (document.querySelector('.o-referenceModal')) {
-                hideModal()
-                toggleFullscreen()
-            } else if (!Toggles.searchHidden.state) {
-                Toggles.searchHidden.state = true
-                toggleFullscreen()
-            } else if (!Toggles.summaryHidden.state) {
-                Toggles.summaryHidden.state = true
-                toggleFullscreen()
+    if (!isMobile()) {
+        document.addEventListener('fullscreenchange', ev => {
+            if (!document.fullscreenElement) {
+                if (document.querySelector('.o-referenceModal')) {
+                    hideModal()
+                    toggleFullscreen()
+                } else if (!Toggles.searchHidden.state) {
+                    Toggles.searchHidden.state = true
+                    toggleFullscreen()
+                } else if (!Toggles.summaryHidden.state) {
+                    Toggles.summaryHidden.state = true
+                    toggleFullscreen()
+                }
             }
-        }
-    })
+        })
+    }
     export function setupControl(app: App) {
         const slides = document.querySelectorAll('.slides .stack')
         if (!slides.length) return
