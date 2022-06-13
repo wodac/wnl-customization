@@ -306,7 +306,7 @@ a.custom-options-btn.active svg {transform: none;}
 
 .custom-notes-btns-container {
     flex-direction: row;
-    align-items: flex-end;
+    align-items: flex-start;
     flex-wrap: wrap-reverse;
     display: none!important;
 }

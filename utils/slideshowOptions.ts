@@ -38,10 +38,10 @@ function addSlideOptions(app: App) {
     slideOptionsContainer.append(additionalOptionsContainer)
     bookmarkBtn.after(slideOptionsContainer)
     additionalOptionsContainer.prepend(bookmarkBtn)
-    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsActive.toggle())
+    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsBtn.toggle())
     slideOptionsContainer.querySelector('.custom-search-btn').addEventListener('click', () => {
-        Toggles.optionsActive.state = false
-        Toggles.searchHidden.toggle()
+        Toggles.optionsBtn.state = false
+        Toggles.search.toggle()
     })
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (app.options) {
@@ -62,7 +62,7 @@ function addSummary(app: App) {
     closeBtn.className = 'custom-script-summary-close'
     closeBtn.innerHTML = SVGIcons.chevronUp
     summaryContainer.prepend(closeBtn)
-    closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true)
+    closeBtn.addEventListener('click', () => Toggles.summary.state = false)
     app.slideshowChapters.render(summaryContainer)
     document.querySelector('.order-number-container').after(summaryContainer)
 }
@@ -103,6 +103,6 @@ function addPageNumberContainer(): HTMLSpanElement {
         spans[0].appendChild(spans[i])
     }
     document.querySelector('.order-number-container').after(spans[0])
-    spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle())
+    spans[0].addEventListener('click', () => Toggles.summary.toggle())
     return spans[0]
 }

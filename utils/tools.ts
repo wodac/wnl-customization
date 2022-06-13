@@ -138,6 +138,7 @@ function setupNotesBtns(app: App) {
     const addBtnToggle = new ClassToggler('active', addBtn, t => {
         addBtnContToggle.state = t.state
     })
+    addBtnToggle.setDismissible(true)
     addBtn.addEventListener('click', () => addBtnToggle.toggle())
 
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn') as HTMLElement

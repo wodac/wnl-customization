@@ -23,9 +23,9 @@ namespace Keyboard {
         {
             keys: ['q', '0', 'Escape'],
             callback: () => {
-                Toggles.optionsActive.state = false
-                Toggles.searchHidden.state = true
-                Toggles.summaryHidden.state = true
+                Toggles.optionsBtn.state = false
+                Toggles.search.state = false
+                Toggles.summary.state = false
             }
         },
         {
@@ -34,19 +34,19 @@ namespace Keyboard {
         },
         {
             keys: ['o'],
-            callback: () => Toggles.optionsActive.toggle()
+            callback: () => Toggles.optionsBtn.toggle()
         },
         {
             keys: ['s'],
-            callback: () => Toggles.optionsActive.flash(3000)
+            callback: () => Toggles.optionsBtn.flash(3000)
         },
         {
             keys: ['?', '/'],
-            callback: () => Toggles.searchHidden.toggle()
+            callback: () => Toggles.search.toggle()
         },
         {
             keys: ['l'],
-            callback: () => Toggles.summaryHidden.toggle()
+            callback: () => Toggles.summary.toggle()
         },
         {
             keys: ['Enter'],
@@ -76,11 +76,11 @@ namespace Keyboard {
                 if (document.querySelector('.o-referenceModal')) {
                     hideModal()
                     toggleFullscreen()
-                } else if (!Toggles.searchHidden.state) {
-                    Toggles.searchHidden.state = true
+                } else if (Toggles.search.state) {
+                    Toggles.search.state = false
                     toggleFullscreen()
-                } else if (!Toggles.summaryHidden.state) {
-                    Toggles.summaryHidden.state = true
+                } else if (Toggles.summary.state) {
+                    Toggles.summary.state = false
                     toggleFullscreen()
                 }
             }

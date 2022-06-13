@@ -126,6 +126,7 @@ namespace ClassToggler {
 
 class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     private _unresolved = false
+    public invert = false
 
     constructor(
         public className: string,
@@ -139,7 +140,8 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     private _state: boolean
 
     private _getClassState() {
-        this._state = this.element.classList.contains(this.className)
+        if (this.invert) this._state = !this.element.classList.contains(this.className)
+        else this._state = this.element.classList.contains(this.className)
     }
 
     get element() {
@@ -155,14 +157,15 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
 
     set state(val: boolean) {
         if (this._state === val) return
+        console.log('setting', val, 'on toggle', this, 'on element', this._elementOrSelector)
         this._state = val
         if (this.onchange) this.onchange(this)
-        this.trigger('stateChange', val)
-        if (val) {
-            this.element && this.element.classList.add(this.className)
+        if (!this.invert) {
+            this.element && this.element.classList[val ? 'add' : 'remove'](this.className)
         } else {
-            this.element && this.element.classList.remove(this.className)
+            this.element && this.element.classList[val ? 'remove' : 'add'](this.className)
         }
+        this.trigger('stateChange', val)
     }
 
     flash(milis = 1000) {
@@ -176,10 +179,37 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
         if (this._unresolved) this._getClassState()
         this.state = !this.state
     }
+
+    private waitForClick() {
+        const bodyListener = (ev: MouseEvent) => {
+            this.state = false
+            removeListeners()
+        }
+        const elementListener = (ev: MouseEvent) => {
+            ev.stopPropagation()
+        }
+        const removeListeners = () => {
+            document.body.removeEventListener('click', bodyListener)
+            this.element && this.element.removeEventListener('click', elementListener)
+        }
+        if (this.state) {
+            document.body.addEventListener('click', bodyListener)
+            this.element && this.element.addEventListener('click', elementListener)
+        } else {
+            removeListeners()
+        }
+    }
+
+    private _waitForClick = () => this.waitForClick()
+
+    setDismissible(dissmisible: boolean) {
+        if (dissmisible) this.addEventListener('stateChange', this._waitForClick)
+        else this.removeEventListener('stateChange', this._waitForClick)
+    }
 }
 
 namespace Toggles {
-    export const summaryHidden = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
+    export const summary = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
         if (!t.state) {
             const summaryContainer = document.querySelector('custom-script-summary')
             if (!summaryContainer) return
@@ -190,17 +220,23 @@ namespace Toggles {
             }
         }
     })
+    summary.invert = true
+    summary.setDismissible(true)
 
-    export const searchHidden = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+    export const search = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
         if (!t.state) setTimeout(() => {
             (document.querySelector('.custom-script-search input.custom-search-result') as HTMLInputElement).focus()
         }, 100)
     })
+    search.invert = true
+    search.setDismissible(true)
 
-    const optionsHidden = new ClassToggler('custom-script-hidden', '.custom-script-additional-options')
-    export const optionsActive = new ClassToggler('active', 'a.custom-options-btn', t => {
-        optionsHidden.state = !t.state
+    const options = new ClassToggler('custom-script-hidden', '.custom-script-additional-options')
+    options.invert = true
+    export const optionsBtn = new ClassToggler('active', 'a.custom-options-btn', t => {
+        options.state = t.state
     })
+    optionsBtn.setDismissible(true)
 }
 
 function downloadFile(mimetype: string, name: string, data: string | Buffer) {

@@ -30,7 +30,7 @@ class SearchConstructor {
         closeBtn.className = 'custom-script-summary-close'
         closeBtn.innerHTML = SVGIcons.chevronUp
         this.searchContainer.prepend(closeBtn)
-        closeBtn.addEventListener('click', () => Toggles.searchHidden.state = true)
+        closeBtn.addEventListener('click', () => Toggles.search.state = false)
         this.searchResultsContainer = document.createElement('div')
         this.searchContainer.append(this.searchResultsContainer)
         document.querySelector('.order-number-container').after(this.searchContainer)
@@ -40,7 +40,7 @@ class SearchConstructor {
             if (ev.key === 'Escape') {
                 ev.preventDefault()
                 ev.stopImmediatePropagation()
-                Toggles.searchHidden.state = true
+                Toggles.search.state = false
             }
         })
         this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch())
@@ -56,7 +56,7 @@ class SearchConstructor {
                 this.searchResultsContainer.innerHTML = ''
                 this.searchResultsContainer.append(...resp)
             }
-            Toggles.searchHidden.state = false
+            Toggles.search.state = true
         })
     }
 
