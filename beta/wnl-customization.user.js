@@ -595,13 +595,18 @@ class ClassToggler extends CustomEventEmmiter {
         this._elementOrSelector = _elementOrSelector;
         this.onchange = onchange;
         this._unresolved = false;
+        this.invert = false;
+        this._waitForClick = () => this.waitForClick();
         if (this.element)
             this._getClassState();
         else
             this._unresolved = true;
     }
     _getClassState() {
-        this._state = this.element.classList.contains(this.className);
+        if (this.invert)
+            this._state = !this.element.classList.contains(this.className);
+        else
+            this._state = this.element.classList.contains(this.className);
     }
     get element() {
         if (typeof this._elementOrSelector === 'string') {
@@ -615,16 +620,17 @@ class ClassToggler extends CustomEventEmmiter {
     set state(val) {
         if (this._state === val)
             return;
+        console.log('setting', val, 'on toggle', this, 'on element', this._elementOrSelector);
         this._state = val;
         if (this.onchange)
             this.onchange(this);
-        this.trigger('stateChange', val);
-        if (val) {
-            this.element && this.element.classList.add(this.className);
+        if (!this.invert) {
+            this.element && this.element.classList[val ? 'add' : 'remove'](this.className);
         }
         else {
-            this.element && this.element.classList.remove(this.className);
+            this.element && this.element.classList[val ? 'remove' : 'add'](this.className);
         }
+        this.trigger('stateChange', val);
     }
     flash(milis = 1000) {
         if (!this._state) {
@@ -637,10 +643,36 @@ class ClassToggler extends CustomEventEmmiter {
             this._getClassState();
         this.state = !this.state;
     }
+    waitForClick() {
+        const bodyListener = (ev) => {
+            this.state = false;
+            removeListeners();
+        };
+        const elementListener = (ev) => {
+            ev.stopPropagation();
+        };
+        const removeListeners = () => {
+            document.body.removeEventListener('click', bodyListener);
+            this.element && this.element.removeEventListener('click', elementListener);
+        };
+        if (this.state) {
+            document.body.addEventListener('click', bodyListener);
+            this.element && this.element.addEventListener('click', elementListener);
+        }
+        else {
+            removeListeners();
+        }
+    }
+    setDismissible(dissmisible) {
+        if (dissmisible)
+            this.addEventListener('stateChange', this._waitForClick);
+        else
+            this.removeEventListener('stateChange', this._waitForClick);
+    }
 }
 var Toggles;
 (function (Toggles) {
-    Toggles.summaryHidden = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
+    Toggles.summary = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
         if (!t.state) {
             const summaryContainer = document.querySelector('custom-script-summary');
             if (!summaryContainer)
@@ -652,16 +684,22 @@ var Toggles;
             }
         }
     });
-    Toggles.searchHidden = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
+    Toggles.summary.invert = true;
+    Toggles.summary.setDismissible(true);
+    Toggles.search = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
         if (!t.state)
             setTimeout(() => {
                 document.querySelector('.custom-script-search input.custom-search-result').focus();
             }, 100);
     });
-    const optionsHidden = new ClassToggler('custom-script-hidden', '.custom-script-additional-options');
-    Toggles.optionsActive = new ClassToggler('active', 'a.custom-options-btn', t => {
-        optionsHidden.state = !t.state;
+    Toggles.search.invert = true;
+    Toggles.search.setDismissible(true);
+    const options = new ClassToggler('custom-script-hidden', '.custom-script-additional-options');
+    options.invert = true;
+    Toggles.optionsBtn = new ClassToggler('active', 'a.custom-options-btn', t => {
+        options.state = t.state;
     });
+    Toggles.optionsBtn.setDismissible(true);
 })(Toggles || (Toggles = {}));
 function downloadFile(mimetype, name, data) {
     let dataText;
@@ -733,7 +771,7 @@ class SearchConstructor {
         closeBtn.className = 'custom-script-summary-close';
         closeBtn.innerHTML = SVGIcons.chevronUp;
         this.searchContainer.prepend(closeBtn);
-        closeBtn.addEventListener('click', () => Toggles.searchHidden.state = true);
+        closeBtn.addEventListener('click', () => Toggles.search.state = false);
         this.searchResultsContainer = document.createElement('div');
         this.searchContainer.append(this.searchResultsContainer);
         document.querySelector('.order-number-container').after(this.searchContainer);
@@ -743,7 +781,7 @@ class SearchConstructor {
             if (ev.key === 'Escape') {
                 ev.preventDefault();
                 ev.stopImmediatePropagation();
-                Toggles.searchHidden.state = true;
+                Toggles.search.state = false;
             }
         });
         this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
@@ -759,7 +797,7 @@ class SearchConstructor {
                 this.searchResultsContainer.innerHTML = '';
                 this.searchResultsContainer.append(...resp);
             }
-            Toggles.searchHidden.state = false;
+            Toggles.search.state = true;
         });
     }
     interpretQuery(rawQuery) {
@@ -935,9 +973,9 @@ var Keyboard;
         {
             keys: ['q', '0', 'Escape'],
             callback: () => {
-                Toggles.optionsActive.state = false;
-                Toggles.searchHidden.state = true;
-                Toggles.summaryHidden.state = true;
+                Toggles.optionsBtn.state = false;
+                Toggles.search.state = false;
+                Toggles.summary.state = false;
             }
         },
         {
@@ -946,19 +984,19 @@ var Keyboard;
         },
         {
             keys: ['o'],
-            callback: () => Toggles.optionsActive.toggle()
+            callback: () => Toggles.optionsBtn.toggle()
         },
         {
             keys: ['s'],
-            callback: () => Toggles.optionsActive.flash(3000)
+            callback: () => Toggles.optionsBtn.flash(3000)
         },
         {
             keys: ['?', '/'],
-            callback: () => Toggles.searchHidden.toggle()
+            callback: () => Toggles.search.toggle()
         },
         {
             keys: ['l'],
-            callback: () => Toggles.summaryHidden.toggle()
+            callback: () => Toggles.summary.toggle()
         },
         {
             keys: ['Enter'],
@@ -993,12 +1031,12 @@ var Keyboard;
                     hideModal();
                     toggleFullscreen();
                 }
-                else if (!Toggles.searchHidden.state) {
-                    Toggles.searchHidden.state = true;
+                else if (Toggles.search.state) {
+                    Toggles.search.state = false;
                     toggleFullscreen();
                 }
-                else if (!Toggles.summaryHidden.state) {
-                    Toggles.summaryHidden.state = true;
+                else if (Toggles.summary.state) {
+                    Toggles.summary.state = false;
                     toggleFullscreen();
                 }
             }
@@ -2831,6 +2869,7 @@ function setupNotesBtns(app) {
     const addBtnToggle = new ClassToggler('active', addBtn, t => {
         addBtnContToggle.state = t.state;
     });
+    addBtnToggle.setDismissible(true);
     addBtn.addEventListener('click', () => addBtnToggle.toggle());
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn');
     const viewTagsToggle = new ClassToggler('custom-script-tags-visible');
@@ -2936,10 +2975,10 @@ function addSlideOptions(app) {
     slideOptionsContainer.append(additionalOptionsContainer);
     bookmarkBtn.after(slideOptionsContainer);
     additionalOptionsContainer.prepend(bookmarkBtn);
-    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsActive.toggle());
+    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsBtn.toggle());
     slideOptionsContainer.querySelector('.custom-search-btn').addEventListener('click', () => {
-        Toggles.optionsActive.state = false;
-        Toggles.searchHidden.toggle();
+        Toggles.optionsBtn.state = false;
+        Toggles.search.toggle();
     });
     slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
         if (app.options) {
@@ -2959,7 +2998,7 @@ function addSummary(app) {
     closeBtn.className = 'custom-script-summary-close';
     closeBtn.innerHTML = SVGIcons.chevronUp;
     summaryContainer.prepend(closeBtn);
-    closeBtn.addEventListener('click', () => Toggles.summaryHidden.state = true);
+    closeBtn.addEventListener('click', () => Toggles.summary.state = false);
     app.slideshowChapters.render(summaryContainer);
     document.querySelector('.order-number-container').after(summaryContainer);
 }
@@ -2999,7 +3038,7 @@ function addPageNumberContainer() {
         spans[0].appendChild(spans[i]);
     }
     document.querySelector('.order-number-container').after(spans[0]);
-    spans[0].addEventListener('click', () => Toggles.summaryHidden.toggle());
+    spans[0].addEventListener('click', () => Toggles.summary.toggle());
     return spans[0];
 }
 ///<reference path="globals.d.ts" />
@@ -3507,7 +3546,7 @@ a.custom-options-btn.active svg {transform: none;}
 
 .custom-notes-btns-container {
     flex-direction: row;
-    align-items: flex-end;
+    align-items: flex-start;
     flex-wrap: wrap-reverse;
     display: none!important;
 }
