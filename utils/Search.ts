@@ -8,7 +8,26 @@ type QueryInterpretation = {
     musntContain?: string[]
 }
 
-class SearchConstructor {
+type SearchEvents = {
+    dissmiss: {}
+    clear: {}
+    searchStart: QueryInterpretation
+    searchEnd: {}
+}
+
+class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
+    searchInput: HTMLInputElement
+    clearBtnToggle: ClassToggler
+    private static readonly searchMenu = `
+        <form class="custom-search-input-container">
+            <div>
+                <input class="custom-search-result" placeholder="Szukaj...">
+                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
+            </div>
+            <a class='custom-search-submit'>${SVGIcons.search}</a>
+        </form>
+        `
+
     private getSearchURL(q: string) {
         return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
     }
@@ -17,46 +36,75 @@ class SearchConstructor {
     searchContainer: HTMLDivElement
     searchResultsContainer: HTMLDivElement
 
-    constructor(private app: App) {}
+    constructor(private app: App) { super() }
 
-    addSearchContainer() {
+    getSearchContainer(dissmisible = false) {
         this.searchContainer = document.createElement('div')
-        this.searchContainer.className = 'custom-script-search custom-script-hidden'
-        this.searchContainer.innerHTML = `
-        <input class="custom-search-result" style="width: 80%;display: inline-block;">
-        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
-        `
-        const closeBtn = document.createElement('div')
-        closeBtn.className = 'custom-script-summary-close'
-        closeBtn.innerHTML = SVGIcons.chevronUp
-        this.searchContainer.prepend(closeBtn)
-        closeBtn.addEventListener('click', () => Toggles.search.state = false)
+        this.searchContainer.className = `custom-script-search ${dissmisible ? 'custom-script-hidden' : ''}`
+        this.searchContainer.innerHTML = SearchConstructor.searchMenu
         this.searchResultsContainer = document.createElement('div')
+        this.searchResultsContainer.className = 'custom-search-results'
         this.searchContainer.append(this.searchResultsContainer)
-        document.querySelector('.order-number-container').after(this.searchContainer)
-        const searchInput = this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
-        searchInput.addEventListener('change', () => this.performSearch())
-        searchInput.addEventListener('keyup', ev => {
-            if (ev.key === 'Escape') {
-                ev.preventDefault()
-                ev.stopImmediatePropagation()
-                Toggles.search.state = false
-            }
-        })
+        this.searchInput = this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
+        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
+            ev.preventDefault()
+            this.performSearch()
+        }) 
+        if (dissmisible) {
+            const closeBtn = document.createElement('div')
+            closeBtn.className = 'custom-script-summary-close'
+            closeBtn.innerHTML = SVGIcons.chevronUp
+            this.searchContainer.prepend(closeBtn)
+            closeBtn.addEventListener('click', () => this.trigger('dissmiss'))
+
+            this.searchInput.addEventListener('keyup', ev => {
+                if (ev.key === 'Escape') {
+                    ev.preventDefault()
+                    ev.stopImmediatePropagation()
+                    this.trigger('dissmiss')
+                }
+            })
+        }
         this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch())
+        this.setupClearBtn()
+        return this.searchContainer
     }
 
-    performSearch() {
+    private setupClearBtn() {
+        const clearBtn = this.searchContainer.querySelector('.custom-clear-search') as HTMLAnchorElement
+        this.clearBtnToggle = new ClassToggler('hidden', clearBtn)
+        this.clearBtnToggle.invert = true
+        clearBtn.addEventListener('click', ev => {
+            ev.preventDefault()
+            this.clearSearch()
+        })
+        this.searchInput.addEventListener('input', ev => {
+            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length
+            this.clearBtnToggle.state = showClearBtn
+        })
+    }
+
+    clearSearch() {
+        this.searchInput.value = ''
+        this.searchResultsContainer.innerHTML = ''
+        this.clearBtnToggle.state = false
+        this.searchInput.focus()
+        this.trigger('clear')
+    }
+
+    performSearch(query?: string) {
         if (!this.searchContainer) return
-        const q = (this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement).value
+        if (query) this.searchInput.value = query
+        const q = this.searchInput.value
         const interpretation = this.interpretQuery(q)
+        this.trigger('searchStart', interpretation)
         this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
         this.getSearchResponseHTML(interpretation).then(resp => {
             if (this.searchResultsContainer) {
                 this.searchResultsContainer.innerHTML = ''
                 this.searchResultsContainer.append(...resp)
             }
-            Toggles.search.state = true
+            this.trigger('searchEnd')
         })
     }
 
@@ -148,6 +196,13 @@ class SearchConstructor {
 
     async filterSearch(parsed: ParsedSearchResult[], q: QueryInterpretation): Promise<ParsedSearchResult[]> {
         let filtered = parsed
+        const hasSomePhrases = (result: ParsedSearchResult, phrases: string[]) => {
+            return phrases.map(toSearch => {
+                return Object.values(result.highlight).some(highlighted => {
+                    return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch))
+                })
+            })
+        }
         if (q.mustContain) {
             filtered = parsed.filter(result => {
                 return hasSomePhrases(result, q.mustContain).every(includes => includes)
@@ -163,14 +218,6 @@ class SearchConstructor {
             return (val1: T, val2: T) => predicate(val1) && !predicate(val2) ? -1 : 1
         }
         return (await this.getTagsAsResults(q)).concat(filtered)
-
-        function hasSomePhrases(result: ParsedSearchResult, phrases: string[]) {
-            return phrases.map(toSearch => {
-                return Object.values(result.highlight).some(highlighted => {
-                    return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch))
-                })
-            })
-        }
     }
 
     async getTagsAsResults(q: QueryInterpretation): Promise<ParsedSearchResult[]> {

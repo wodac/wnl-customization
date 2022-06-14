@@ -25,7 +25,8 @@ class App extends CustomEventEmmiter<AppEvents> {
     tools: Settings
     metadata: SlideshowChapterMetadata[]
     tabOpener: TabOpener
-    search: SearchConstructor
+    searchInSlideshow: SearchConstructor
+    searchInBottomContainer: SearchConstructor
     notesCollection: Notes.Collections.Presentation
     currentSlideNotes: Notes.Collections.Slide
     notesRendering: NotesRendering
@@ -37,6 +38,8 @@ class App extends CustomEventEmmiter<AppEvents> {
     originalTitle: string
     private _loaded = false
     sidenavObserver: MutationObserver
+    bottomContainer: HTMLDivElement
+    
     public get loaded(): boolean {
         return this._loaded
     }
@@ -69,13 +72,12 @@ class App extends CustomEventEmmiter<AppEvents> {
             background.classList.add("white-custom-background")
         }
 
-        this.search = new SearchConstructor(this)
+        this.searchInSlideshow = new SearchConstructor(this)
+        this.searchInBottomContainer = new SearchConstructor(this)
 
         this.lessonView = document.querySelector(SELECTORS.lessonView)
         if (this.lessonView !== null) {
-            this.addSliderContainer()
-            this.addSettingsContainer()
-            this.addToolsContainer()
+            this.addBottomContainer()
         }
 
         if (GM_getValue(`option_keyboardControl`)) Keyboard.setupControl(this)
@@ -84,10 +86,10 @@ class App extends CustomEventEmmiter<AppEvents> {
 
         addSlideOptions(this)
 
-        if (this.tools && this.tools.getValue('useNotes')) {
-            this.notesRendering.loadNotes()
-            this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
-        }
+        // if (this.tools && this.tools.getValue('useNotes')) {
+        //     this.notesRendering.loadNotes()
+        //     this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
+        // }
 
         this.addEventListener('slideChange', () => this.updateTabTitle())
 
@@ -98,6 +100,26 @@ class App extends CustomEventEmmiter<AppEvents> {
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload()
         })
+    }
+
+    private addBottomContainer() {
+        this.bottomContainer = document.createElement('div')
+        this.bottomContainer.className = CLASS_NAMES.bottomContainer
+        this.addSliderContainer()
+        // this.addTagListContainer()
+        this.bottomContainer.append(this.searchInBottomContainer.getSearchContainer(false))
+        this.addToolsContainer()
+        this.addSettingsContainer()
+        this.lessonView.append(this.bottomContainer)
+    }
+
+    addTagListContainer() {
+        const tagListContainer = document.createElement('div')
+        tagListContainer.style.order = '-1'
+        tagListContainer.innerHTML = `
+            <span class='metadata'>tagi</span>
+            <div class=${CLASS_NAMES.tagListContainer}></div>`
+        this.bottomContainer.append(tagListContainer)
     }
 
     setupObserveSidenav() {
@@ -141,7 +163,8 @@ class App extends CustomEventEmmiter<AppEvents> {
         if (test) return
         const sliderContainer = document.createElement('div');
         sliderContainer.innerHTML = zoomSliderHTML;
-        this.lessonView.appendChild(sliderContainer);
+        sliderContainer.className = CLASS_NAMES.zoomSliderContainer
+        this.bottomContainer.appendChild(sliderContainer);
         sliderContainer.querySelector(`input.${CLASS_NAMES.fontSizeInput}`)
             .addEventListener('input', e => (document.querySelector(`.${CLASS_NAMES.fontSizeLabel}`) as HTMLElement).innerText = `${(e.target as HTMLInputElement).value}%`
             );
@@ -163,7 +186,7 @@ class App extends CustomEventEmmiter<AppEvents> {
         toolsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
             <div></div>`;
-        this.lessonView.appendChild(toolsContainer);
+        this.bottomContainer.appendChild(toolsContainer);
         toolsContainer.append(this.tools.render())
     }
 
@@ -175,7 +198,7 @@ class App extends CustomEventEmmiter<AppEvents> {
         optionsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
             <div></div>`;
-        this.lessonView.appendChild(optionsContainer);
+        this.bottomContainer.appendChild(optionsContainer);
         optionsContainer.append(this.options.render())
         const pIncr = this.options.getSetting('percentIncrease') as NumberSetting
         pIncr.lowerLimit = 60

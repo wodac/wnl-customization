@@ -29,7 +29,10 @@ const slideshowOptions = `
 function addSlideOptions(app: App) {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
-    app.search.addSearchContainer()
+    const searchContainer = app.searchInSlideshow.getSearchContainer(true)
+    app.searchInSlideshow.addEventListener('dissmiss', () => Toggles.search.state = false)
+    app.searchInSlideshow.addEventListener('searchEnd', () => app.searchInSlideshow.searchInput.focus())
+    document.querySelector('.order-number-container').after(searchContainer)
     const slideOptionsContainer = document.createElement('div')
     slideOptionsContainer.innerHTML = slideshowOptionsBtn
     const additionalOptionsContainer = document.createElement('div')

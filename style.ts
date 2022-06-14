@@ -10,6 +10,21 @@ html {
     scroll-behavior: smooth;
 }
 
+.${CLASS_NAMES.bottomContainer} {    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.${CLASS_NAMES.bottomContainer} > div {
+    border: 1px solid rgb(239, 240, 243);
+    padding: 15px;
+    flex-grow: 1;
+    flex-basis: 45%;
+}
+
 .questionsList__paginationContainer {
     /* position: absolute!important; */
     top: 0;
@@ -169,10 +184,10 @@ body.${BODY_CLASS_NAMES.hideCursor} {
 .custom-script-summary{
     left: 10px;
 }
-.custom-script-search {
+.slideshow-container .custom-script-search {
     right: 10px;
 }
-.custom-script-summary, .custom-script-search, 
+.custom-script-summary, .slideshow-container .custom-script-search, 
 .custom-script-notes-column {
     position: absolute;
     top: 50px;
@@ -190,6 +205,54 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     min-width: 11rem;
 }
 
+.custom-script-search {
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.custom-script-search>.custom-search-results {
+    height: 100%;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+.custom-search-input-container {
+    display: flex;
+    align-items: center;
+}
+
+a.custom-clear-search {
+    position: absolute;
+    display: flex;
+    right: 0.6rem;
+    color: #555;
+}
+
+.custom-search-input-container a.custom-search-submit {
+    display: flex;
+    padding: 0 0.4rem;
+}
+
+.custom-search-input-container div {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    position: relative;
+}
+
+.custom-search-input-container input {
+    width: 100%;
+    border-radius: 0;
+    border: 0;
+    background: #eff0f3;
+}
+
+.slideshow-container .custom-search-input-container input {
+    border-radius: 5px;
+    background: white;
+    border: solid 1px #666;
+}
+
 .custom-search-result {
     margin: 0.2rem;
     background: white;
@@ -201,9 +264,20 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     word-break: break-word;
 }
 
+.${CLASS_NAMES.bottomContainer} .custom-search-result {
+    background: #eff0f3;
+}
+
 .custom-search-result em {
     font-weight: 900;
     padding-right: 0.2rem;
+}
+
+.${CLASS_NAMES.tagListContainer} {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
 }
 
 a.custom-script-summary-link {
@@ -303,13 +377,6 @@ a.custom-options-btn.active svg {transform: none;}
     height: 0.8rem;
     background: var(--color-primary-text);
     border-radius: 0.4rem;
-}
-
-.${CLASS_NAMES.zoomSliderContainer}, .${CLASS_NAMES.settingsContainer}, 
-.${CLASS_NAMES.toolsContainer} {
-    margin-top: 1rem; 
-    border: 1px solid rgb(239, 240, 243); 
-    padding: 15px; 
 }
 
 .custom-notes-btns-container {

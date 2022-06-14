@@ -7,7 +7,7 @@ const tagContainerHTML = `
         <div class='custom-tags-container'> 
             <a class='custom-new-tag custom-tag'>${SVGIcons.plusCircle}</a>  
         </div>`
-const notesBtnsHTML =`
+const notesBtnsHTML = `
         <div class='custom-notes-btns-container'>
             <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
                 <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
@@ -85,14 +85,13 @@ class NotesRendering {
     async loadNotes() {
         const presentationMetadata = this.app.presentationMetadata
         this.app.notesCollection = await Notes.Collections.Presentation.createAsync(presentationMetadata.screenID, presentationMetadata.lessonID)
-        if (this.app.tools && this.app.tools.getValue('useNotes')) {
-            this.setupTagsNamesAndColors()
-            return this.renderNotes(this.app.slideNumber)
-        }
+        this.setupTagList()
+        return this.renderNotes(this.app.slideNumber)
     }
 
-    async setupTagsNamesAndColors() {
+    async setupTagList() {
         const tags = await this.app.notesCollection.getAllTagNames()
+        this.app.addTagListContainer()
         const tagToOption = (tag: Notes.RecordTypes.Tag): HTMLOptionElement => {
             const opt = document.createElement('option')
             opt.value = tag.name
@@ -100,15 +99,31 @@ class NotesRendering {
             opt.innerHTML = tag.name
             return opt
         }
+        const tagToTagListElem = (tag: Notes.RecordTypes.Tag) => {
+            const el = document.createElement('a')
+            el.className = 'custom-tag'
+            el.innerText = tag.name
+            el.style.background = tag.color
+            el.style.color = getForegroundColor(tag.color)
+            el.addEventListener('click', ev => {
+                ev.preventDefault()
+                this.app.searchInBottomContainer.performSearch(`"${tag.name}"`)
+            })
+            return el
+        }
         const suggestions = tags.map(tagToOption)
+        const tagListElems = tags.map(tagToTagListElem)
         const suggestionsContainer = document.createElement('datalist')
+        const tagListContainer = document.querySelector(`.${CLASS_NAMES.tagListContainer}`)
         suggestionsContainer.id = 'custom-tags-list'
         suggestionsContainer.append(...suggestions)
+        tagListContainer.append(...tagListElems)
         document.body.append(suggestionsContainer)
 
         this.app.notesCollection.addEventListener('changedTags', desc => {
             if (desc.added && desc.added.length) {
                 suggestionsContainer.append(...desc.added.map(tagToOption))
+                tagListContainer.append(...desc.added.map(tagToTagListElem))
             }
         })
     }

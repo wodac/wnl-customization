@@ -154,6 +154,9 @@ interface DividerInit {
 
 class DividerSetting extends SettingElement<undefined> {
     element: HTMLElement
+    static index = 0
+
+    private readonly index = DividerSetting.index++
 
     constructor(parent: Settings) {
         super({
@@ -171,7 +174,7 @@ class DividerSetting extends SettingElement<undefined> {
     }
 
     renderSimple() {
-        return '-----------------'
+        return '-'.repeat(15+this.index)
     }
 }
 

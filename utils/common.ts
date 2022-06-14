@@ -64,7 +64,6 @@ const SVGIcons = {
 }
 
 const zoomSliderHTML = `
-    <div class='${CLASS_NAMES.zoomSliderContainer}'>
         <label class="metadata">POWIĘKSZENIE</label>
         <div style="text-align: right;">
             <input class="${CLASS_NAMES.fontSizeInput}" 
@@ -73,8 +72,7 @@ const zoomSliderHTML = `
             <a class="${CLASS_NAMES.fontSizeInput}-decrease">${SVGIcons.zoomOut}</a>
             <span class="${CLASS_NAMES.fontSizeLabel}">120%</span>
             <a class="${CLASS_NAMES.fontSizeInput}-increase">${SVGIcons.zoomIn}</a>
-        </div>
-    </div>`
+        </div>`
 
 function toggleBodyClass(className: string, isOn: boolean) {
     let body = document.body
@@ -126,7 +124,7 @@ namespace ClassToggler {
 }
 
 class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
-    private _unresolved = false
+    private _unresolved = true
     public invert = false
 
     constructor(
@@ -135,14 +133,15 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
         public onchange?: (toggler: ClassToggler) => any
     ) {
         super()
-        if (this.element) this._getClassState()
-        else this._unresolved = true
+        // if (this.element) this._getClassState()
+        // else this._unresolved = true
     }
     private _state: boolean
 
     private _getClassState() {
         if (this.invert) this._state = !this.element.classList.contains(this.className)
         else this._state = this.element.classList.contains(this.className)
+        this._unresolved = false
     }
 
     get element() {
@@ -153,12 +152,13 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     }
 
     get state() {
+        if (this._unresolved) this._getClassState()
         return this._state
     }
 
     set state(val: boolean) {
+        if (this._unresolved) this._getClassState()
         if (this._state === val) return
-        console.log('setting', val, 'on toggle', this, 'on element', this._elementOrSelector)
         this._state = val
         if (this.onchange) this.onchange(this)
         if (!this.invert) {
@@ -177,7 +177,6 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     }
 
     toggle() {
-        if (this._unresolved) this._getClassState()
         this.state = !this.state
     }
 
@@ -225,8 +224,8 @@ namespace Toggles {
     summary.setDismissible(true)
 
     export const search = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
-        if (!t.state) setTimeout(() => {
-            (document.querySelector('.custom-script-search input.custom-search-result') as HTMLInputElement).focus()
+        if (t.state) setTimeout(() => {
+            (document.querySelector('.slideshow-container input.custom-search-result') as HTMLInputElement).focus()
         }, 100)
     })
     search.invert = true

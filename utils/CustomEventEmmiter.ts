@@ -29,7 +29,7 @@ class CustomEventEmmiter<Events extends EventsInterface> {
     removeEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>) {
         if (!this.listeners[eventName]) return
         const i = this.listeners[eventName].findIndex(cb => cb == listener)
-        console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this)
+        // console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this)
         if (i >= 0) {
             const toRemove = this.listeners[eventName].splice(i, 1)
             return toRemove[0]

@@ -1,13 +1,15 @@
 declare const enum CLASS_NAMES {
     optionContainer = 'custom-script-option-container',
     pageNumberContainer = 'custom-script-page-number-container',
-    currentChapterPage = 'current-number', 
+    currentChapterPage = 'current-number',
     chapterLength = 'n-of-pages',
     fontSizeLabel = 'custom-script-font-size-label',
     fontSizeInput = 'custom-script-font-size-input',
     zoomSliderContainer = 'custom-script-zoom-slider-container',
-    settingsContainer = 'custom-script-settings-container',    
-    toolsContainer = 'custom-script-tools-container'
+    settingsContainer = 'custom-script-settings-container',
+    toolsContainer = 'custom-script-tools-container',
+    bottomContainer = "custom-script-bottom-container",
+    tagListContainer = "custom-tagListContainer"
 }
 
 declare const enum BODY_CLASS_NAMES {

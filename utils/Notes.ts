@@ -563,19 +563,23 @@ namespace Notes {
 
             private _tags: RecordTypes.Tag[] = []
 
+            static readonly dbVersion = 6
+
             private static setupDB(event: IDBVersionChangeEvent, db: IDBDatabase) {
                 let notesStore: IDBObjectStore, tagsStore: IDBObjectStore
-                if (event.oldVersion !== event.newVersion) {
+                const transaction = (event.target as any).transaction as IDBTransaction
+                try {
                     notesStore = db.createObjectStore(Presentation.NOTES_STORE, { keyPath: 'id' })
-                    tagsStore = db.createObjectStore(Presentation.TAGS_STORE, { keyPath: 'name' })
-                } else {
-                    const transaction = (event.target as any).transaction as IDBTransaction
+                } catch {
                     notesStore = transaction.objectStore(Presentation.NOTES_STORE)
+                }
+                try {
+                    tagsStore = db.createObjectStore(Presentation.TAGS_STORE, { keyPath: 'name' })
+                } catch {
                     tagsStore = transaction.objectStore(Presentation.TAGS_STORE)
                 }
                 Presentation.generateIndexes(notesStore, Presentation.NOTES_INDEXES)
                 Presentation.generateIndexes(tagsStore, Presentation.TAGS_INDEXES)
-                // notesStore.createIndex('id', 'id', { unique: true })
                 return notesStore
             }
 
@@ -591,7 +595,7 @@ namespace Notes {
             }
 
             static async createAsync(screenid: number, lessonID?: number) {
-                const db = await getIndexedDB("NotesDatabase", 5, Presentation.setupDB)
+                const db = await getIndexedDB("NotesDatabase", Presentation.dbVersion, Presentation.setupDB)
                 const notesCollection = new Presentation(db, screenid, lessonID)
                 return notesCollection
             }
