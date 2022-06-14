@@ -4,7 +4,7 @@
 // @version      1.10.5
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
-// @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
+// @updateURL    https://wodac.github.io/wnl-customization/dist/wnl-customization.user.js
 // @match        https://lek.wiecejnizlek.pl/*
 // @connect      https://lek.wiecejnizlek.pl/*
 // @icon         https://www.google.com/s2/favicons?domain=wiecejnizlek.pl
