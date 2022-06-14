@@ -28,9 +28,9 @@ interface SearchResultSchema {
             [k: string]: unknown;
         };
         slideshow: {
-            background_url: string;
-            width: number;
-            height: number;
+            background_url?: string;
+            width?: number;
+            height?: number;
             order_number: number;
             [k: string]: unknown;
         };
@@ -38,9 +38,9 @@ interface SearchResultSchema {
     };
     scout_metadata: {
         highlight: {
-            "snippet.content": string[];
-            "snippet.subheader": string[];
-            "snippet.header": string[];
+            "snippet.content"?: string[];
+            "snippet.subheader"?: string[];
+            "snippet.header"?: string[];
         };
         [k: string]: unknown;
     };
@@ -56,10 +56,14 @@ interface SearchResults {
 
 interface ParsedSearchResult {
     highlight: SearchResultSchema["scout_metadata"]["highlight"],
-    details: SearchResultSchema["snippet"],
-    context: SearchResultSchema["context"],
+    details: Partial<SearchResultSchema["snippet"]>,
+    context: Partial<SearchResultSchema["context"]>,
     /** used for dynamic links */
-    id: SearchResultSchema["id"]
+    id?: SearchResultSchema["id"]
+}
+
+type Mutable<T> = {
+    -readonly [K in keyof T]: T[K]
 }
 
 interface SlideshowChapterMetadata {

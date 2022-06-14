@@ -1,238 +1,169 @@
-let suggestBreakTimer: NodeJS.Timeout, obs: MutationObserver, noteTarget: HTMLElement
-function startBreakTimer() {
-    clearTimeout(suggestBreakTimer)
-    console.log('starting suggestBreak timer...')
-    suggestBreakTimer = setTimeout(() => {
-        alert('Pora na przerwę 🔔')
-    }, 1000 * 60 * 7)
-}
-
-const notesBtnsContainer = `
-    <div class='custom-notes-btns-container'>
-        <a class="custom-notes-view-btn custom-script-slideshow-btn wnl-rounded-button">
-            <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki">
-                ${svgIcons.stickies}
-            </div>
-            <div class="a-icon -x-small custom-while-active" title="Ukryj notatki">
-                ${svgIcons.stickiesFill}
-            </div>
-        </a>
-        <div class='custom-notes-additional-btns hidden'>
-            <a class="custom-add-note-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small" title="Dodaj notatkę">
-                    ${svgIcons.plusSquare}
-                </div>
-            </a>
-            <a class="custom-clear-notes-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small" title="Usuń wszystkie notatki">
-                    ${svgIcons.eraserFill}
-                </div>
-            </a>
-            <a class="custom-notes-view-type-btn custom-script-slideshow-btn wnl-rounded-button">
-                <div class="a-icon -x-small custom-while-inactive" title="Pokaż notatki w kolumnie">
-                    ${svgIcons.layoutChaotic}
-                </div>
-                <div class="a-icon -x-small custom-while-active" title="Pokaż notatki na slajdzie">
-                    ${svgIcons.viewStack}
-                </div>
-            </a>
-        </div>
-    </div>`
-
-
-async function loadNotes() {
-    const appDiv = document.querySelector(SELECTORS.appDiv)
-    notesCollection = await PresentationNotesCollection.createAsync(presentationScreenID)
-    if (tools && tools.state.useNotes.value) {
-        const slideNumber = appDiv.attributes.getNamedItem('slide').value
-        return renderNotes(parseInt(slideNumber))
-    }
-}
-
-function renderNotes(slideNumber: number) {
-    if (currentSlideNotes)
-        currentSlideNotes.commitChanges()
-    if (tools && tools.state.useNotes.value && notesCollection) {
-        if (noteTarget) noteTarget.innerHTML = ''
-        const currentSlide = document.querySelector(SELECTORS.currentSlideContainer)
-        const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay')
-        if (!noteTarget && notesOverlayElem) return
-        return notesCollection.getNotesBySlide(slideNumber).then(notes => {
-            currentSlideNotes = notes
-            console.log({ currentSlideNotes })
-            currentSlideNotes.onchange = slideNotesChanged
-            return addNoteElems(notes.notes)
-        })
-    }
-}
-
-function slideNotesChanged(change: SlideNotesChange) {
-    if (change.added) {
-        addNoteElems(change.added)
-    }
-}
-
-function addNoteElems(notes: Note[]): HTMLDivElement[] {
-    let parent: HTMLElement
-    if (noteTarget) {
-        parent = noteTarget
-    } else {
-        const currentSlide = document.querySelector(SELECTORS.currentSlideContainer)
-        let notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay') as HTMLElement
-        if (!notesOverlayElem) {
-            notesOverlayElem = document.createElement('div') as HTMLElement
-            notesOverlayElem.classList.add('custom-notes-overlay')
-        }
-        currentSlide.prepend(notesOverlayElem)
-        parent = notesOverlayElem
-    }
-
-    return notes.map(note => {
-        return note.render(parent)
-    })
-}
-
-const addNoteBtnHandler = (event: MouseEvent) => {
-    if (currentSlideNotes) {
-        const slide = document.querySelector(SELECTORS.currentSlideContainer) as HTMLElement
-        slide.style.cursor = `copy`
-        slide.addEventListener('click', event => {
-            event.preventDefault()
-            event.stopImmediatePropagation()
-            slide.style.cursor = ''
-            const slideRect = slide.getBoundingClientRect()
-            console.log({ event, slideRect })
-            const position: Position = {
-                x: (event.x - slideRect.x) / slideRect.width,
-                y: (event.y - slideRect.y) / slideRect.height
-            };
-            const textContext = (event.target as HTMLElement).innerText
-            const newNote = currentSlideNotes.addNote({
-                position, content: '', textContext,
-                presentationTitle: presentationName,
-                slideTitle: currentSlideTitle
-            })
-            newNote.element.click()
-        }, { once: true })
-    }
-}
-
-function addNotesColumn() {
-    const notesContainer = document.createElement('div')
-    notesContainer.classList.add('custom-script-notes-column', 'custom-script-hidden')
-    document.querySelector('.order-number-container').after(notesContainer)
-    return notesContainer
-}
-
+///<reference path="../App.ts" />
+///<reference path="NotesRendering.ts" />
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible')
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column')
 
-toRunOnLoaded.push(
-    () => {
-        obs = onAttributeChange(document.querySelector(SELECTORS.appDiv), 'slide', () => {
-            startBreakTimer()
-        })
-        tools && !tools.state.suggestBreak.value && obs.disconnect()
+let uploadInput: HTMLInputElement
 
-        if (tools && tools.state.useNotes.value) {
-            addNotesColumn()
-            setupNotesBtns()
-        }
-    }
-)
-
-tools = new Options([
+const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
     {
         name: "suggestBreak",
-        desc: state => `${getCheckboxEmoji(state.value)}🔔 Sugeruj przerwę przy dłuższym braku aktywności`,
-        defaultValue: false,
-        callback: function (state) {
-            return { value: !state.value }
+        type: SettingType.Checkbox,
+        desc: "Sugeruj przerwę przy dłuższym braku aktywności",
+        icon: {
+            emoji: '🔔',
+            html: SVGIcons.bell
         },
-        update: state => {
-            console.log('update suggestBreak', { state, obs })
-            if (!obs) return
+        defaultValue: false,
+        onchange: function (state) {
+            if (!app.breakTimer)
+                app.breakTimer = new BreakTimer(app)
             if (state.value) {
-                obs.observe(document.querySelector(SELECTORS.appDiv), { attributes: true })
-                startBreakTimer()
+                app.breakTimer.startListening()
+                app.breakTimer.start()
             } else {
-                obs.disconnect()
-                if (suggestBreakTimer) clearTimeout(suggestBreakTimer)
+                app.breakTimer.endListening()
             }
+            this.parent.getSetting('breakTime').disabled = !state.value
+        },
+        onrender: () => {
+            app.addEventListener('loaded',
+                () => {
+                    app.breakTimer = new BreakTimer(app)
+                }
+            );
         }
     },
     {
-        name: "useNotes",
-        desc: state => `${getCheckboxEmoji(state.value)}📝 Używaj notatek`,
-        defaultValue: false,
-        callback: function (state) {
-            return { value: !state.value }
+        name: 'breakTime',
+        desc: "Czas przerwy (w minutach)",
+        type: SettingType.Integer,
+        defaultValue: 7,
+        icon: {
+            html: SVGIcons.stopwatch,
+            emoji: '⌚'
         },
-        update: state => {
-            toggleBodyClass('custom-script-use-notes', state.value)
-            if (presentationScreenID && state.value && !notesCollection) {
-                addNotesColumn()
-                setupNotesBtns()
-                loadNotes()
+        onchange: function (event) {
+            if (app.breakTimer.timer) {
+                app.breakTimer.start()
             }
         },
-        init: state => {
+        isInRange: val => val > 2 && val < 200
+    },
+    {
+        name: "useNotes",
+        type: SettingType.Checkbox,
+        desc: "Używaj notatek i tagów",
+        icon: {
+            emoji: '📝',
+            html: SVGIcons.stickies
+        },
+        defaultValue: false,
+        onchange: function (state) {
+            toggleBodyClass('custom-script-use-notes', state.value)
+            if (app.notesRendering && app.presentationMetadata.screenID && state.value && !app.notesCollection) {
+                app.notesRendering.addNotesColumn()
+                setupNotesBtns(app)
+                app.notesRendering.loadNotes()
+                // if (isMobile()) {
+                //     viewNotesBtnToggle.state = true
+                //     viewTagsBtnToggle.state = true
+                // }
+            }
+            this.parent.getSetting('exportNotes').disabled = !state.value
+            this.parent.getSetting('importNotes').disabled = !state.value
+        },
+        onrender: function () {
+            const onLoaded = () => {
+                if (this.value) {
+                    app.notesRendering.addNotesColumn()
+                    setupNotesBtns(app)
+                }
+            }
+            if (app.loaded) onLoaded()
+            else app.addEventListener('loaded', onLoaded)
         },
     },
     {
         name: "exportNotes",
-        desc: "📤 Eksportuj notatki",
-        type: 'button',
-        callback: () => {
-            notesCollection.exportNotes().then(notes => {
-                console.log({ notes })
-                downloadFile('application/json', `${presentationName}-notes.json`, JSON.stringify(notes))
+        desc: "Eksportuj notatki",
+        icon: {
+            emoji: '📤',
+            html: SVGIcons.export
+        },
+        type: SettingType.Button,
+        onclick: () => {
+            if (!app.notesCollection) return
+            app.notesCollection.exportNotes().then(notes => {
+                //console.log({ notes })
+                downloadFile('application/json', `${app.presentationMetadata.presentationName}-notes.json`, JSON.stringify(notes))
             })
         }
     },
     {
         name: "importNotes",
-        desc: "📥 Importuj notatki",
-        type: 'button',
-        callback: (state) => {
-            const uploadInput = state.uploadInput as HTMLInputElement
+        desc: "Importuj notatki",
+        icon: {
+            emoji: '📥',
+            html: SVGIcons.import
+        },
+        type: SettingType.Button,
+        onclick: function () {
             uploadInput.addEventListener('change', (ev) => {
-                console.log({ ev })
+                if (!app.notesCollection) return
                 if (uploadInput.files.length) {
                     const file = uploadInput.files.item(0)
                     file.text().then(
-                        imported => notesCollection.importNotes(JSON.parse(imported))
+                        imported => app.notesCollection.importNotes(JSON.parse(imported))
                     ).then(() => unsafeWindow.location.reload())
                 }
             }, { once: true })
             uploadInput.click()
         },
-        init: (state) => {
-            const uploadInput = document.createElement('input')
+        onrender: function () {
+            uploadInput = document.createElement('input')
             uploadInput.type = 'file'
             uploadInput.name = 'importNotes'
             uploadInput.accept = 'application/json'
             uploadInput.style.display = 'none'
             document.body.appendChild(uploadInput)
-            state.uploadInput = uploadInput
         }
     }
-], `.${CLASS_NAMES.toolsContainer}`)
+]
 
-function setupNotesBtns() {
-    const addNoteBtn = document.querySelector('.custom-add-note-btn')
-    addNoteBtn.addEventListener('click', addNoteBtnHandler)
+function setupNotesBtns(app: App) {
+    createNotesBtnsAndTags()
+    const addBtn = document.querySelector('.custom-add-btn') as HTMLElement
+    const addBtnContToggle = new ClassToggler('active', '.custom-add-note-btns')
+    const addBtnToggle = new ClassToggler('active', addBtn, t => {
+        addBtnContToggle.state = t.state
+    })
+    addBtnToggle.setDismissible(true)
+    addBtn.addEventListener('click', () => addBtnToggle.toggle())
+
+    const viewTagsBtn = document.querySelector('.custom-tags-view-btn') as HTMLElement
+    const viewTagsToggle = new ClassToggler('custom-script-tags-visible')
+    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state)
+    viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle())
+
+    const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn')
+    const onAddTag = () => {
+        addBtnToggle.state = false
+        viewTagsBtnToggle.state = true
+        addTag()
+    }
+    addTagBtns.forEach(btn => btn.addEventListener('click', onAddTag))
+    Keyboard.registerShortcut({ keys: ['t'], callback: onAddTag })
 
     const clearNotesBtn = document.querySelector('.custom-clear-notes-btn')
     clearNotesBtn.addEventListener('click', () => {
-        if (currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${currentSlideNotes.notes.length}) notatki ze slajdu ${currentSlideNotes.metadata.slide}?`))
-            currentSlideNotes.removeAllNotes()
+        if (app.currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${app.currentSlideNotes.notes.length}) notatki ze slajdu ${app.currentSlideNotes.metadata.slide}?`))
+            app.currentSlideNotes.removeAllNotes()
     })
 
-    
-    let viewNotesBtnToggle: ClassToggler
+
     const viewNotesBtn = document.querySelector('.custom-notes-view-btn')
-    const hiddenBtnsToggle = new ClassToggler('hidden', '.custom-notes-additional-btns')
+    const hiddenBtnsToggle = new ClassToggler('inactive', '.custom-notes-additional-btns')
 
     const viewTypeBtn = document.querySelector('.custom-notes-view-type-btn') as HTMLElement
     const viewTypeBtnToggle = new ClassToggler('active', viewTypeBtn, t => {
@@ -247,24 +178,44 @@ function setupNotesBtns() {
             noteTarget = null
             document.querySelectorAll('.custom-notes-overlay').forEach(el => el.remove())
         }
-        currentSlideNotes.commitChanges().then(() => {
-            renderNotes(currentSlideNumber)
+        app.currentSlideNotes.commitChanges().then(() => {
+            app.notesRendering.renderNotes(app.presentationMetadata.slideNumber)
         })
     })
-    viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
+    const viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
         hiddenBtnsToggle.state = !t.state
         notesOverlayToggle.state = !viewTypeBtnToggle.state && t.state
         noteColumnToggle.state = !(viewTypeBtnToggle.state && t.state)
     })
 
-    viewNotesBtnToggle.state = tools && tools.state.useNotes.value
+    const addNoteBtn = document.querySelector('.custom-add-note-btn') as HTMLAnchorElement
+    addNoteBtn.addEventListener('click', (ev: MouseEvent) => {
+        addBtnToggle.state = false
+        viewNotesBtnToggle.state = true
+        app.notesRendering.addNoteBtnHandler(ev)
+    })
+
+    viewNotesBtnToggle.state = app.tools && app.tools.getValue('useNotes')
     viewNotesBtn.addEventListener('click', () => viewNotesBtnToggle.toggle())
-    registerKeyboardShortcut({
+    Keyboard.registerShortcut({
         keys: ['n'], callback: () => viewNotesBtnToggle.toggle()
     })
     viewTypeBtn.addEventListener('click', () => viewTypeBtnToggle.toggle())
-    registerKeyboardShortcut({
+    Keyboard.registerShortcut({
         keys: ['v'], callback: () => viewTypeBtnToggle.toggle()
     })
+
+    if (isMobile()) {
+        viewNotesBtnToggle.state = true
+        viewTagsBtnToggle.state = true
+    }
+
+    function addTag() {
+        app.currentSlideNotes.addTag({
+            content: '', color: app.notesRendering.getRandomTagColor(),
+            presentationTitle: app.presentationMetadata.presentationName,
+            slideTitle: app.presentationMetadata.slideTitle
+        })
+    }
 }
 

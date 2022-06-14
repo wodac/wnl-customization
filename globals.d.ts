@@ -16,12 +16,19 @@ interface TabObject {
     [key: string]: any
 }
 interface StoredValueType {
+    'openInTab': {
+        lessonID: number
+        screenID: number
+        slide: number
+        currentTab: number
+    }
     'option_smoothScroll': boolean
     'option_changeTitle': boolean
     'option_keyboardControl': boolean
     [key: `option_${string}`]: any
     [key: `option_is${string}`]: boolean
     [key: `option_${string}Number`]: number
+    [key: string]: any
 }
 /**
  * @param name is the name of the observed variable.
@@ -43,7 +50,7 @@ declare let GM_getTab: ( callback: (tab: TabObject) => any ) => any
 /**
  * Get all tab objects as a hash to communicate with other script instances.
  */
-declare let GM_getTabs: ( callback: (tabs: TabObject[]) => any ) => any
+declare let GM_getTabs: ( callback: (tabs: TabObject) => any ) => any
 declare let GM_setValue: <K extends keyof StoredValueType> (name: K, value: StoredValueType[K]) => any
 /**
  * Copies data into the clipboard. The parameter 'info' can be an object like "{ type: 'text', mimetype: 'text/plain'}" or just a string expressing the type ("text" or "html").
@@ -117,3 +124,21 @@ type XHROnLoadCallback = (xhrResult: {
     responseXML: XMLDocument //the response data as XML document
     responseText: string //the response data as plain string
 }) => any
+
+/**
+ * Open a new tab with this url. The options object can have the following properties:
+ * - active decides whether the new tab should be focused,
+ * - insert that inserts the new tab after the current one,
+ * - setParent makes the browser re-focus the current tab on close and
+ * - incognito makes the tab being opened inside a incognito mode/private mode window.
+ * Otherwise the new tab is just appended. 
+ * loadInBackground has the opposite meaning of active and was added to achieve Greasemonkey 3.x compatibility.
+ * If neither active nor loadInBackground is given, then the tab will not be focused. 
+ * This function returns an object with the function close, the listener onclose and a flag called closed.
+ */
+declare let GM_openInTab: (url: string, options?: {
+    active?: boolean
+    insert?: boolean
+    setParent?: boolean
+    incognito?: boolean
+} | boolean) => { close: () => void }
