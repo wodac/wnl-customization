@@ -116,9 +116,13 @@ class App extends CustomEventEmmiter<AppEvents> {
     addTagListContainer() {
         const tagListContainer = document.createElement('div')
         tagListContainer.style.order = '-1'
+        tagListContainer.className = CLASS_NAMES.tagListContainer
         tagListContainer.innerHTML = `
-            <span class='metadata'>tagi</span>
-            <div class=${CLASS_NAMES.tagListContainer}></div>`
+            <span class='custom-heading'>
+                ${SVGIcons.tags}
+                <span class='metadata'>tagi</span>
+            </span>
+            <div class=${CLASS_NAMES.tagList}></div>`
         this.bottomContainer.append(tagListContainer)
     }
 
@@ -184,7 +188,10 @@ class App extends CustomEventEmmiter<AppEvents> {
         const toolsContainer = document.createElement('div');
         toolsContainer.classList.add(CLASS_NAMES.toolsContainer);
         toolsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
+            <span class='custom-heading'>
+                ${SVGIcons.tools}
+                <span class="metadata">narzędzia</span>
+            </span>
             <div></div>`;
         this.bottomContainer.appendChild(toolsContainer);
         toolsContainer.append(this.tools.render())
@@ -196,7 +203,10 @@ class App extends CustomEventEmmiter<AppEvents> {
         const optionsContainer = document.createElement('div');
         optionsContainer.classList.add(CLASS_NAMES.settingsContainer);
         optionsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <span class='custom-heading'>
+                ${SVGIcons.gear}
+                <span class="metadata">ustawienia</span>
+            </span>
             <div></div>`;
         this.bottomContainer.appendChild(optionsContainer);
         optionsContainer.append(this.options.render())

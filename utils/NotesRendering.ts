@@ -114,7 +114,7 @@ class NotesRendering {
         const suggestions = tags.map(tagToOption)
         const tagListElems = tags.map(tagToTagListElem)
         const suggestionsContainer = document.createElement('datalist')
-        const tagListContainer = document.querySelector(`.${CLASS_NAMES.tagListContainer}`)
+        const tagListContainer = document.querySelector(`.${CLASS_NAMES.tagList}`)
         suggestionsContainer.id = 'custom-tags-list'
         suggestionsContainer.append(...suggestions)
         tagListContainer.append(...tagListElems)

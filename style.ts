@@ -80,6 +80,10 @@ a.custom-script-option {
     div.custom-tag:not(.editing) .custom-change-color {
         width: 16px;
     }
+
+    .${CLASS_NAMES.bottomContainer}>div {
+        flex-basis: 100%;
+    }
 }
 
 .${BODY_CLASS_NAMES.increaseFontSize} .wnl-reference {
@@ -208,6 +212,8 @@ body.${BODY_CLASS_NAMES.hideCursor} {
 .custom-script-search {
     max-height: 80vh;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .custom-script-search>.custom-search-results {
@@ -216,15 +222,47 @@ body.${BODY_CLASS_NAMES.hideCursor} {
     max-height: 70vh;
 }
 
+p.custom-search-invitation {
+    display: flex;
+    height: 100%;
+    opacity: 0.6;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+}
+
 .custom-search-input-container {
     display: flex;
     align-items: center;
+    gap: 0.2rem;
+}
+
+.custom-search-result.custom-loading {
+    opacity: 0.6;
+}
+
+.custom-search-result.custom-loading:nth-child(2) {
+    opacity: 0.3;
+}
+
+.custom-search-result.custom-loading>div {
+    background: linear-gradient(314deg, #707070, #ffffff);
+    background-size: 400% 400%;
+    margin: 0.4rem 0;
+    border-radius: 5px;
+    animation: LoadingParagraph 4s ease infinite;
+}
+
+@keyframes LoadingParagraph {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
 }
 
 a.custom-clear-search {
     position: absolute;
     display: flex;
-    right: 0.6rem;
+    right: 4px;
     color: #555;
 }
 
@@ -262,6 +300,7 @@ a.custom-clear-search {
     color: #222;
     overflow: hidden;
     word-break: break-word;
+    flex-shrink: 0;
 }
 
 .${CLASS_NAMES.bottomContainer} .custom-search-result {
@@ -273,7 +312,7 @@ a.custom-clear-search {
     padding-right: 0.2rem;
 }
 
-.${CLASS_NAMES.tagListContainer} {
+.${CLASS_NAMES.tagList} {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -661,9 +700,19 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     padding-bottom: 3.3rem;
 }
 
+span.custom-heading {
+    margin-bottom: 0.9rem;
+    display: flex;
+    gap: 0.4rem;
+}
+
+.${BODY_CLASS_NAMES.hideBottomSearch} .${CLASS_NAMES.bottomContainer} .${CLASS_NAMES.searchContainer},
+.${BODY_CLASS_NAMES.hideTools} .${CLASS_NAMES.toolsContainer},
+.${BODY_CLASS_NAMES.hideTags} .${CLASS_NAMES.tagListContainer},
 .${BODY_CLASS_NAMES.hideChat} .wnl-chat-toggle {
     display: none!important;
 }
+
 .${BODY_CLASS_NAMES.hideChat} .wnl-course-content.wnl-column {
     max-width: initial!important;
 }

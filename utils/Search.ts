@@ -28,6 +28,14 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
         </form>
         `
 
+    private static readonly searchInvitation = `
+        <p class="custom-search-invitation">
+            <span class='custom-script-heading'>
+                ${SVGIcons.search}
+                <span>Zacznij wyszukiwanie</span>
+            </span>
+        </p>`
+
     private getSearchURL(q: string) {
         return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`
     }
@@ -40,16 +48,17 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
 
     getSearchContainer(dissmisible = false) {
         this.searchContainer = document.createElement('div')
-        this.searchContainer.className = `custom-script-search ${dissmisible ? 'custom-script-hidden' : ''}`
+        this.searchContainer.className = `${CLASS_NAMES.searchContainer} ${dissmisible ? 'custom-script-hidden' : ''}`
         this.searchContainer.innerHTML = SearchConstructor.searchMenu
         this.searchResultsContainer = document.createElement('div')
         this.searchResultsContainer.className = 'custom-search-results'
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation
         this.searchContainer.append(this.searchResultsContainer)
         this.searchInput = this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
         this.searchContainer.querySelector('form').addEventListener('submit', ev => {
             ev.preventDefault()
             this.performSearch()
-        }) 
+        })
         if (dissmisible) {
             const closeBtn = document.createElement('div')
             closeBtn.className = 'custom-script-summary-close'
@@ -86,7 +95,7 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
 
     clearSearch() {
         this.searchInput.value = ''
-        this.searchResultsContainer.innerHTML = ''
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation
         this.clearBtnToggle.state = false
         this.searchInput.focus()
         this.trigger('clear')
@@ -96,13 +105,23 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
         if (!this.searchContainer) return
         if (query) this.searchInput.value = query
         const q = this.searchInput.value
+        if (!q) {
+            this.clearSearch()
+            return
+        }
+        this.searchContainer.scrollIntoView({ behavior: 'smooth' })
         const interpretation = this.interpretQuery(q)
         this.trigger('searchStart', interpretation)
-        this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`
+        this.searchResultsContainer.innerHTML = `
+            <div class='custom-search-result custom-loading'>
+                <div style="height: 2rem;width: 65%;"></div>
+                <div style="height: 1.6rem;width: 79%;"></div>
+            </div>`.repeat(2)
         this.getSearchResponseHTML(interpretation).then(resp => {
             if (this.searchResultsContainer) {
                 this.searchResultsContainer.innerHTML = ''
                 this.searchResultsContainer.append(...resp)
+                this.clearBtnToggle.state = true
             }
             this.trigger('searchEnd')
         })

@@ -236,4 +236,40 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         defaultValue: false,
         key: 's'
     },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideTools",
+        icon: {
+            emoji: "🛠️",
+            html: SVGIcons.tools
+        },
+        desc: "Ukryj narzędzia",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideTools, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideTags",
+        icon: {
+            emoji: "🔖",
+            html: SVGIcons.tags
+        },
+        desc: "Ukryj listę tagów",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideTags, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideBottomSearch",
+        icon: {
+            emoji: "🔎",
+            html: SVGIcons.search
+        },
+        desc: "Ukryj narzędzie wyszukiwania pod slajdem",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideBottomSearch, state.value),
+        defaultValue: false,
+    },
 ]

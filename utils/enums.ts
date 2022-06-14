@@ -9,7 +9,9 @@ declare const enum CLASS_NAMES {
     settingsContainer = 'custom-script-settings-container',
     toolsContainer = 'custom-script-tools-container',
     bottomContainer = "custom-script-bottom-container",
-    tagListContainer = "custom-tagListContainer"
+    tagList = "custom-tagList",
+    tagListContainer = "custom-tagListContainer",
+    searchContainer = "custom-script-search"
 }
 
 declare const enum BODY_CLASS_NAMES {
@@ -19,7 +21,10 @@ declare const enum BODY_CLASS_NAMES {
     hideCursor = 'custom-script-hide-cursor',
     invertImages = 'custom-script-invert-images',
     hideChat = 'custom-script-hide-chat',
-    hideSlideNav = 'custom-script-hide-chat',
+    hideSlideNav = 'custom-script-slide-nav-chat',
+    hideBottomSearch = "custom-script-hideBottomSearch",
+    hideTools = "custom-script-hideTools",
+    hideTags = "custom-script-hideTags"
 }
 
 declare const enum SELECTORS {
