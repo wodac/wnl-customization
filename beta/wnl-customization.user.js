@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.10.4b
+// @version      1.10.5b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -538,9 +538,15 @@ const SVGIcons = {
     export: inSVG `<path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
     <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>`,
     code: inSVG `<path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/>`,
+    tools: inSVG `<path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z"/>`,
+    gear: inSVG `<path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+    <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>`,
 };
 const zoomSliderHTML = `
-        <label class="metadata">POWIĘKSZENIE</label>
+        <span class='custom-heading'>
+            ${SVGIcons.zoomIn}
+            <label class="metadata">POWIĘKSZENIE</label>
+        </span>
         <div style="text-align: right;">
             <input class="${"custom-script-font-size-input" /* fontSizeInput */}" 
                 type="range" size="3" maxlength="3" min="70" max="200" 
@@ -762,10 +768,11 @@ class SearchConstructor extends CustomEventEmmiter {
     }
     getSearchContainer(dissmisible = false) {
         this.searchContainer = document.createElement('div');
-        this.searchContainer.className = `custom-script-search ${dissmisible ? 'custom-script-hidden' : ''}`;
+        this.searchContainer.className = `${"custom-script-search" /* searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
         this.searchContainer.innerHTML = SearchConstructor.searchMenu;
         this.searchResultsContainer = document.createElement('div');
         this.searchResultsContainer.className = 'custom-search-results';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
         this.searchContainer.append(this.searchResultsContainer);
         this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
         this.searchContainer.querySelector('form').addEventListener('submit', ev => {
@@ -805,7 +812,7 @@ class SearchConstructor extends CustomEventEmmiter {
     }
     clearSearch() {
         this.searchInput.value = '';
-        this.searchResultsContainer.innerHTML = '';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
         this.clearBtnToggle.state = false;
         this.searchInput.focus();
         this.trigger('clear');
@@ -816,13 +823,23 @@ class SearchConstructor extends CustomEventEmmiter {
         if (query)
             this.searchInput.value = query;
         const q = this.searchInput.value;
+        if (!q) {
+            this.clearSearch();
+            return;
+        }
+        this.searchContainer.scrollIntoView({ behavior: 'smooth' });
         const interpretation = this.interpretQuery(q);
         this.trigger('searchStart', interpretation);
-        this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
+        this.searchResultsContainer.innerHTML = `
+            <div class='custom-search-result custom-loading'>
+                <div style="height: 2rem;width: 65%;"></div>
+                <div style="height: 1.6rem;width: 79%;"></div>
+            </div>`.repeat(2);
         this.getSearchResponseHTML(interpretation).then(resp => {
             if (this.searchResultsContainer) {
                 this.searchResultsContainer.innerHTML = '';
                 this.searchResultsContainer.append(...resp);
+                this.clearBtnToggle.state = true;
             }
             this.trigger('searchEnd');
         });
@@ -987,6 +1004,13 @@ SearchConstructor.searchMenu = `
             <a class='custom-search-submit'>${SVGIcons.search}</a>
         </form>
         `;
+SearchConstructor.searchInvitation = `
+        <p class="custom-search-invitation">
+            <span class='custom-script-heading'>
+                ${SVGIcons.search}
+                <span>Zacznij wyszukiwanie</span>
+            </span>
+        </p>`;
 SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
 ///<reference path="common.ts" />
 ///<reference path="../App.ts" />
@@ -1780,7 +1804,7 @@ const getOptions = (app) => [
         desc: "Ukryj strzałki nawigacji na slajdach",
         type: SettingType.Checkbox,
         defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideSlideNav */, state.value),
+        onchange: state => toggleBodyClass("custom-script-slide-nav-chat" /* hideSlideNav */, state.value),
     },
     {
         name: "showMainCourseSidebar",
@@ -1894,6 +1918,42 @@ const getOptions = (app) => [
         type: SettingType.Checkbox,
         defaultValue: false,
         key: 's'
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideTools",
+        icon: {
+            emoji: "🛠️",
+            html: SVGIcons.tools
+        },
+        desc: "Ukryj narzędzia",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideTools" /* hideTools */, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideTags",
+        icon: {
+            emoji: "🔖",
+            html: SVGIcons.tags
+        },
+        desc: "Ukryj listę tagów",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideTags" /* hideTags */, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideBottomSearch",
+        icon: {
+            emoji: "🔎",
+            html: SVGIcons.search
+        },
+        desc: "Ukryj narzędzie wyszukiwania pod slajdem",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideBottomSearch" /* hideBottomSearch */, state.value),
+        defaultValue: false,
     },
 ];
 ///<reference path="common.ts" />
@@ -2692,7 +2752,7 @@ class NotesRendering {
             const suggestions = tags.map(tagToOption);
             const tagListElems = tags.map(tagToTagListElem);
             const suggestionsContainer = document.createElement('datalist');
-            const tagListContainer = document.querySelector(`.${"custom-tagListContainer" /* tagListContainer */}`);
+            const tagListContainer = document.querySelector(`.${"custom-tagList" /* tagList */}`);
             suggestionsContainer.id = 'custom-tags-list';
             suggestionsContainer.append(...suggestions);
             tagListContainer.append(...tagListElems);
@@ -3225,9 +3285,13 @@ class App extends CustomEventEmmiter {
     addTagListContainer() {
         const tagListContainer = document.createElement('div');
         tagListContainer.style.order = '-1';
+        tagListContainer.className = "custom-tagListContainer" /* tagListContainer */;
         tagListContainer.innerHTML = `
-            <span class='metadata'>tagi</span>
-            <div class=${"custom-tagListContainer" /* tagListContainer */}></div>`;
+            <span class='custom-heading'>
+                ${SVGIcons.tags}
+                <span class='metadata'>tagi</span>
+            </span>
+            <div class=${"custom-tagList" /* tagList */}></div>`;
         this.bottomContainer.append(tagListContainer);
     }
     setupObserveSidenav() {
@@ -3291,7 +3355,10 @@ class App extends CustomEventEmmiter {
         const toolsContainer = document.createElement('div');
         toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
         toolsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
+            <span class='custom-heading'>
+                ${SVGIcons.tools}
+                <span class="metadata">narzędzia</span>
+            </span>
             <div></div>`;
         this.bottomContainer.appendChild(toolsContainer);
         toolsContainer.append(this.tools.render());
@@ -3303,7 +3370,10 @@ class App extends CustomEventEmmiter {
         const optionsContainer = document.createElement('div');
         optionsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
         optionsContainer.innerHTML = `
-            <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
+            <span class='custom-heading'>
+                ${SVGIcons.gear}
+                <span class="metadata">ustawienia</span>
+            </span>
             <div></div>`;
         this.bottomContainer.appendChild(optionsContainer);
         optionsContainer.append(this.options.render());
@@ -3442,6 +3512,10 @@ a.custom-script-option {
     div.custom-tag:not(.editing) .custom-change-color {
         width: 16px;
     }
+
+    .${"custom-script-bottom-container" /* bottomContainer */}>div {
+        flex-basis: 100%;
+    }
 }
 
 .${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference {
@@ -3570,6 +3644,8 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
 .custom-script-search {
     max-height: 80vh;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .custom-script-search>.custom-search-results {
@@ -3578,15 +3654,47 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
     max-height: 70vh;
 }
 
+p.custom-search-invitation {
+    display: flex;
+    height: 100%;
+    opacity: 0.6;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+}
+
 .custom-search-input-container {
     display: flex;
     align-items: center;
+    gap: 0.2rem;
+}
+
+.custom-search-result.custom-loading {
+    opacity: 0.6;
+}
+
+.custom-search-result.custom-loading:nth-child(2) {
+    opacity: 0.3;
+}
+
+.custom-search-result.custom-loading>div {
+    background: linear-gradient(314deg, #707070, #ffffff);
+    background-size: 400% 400%;
+    margin: 0.4rem 0;
+    border-radius: 5px;
+    animation: LoadingParagraph 4s ease infinite;
+}
+
+@keyframes LoadingParagraph {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
 }
 
 a.custom-clear-search {
     position: absolute;
     display: flex;
-    right: 0.6rem;
+    right: 4px;
     color: #555;
 }
 
@@ -3624,6 +3732,7 @@ a.custom-clear-search {
     color: #222;
     overflow: hidden;
     word-break: break-word;
+    flex-shrink: 0;
 }
 
 .${"custom-script-bottom-container" /* bottomContainer */} .custom-search-result {
@@ -3635,7 +3744,7 @@ a.custom-clear-search {
     padding-right: 0.2rem;
 }
 
-.${"custom-tagListContainer" /* tagListContainer */} {
+.${"custom-tagList" /* tagList */} {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -4023,9 +4132,19 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     padding-bottom: 3.3rem;
 }
 
+span.custom-heading {
+    margin-bottom: 0.9rem;
+    display: flex;
+    gap: 0.4rem;
+}
+
+.${"custom-script-hideBottomSearch" /* hideBottomSearch */} .${"custom-script-bottom-container" /* bottomContainer */} .${"custom-script-search" /* searchContainer */},
+.${"custom-script-hideTools" /* hideTools */} .${"custom-script-tools-container" /* toolsContainer */},
+.${"custom-script-hideTags" /* hideTags */} .${"custom-tagListContainer" /* tagListContainer */},
 .${"custom-script-hide-chat" /* hideChat */} .wnl-chat-toggle {
     display: none!important;
 }
+
 .${"custom-script-hide-chat" /* hideChat */} .wnl-course-content.wnl-column {
     max-width: initial!important;
 }
@@ -4034,14 +4153,14 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
 }
 
-.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control, 
-.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control {
+.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control, 
+.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control {
     opacity: 0.2;
     transition: opacity 0.4s;
 }
 
-.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control:hover, 
-.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control:hover {
+.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control:hover, 
+.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control:hover {
     opacity: 1;
 }`;
 const head = unsafeWindow.document.querySelector('head');
