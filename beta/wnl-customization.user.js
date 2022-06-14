@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.10.2b
+// @version      1.10.3b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -537,6 +537,7 @@ const SVGIcons = {
     <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>`,
     export: inSVG `<path fill-rule="evenodd" d="M3.5 6a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1 0-1h2A1.5 1.5 0 0 1 14 6.5v8a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5h2a.5.5 0 0 1 0 1h-2z"/>
     <path fill-rule="evenodd" d="M7.646.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 1.707V10.5a.5.5 0 0 1-1 0V1.707L5.354 3.854a.5.5 0 1 1-.708-.708l3-3z"/>`,
+    code: inSVG `<path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/>`,
 };
 const zoomSliderHTML = `
     <div class='${"custom-script-zoom-slider-container" /* zoomSliderContainer */}'>
@@ -1197,6 +1198,7 @@ var SettingType;
     SettingType[SettingType["Percent"] = 1] = "Percent";
     SettingType[SettingType["Integer"] = 2] = "Integer";
     SettingType[SettingType["Button"] = 3] = "Button";
+    SettingType[SettingType["Divider"] = 4] = "Divider";
 })(SettingType || (SettingType = {}));
 class Setting extends CustomEventEmmiter {
     constructor(options, parent) {
@@ -1205,7 +1207,7 @@ class Setting extends CustomEventEmmiter {
         this.parent = parent;
         this.name = options.name;
         this.type = options.type;
-        if (this.type !== SettingType.Button) {
+        if (this.type !== SettingType.Button && this.type !== SettingType.Divider) {
             GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
                 if (this._value === value)
                     return;
@@ -1281,6 +1283,24 @@ class SettingElement extends Setting {
         if (this._disabled)
             return;
         this.tmHandle = GM_registerMenuCommand(this.renderSimple(), () => this.trigger('tmMenuClicked'), this.options.key);
+    }
+}
+class DividerSetting extends SettingElement {
+    constructor(parent) {
+        super({
+            name: '_divider',
+            desc: 'Divider',
+            type: SettingType.Divider
+        }, parent);
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.className = 'custom-setting-divider';
+        this.element.innerHTML = `<div></div>`;
+        return this.element;
+    }
+    renderSimple() {
+        return '-----------------';
     }
 }
 class CheckboxSetting extends SettingElement {
@@ -1425,6 +1445,9 @@ class Settings extends CustomEventEmmiter {
         }
         else if (setting.type === SettingType.Button) {
             sett = new ButtonSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Divider) {
+            sett = new DividerSetting(this);
         }
         else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
             sett = new NumberSetting(setting, this);
@@ -1628,72 +1651,6 @@ const getOptions = (app) => [
         key: 'a'
     },
     {
-        name: "hideChat",
-        icon: {
-            emoji: "💬",
-            html: SVGIcons.chat
-        },
-        desc: "Ukryj czat",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
-        defaultValue: false,
-        key: 'c'
-    },
-    {
-        name: "smoothScroll",
-        icon: {
-            emoji: "↕️",
-            html: SVGIcons.chevronExpand
-        },
-        desc: "Płynne przewijanie strzałkami",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        key: 's'
-    },
-    {
-        name: "keyboardControl",
-        icon: {
-            emoji: "⌨️",
-            html: SVGIcons.keyboard
-        },
-        desc: "Sterowanie klawiaturą",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (state.value) {
-                Keyboard.setupControl(app);
-            }
-            else {
-                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
-                Keyboard.disableControl();
-                if (app.slideObserver)
-                    app.slideObserver.disconnect();
-            }
-        },
-        defaultValue: true,
-        key: 'k'
-    },
-    {
-        name: "changeTitle",
-        icon: {
-            emoji: "🆎",
-            html: SVGIcons.capitalT
-        },
-        desc: "Zmień tytuł karty",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (!state.value) {
-                if (app.originalTitle)
-                    unsafeWindow.document.title = app.originalTitle;
-            }
-            app.updateTabTitle();
-        },
-        onrender: () => {
-            app.originalTitle = unsafeWindow.document.title;
-        },
-        defaultValue: false,
-        key: 't'
-    },
-    {
         name: "uniformFontSize",
         icon: {
             emoji: "🔤",
@@ -1709,63 +1666,6 @@ const getOptions = (app) => [
         },
         defaultValue: false,
         key: 'u'
-    },
-    {
-        name: "invertImages",
-        icon: {
-            emoji: "🔃",
-            html: SVGIcons.pallete
-        },
-        desc: "Odwróć kolory obrazów",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
-        key: 'i'
-    },
-    {
-        name: "showMainCourseSidebar",
-        icon: {
-            emoji: "📗",
-            html: SVGIcons.viewStack
-        },
-        desc: "Pokaż nawigację całego kursu w panelu bocznym",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => {
-            if (state.value) {
-                if (!app.courseSidebar) {
-                    setupSidebar();
-                    app.addEventListener('unloaded', () => app.courseSidebar.destroy());
-                }
-                app.addEventListener('loaded', setupSidebar);
-                app.courseSidebar.show();
-            }
-            else {
-                app.removeEventListener('loaded', setupSidebar);
-                if (app.courseSidebar)
-                    app.courseSidebar.hide();
-            }
-            function setupSidebar() {
-                app.courseSidebar = new CourseSidebar();
-                const sidenav = document.querySelector('aside.course-sidenav');
-                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
-                    app.courseSidebar.attach(sidenav);
-                }
-                else {
-                    app.setupObserveSidenav();
-                    app.addEventListener('sidenavOpened', opened => {
-                        if (opened) {
-                            const sidenav = document.querySelector('aside.course-sidenav');
-                            app.courseSidebar.attach(sidenav);
-                        }
-                    });
-                }
-                app.courseSidebar.addEventListener('urlChange', toOpen => {
-                    app.tabOpener.openSlide(toOpen);
-                });
-            }
-        },
-        key: 'i'
     },
     {
         name: "percentIncrease",
@@ -1818,7 +1718,146 @@ const getOptions = (app) => [
             });
         },
         key: 'p'
-    }
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideChat",
+        icon: {
+            emoji: "💬",
+            html: SVGIcons.chat
+        },
+        desc: "Ukryj czat",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
+        defaultValue: false,
+        key: 'c'
+    },
+    {
+        name: "hideSlideNav",
+        icon: {
+            emoji: "↔️",
+            html: SVGIcons.code
+        },
+        desc: "Ukryj strzałki nawigacji na slajdach",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideSlideNav */, state.value),
+    },
+    {
+        name: "showMainCourseSidebar",
+        icon: {
+            emoji: "📗",
+            html: SVGIcons.viewStack
+        },
+        desc: "Pokaż nawigację całego kursu w panelu bocznym",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                if (!app.courseSidebar) {
+                    setupSidebar();
+                    app.addEventListener('unloaded', () => app.courseSidebar.destroy());
+                }
+                app.addEventListener('loaded', setupSidebar);
+                app.courseSidebar.show();
+            }
+            else {
+                app.removeEventListener('loaded', setupSidebar);
+                if (app.courseSidebar)
+                    app.courseSidebar.hide();
+            }
+            function setupSidebar() {
+                app.courseSidebar = new CourseSidebar();
+                const sidenav = document.querySelector('aside.course-sidenav');
+                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                    app.courseSidebar.attach(sidenav);
+                }
+                else {
+                    app.setupObserveSidenav();
+                    app.addEventListener('sidenavOpened', opened => {
+                        if (opened) {
+                            const sidenav = document.querySelector('aside.course-sidenav');
+                            app.courseSidebar.attach(sidenav);
+                        }
+                    });
+                }
+                app.courseSidebar.addEventListener('urlChange', toOpen => {
+                    app.tabOpener.openSlide(toOpen);
+                });
+            }
+        },
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "keyboardControl",
+        icon: {
+            emoji: "⌨️",
+            html: SVGIcons.keyboard
+        },
+        desc: "Sterowanie klawiaturą",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (state.value) {
+                Keyboard.setupControl(app);
+            }
+            else {
+                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
+                Keyboard.disableControl();
+                if (app.slideObserver)
+                    app.slideObserver.disconnect();
+            }
+        },
+        defaultValue: isMobile(),
+        key: 'k'
+    },
+    {
+        name: "changeTitle",
+        icon: {
+            emoji: "🆎",
+            html: SVGIcons.capitalT
+        },
+        desc: "Zmień tytuł karty",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (!state.value) {
+                if (app.originalTitle)
+                    unsafeWindow.document.title = app.originalTitle;
+            }
+            app.updateTabTitle();
+        },
+        onrender: () => {
+            app.originalTitle = unsafeWindow.document.title;
+        },
+        defaultValue: !isMobile(),
+        key: 't'
+    },
+    {
+        name: "invertImages",
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.pallete
+        },
+        desc: "Odwróć kolory obrazów",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
+        key: 'i'
+    },
+    {
+        name: "smoothScroll",
+        icon: {
+            emoji: "↕️",
+            html: SVGIcons.chevronExpand
+        },
+        desc: "Płynne przewijanie strzałkami",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        key: 's'
+    },
 ];
 ///<reference path="common.ts" />
 var Notes;
@@ -2642,6 +2681,8 @@ class NotesRendering {
     }
     renderTags() {
         const tagContainer = document.querySelector('.custom-tags-container');
+        if (!tagContainer)
+            return;
         const toRemove = Array.from(tagContainer.children);
         toRemove.pop();
         toRemove.forEach(el => el.remove());
@@ -2735,7 +2776,7 @@ class NotesRendering {
 ///<reference path="NotesRendering.ts" />
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible');
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column');
-let uploadInput, viewNotesBtnToggle, viewTagsBtnToggle;
+let uploadInput;
 const getToolsConfig = app => [
     {
         name: "suggestBreak",
@@ -2795,10 +2836,10 @@ const getToolsConfig = app => [
                 app.notesRendering.addNotesColumn();
                 setupNotesBtns(app);
                 app.notesRendering.loadNotes();
-                if (isMobile()) {
-                    viewNotesBtnToggle.state = true;
-                    viewTagsBtnToggle.state = true;
-                }
+                // if (isMobile()) {
+                //     viewNotesBtnToggle.state = true
+                //     viewTagsBtnToggle.state = true
+                // }
             }
             this.parent.getSetting('exportNotes').disabled = !state.value;
             this.parent.getSetting('importNotes').disabled = !state.value;
@@ -2873,7 +2914,7 @@ function setupNotesBtns(app) {
     addBtn.addEventListener('click', () => addBtnToggle.toggle());
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn');
     const viewTagsToggle = new ClassToggler('custom-script-tags-visible');
-    viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state);
+    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state);
     viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle());
     const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn');
     const onAddTag = () => {
@@ -2908,7 +2949,7 @@ function setupNotesBtns(app) {
             app.notesRendering.renderNotes(app.presentationMetadata.slideNumber);
         });
     });
-    viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
+    const viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
         hiddenBtnsToggle.state = !t.state;
         notesOverlayToggle.state = !viewTypeBtnToggle.state && t.state;
         noteColumnToggle.state = !(viewTypeBtnToggle.state && t.state);
@@ -2928,6 +2969,10 @@ function setupNotesBtns(app) {
     Keyboard.registerShortcut({
         keys: ['v'], callback: () => viewTypeBtnToggle.toggle()
     });
+    if (isMobile()) {
+        viewNotesBtnToggle.state = true;
+        viewTagsBtnToggle.state = true;
+    }
     function addTag() {
         app.currentSlideNotes.addTag({
             content: '', color: app.notesRendering.getRandomTagColor(),
@@ -3353,6 +3398,14 @@ sub.small {
     align-items: center;
     gap: 0.6rem;
     margin-right: 0!important;
+}
+
+.custom-setting-divider {
+    padding: 0.5rem;
+}
+
+.custom-setting-divider>div {
+    border-bottom: solid 1px #eff0f3;
 }
 
 .${"custom-script-page-number-container" /* pageNumberContainer */} {
@@ -3835,6 +3888,17 @@ div.custom-tag:not(.editing):hover .custom-change-color {
 
 .${"custom-script-invert-images" /* invertImages */} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
+}
+
+.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control, 
+.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control {
+    opacity: 0.2;
+    transition: opacity 0.4s;
+}
+
+.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control:hover, 
+.${"custom-script-hide-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control:hover {
+    opacity: 1;
 }`;
 const head = unsafeWindow.document.querySelector('head');
 const stylesheet = document.createElement('style');
