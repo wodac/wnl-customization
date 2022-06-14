@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.10.3b
+// @version      1.10.4b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -43,7 +43,7 @@ class CustomEventEmmiter {
         if (!this.listeners[eventName])
             return;
         const i = this.listeners[eventName].findIndex(cb => cb == listener);
-        console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this);
+        // console.log('removing', { listener }, 'for event', eventName, 'on position', { i }, 'on', this)
         if (i >= 0) {
             const toRemove = this.listeners[eventName].splice(i, 1);
             return toRemove[0];
@@ -540,7 +540,6 @@ const SVGIcons = {
     code: inSVG `<path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/>`,
 };
 const zoomSliderHTML = `
-    <div class='${"custom-script-zoom-slider-container" /* zoomSliderContainer */}'>
         <label class="metadata">POWIĘKSZENIE</label>
         <div style="text-align: right;">
             <input class="${"custom-script-font-size-input" /* fontSizeInput */}" 
@@ -549,8 +548,7 @@ const zoomSliderHTML = `
             <a class="${"custom-script-font-size-input" /* fontSizeInput */}-decrease">${SVGIcons.zoomOut}</a>
             <span class="${"custom-script-font-size-label" /* fontSizeLabel */}">120%</span>
             <a class="${"custom-script-font-size-input" /* fontSizeInput */}-increase">${SVGIcons.zoomIn}</a>
-        </div>
-    </div>`;
+        </div>`;
 function toggleBodyClass(className, isOn) {
     let body = document.body;
     if (isOn)
@@ -595,19 +593,18 @@ class ClassToggler extends CustomEventEmmiter {
         this.className = className;
         this._elementOrSelector = _elementOrSelector;
         this.onchange = onchange;
-        this._unresolved = false;
+        this._unresolved = true;
         this.invert = false;
         this._waitForClick = () => this.waitForClick();
-        if (this.element)
-            this._getClassState();
-        else
-            this._unresolved = true;
+        // if (this.element) this._getClassState()
+        // else this._unresolved = true
     }
     _getClassState() {
         if (this.invert)
             this._state = !this.element.classList.contains(this.className);
         else
             this._state = this.element.classList.contains(this.className);
+        this._unresolved = false;
     }
     get element() {
         if (typeof this._elementOrSelector === 'string') {
@@ -616,12 +613,15 @@ class ClassToggler extends CustomEventEmmiter {
         return this._elementOrSelector;
     }
     get state() {
+        if (this._unresolved)
+            this._getClassState();
         return this._state;
     }
     set state(val) {
+        if (this._unresolved)
+            this._getClassState();
         if (this._state === val)
             return;
-        console.log('setting', val, 'on toggle', this, 'on element', this._elementOrSelector);
         this._state = val;
         if (this.onchange)
             this.onchange(this);
@@ -640,8 +640,6 @@ class ClassToggler extends CustomEventEmmiter {
         }
     }
     toggle() {
-        if (this._unresolved)
-            this._getClassState();
         this.state = !this.state;
     }
     waitForClick() {
@@ -688,9 +686,9 @@ var Toggles;
     Toggles.summary.invert = true;
     Toggles.summary.setDismissible(true);
     Toggles.search = new ClassToggler('custom-script-hidden', '.custom-script-search', t => {
-        if (!t.state)
+        if (t.state)
             setTimeout(() => {
-                document.querySelector('.custom-script-search input.custom-search-result').focus();
+                document.querySelector('.slideshow-container input.custom-search-result').focus();
             }, 100);
     });
     Toggles.search.invert = true;
@@ -754,51 +752,79 @@ function getIndexedDB(name, version, setupCb) {
 }
 ///<reference path="common.ts" />
 ///<reference path="../App.ts" />
-class SearchConstructor {
+class SearchConstructor extends CustomEventEmmiter {
     constructor(app) {
+        super();
         this.app = app;
     }
     getSearchURL(q) {
         return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
     }
-    addSearchContainer() {
+    getSearchContainer(dissmisible = false) {
         this.searchContainer = document.createElement('div');
-        this.searchContainer.className = 'custom-script-search custom-script-hidden';
-        this.searchContainer.innerHTML = `
-        <input class="custom-search-result" style="width: 80%;display: inline-block;">
-        <a class='custom-search-submit' style="font-size: 1.2rem;padding:0.1rem;">${SVGIcons.search}</a>
-        `;
-        const closeBtn = document.createElement('div');
-        closeBtn.className = 'custom-script-summary-close';
-        closeBtn.innerHTML = SVGIcons.chevronUp;
-        this.searchContainer.prepend(closeBtn);
-        closeBtn.addEventListener('click', () => Toggles.search.state = false);
+        this.searchContainer.className = `custom-script-search ${dissmisible ? 'custom-script-hidden' : ''}`;
+        this.searchContainer.innerHTML = SearchConstructor.searchMenu;
         this.searchResultsContainer = document.createElement('div');
+        this.searchResultsContainer.className = 'custom-search-results';
         this.searchContainer.append(this.searchResultsContainer);
-        document.querySelector('.order-number-container').after(this.searchContainer);
-        const searchInput = this.searchContainer.querySelector('input.custom-search-result');
-        searchInput.addEventListener('change', () => this.performSearch());
-        searchInput.addEventListener('keyup', ev => {
-            if (ev.key === 'Escape') {
-                ev.preventDefault();
-                ev.stopImmediatePropagation();
-                Toggles.search.state = false;
-            }
+        this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
+        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
+            ev.preventDefault();
+            this.performSearch();
         });
+        if (dissmisible) {
+            const closeBtn = document.createElement('div');
+            closeBtn.className = 'custom-script-summary-close';
+            closeBtn.innerHTML = SVGIcons.chevronUp;
+            this.searchContainer.prepend(closeBtn);
+            closeBtn.addEventListener('click', () => this.trigger('dissmiss'));
+            this.searchInput.addEventListener('keyup', ev => {
+                if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    this.trigger('dissmiss');
+                }
+            });
+        }
         this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
+        this.setupClearBtn();
+        return this.searchContainer;
     }
-    performSearch() {
+    setupClearBtn() {
+        const clearBtn = this.searchContainer.querySelector('.custom-clear-search');
+        this.clearBtnToggle = new ClassToggler('hidden', clearBtn);
+        this.clearBtnToggle.invert = true;
+        clearBtn.addEventListener('click', ev => {
+            ev.preventDefault();
+            this.clearSearch();
+        });
+        this.searchInput.addEventListener('input', ev => {
+            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length;
+            this.clearBtnToggle.state = showClearBtn;
+        });
+    }
+    clearSearch() {
+        this.searchInput.value = '';
+        this.searchResultsContainer.innerHTML = '';
+        this.clearBtnToggle.state = false;
+        this.searchInput.focus();
+        this.trigger('clear');
+    }
+    performSearch(query) {
         if (!this.searchContainer)
             return;
-        const q = this.searchContainer.querySelector('input.custom-search-result').value;
+        if (query)
+            this.searchInput.value = query;
+        const q = this.searchInput.value;
         const interpretation = this.interpretQuery(q);
+        this.trigger('searchStart', interpretation);
         this.searchResultsContainer.innerHTML = `<p style='padding: 0.5rem;text-align: center'>Ładowanie...</p>`;
         this.getSearchResponseHTML(interpretation).then(resp => {
             if (this.searchResultsContainer) {
                 this.searchResultsContainer.innerHTML = '';
                 this.searchResultsContainer.append(...resp);
             }
-            Toggles.search.state = true;
+            this.trigger('searchEnd');
         });
     }
     interpretQuery(rawQuery) {
@@ -892,6 +918,13 @@ class SearchConstructor {
     filterSearch(parsed, q) {
         return __awaiter(this, void 0, void 0, function* () {
             let filtered = parsed;
+            const hasSomePhrases = (result, phrases) => {
+                return phrases.map(toSearch => {
+                    return Object.values(result.highlight).some(highlighted => {
+                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
+                    });
+                });
+            };
             if (q.mustContain) {
                 filtered = parsed.filter(result => {
                     return hasSomePhrases(result, q.mustContain).every(includes => includes);
@@ -907,13 +940,6 @@ class SearchConstructor {
                 return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
             }
             return (yield this.getTagsAsResults(q)).concat(filtered);
-            function hasSomePhrases(result, phrases) {
-                return phrases.map(toSearch => {
-                    return Object.values(result.highlight).some(highlighted => {
-                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
-                    });
-                });
-            }
         });
     }
     getTagsAsResults(q) {
@@ -952,6 +978,15 @@ class SearchConstructor {
         return s.toLowerCase().replace(tagStripper, '');
     }
 }
+SearchConstructor.searchMenu = `
+        <form class="custom-search-input-container">
+            <div>
+                <input class="custom-search-result" placeholder="Szukaj...">
+                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
+            </div>
+            <a class='custom-search-submit'>${SVGIcons.search}</a>
+        </form>
+        `;
 SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
 ///<reference path="common.ts" />
 ///<reference path="../App.ts" />
@@ -1292,6 +1327,7 @@ class DividerSetting extends SettingElement {
             desc: 'Divider',
             type: SettingType.Divider
         }, parent);
+        this.index = DividerSetting.index++;
     }
     render() {
         this.element = document.createElement('div');
@@ -1300,9 +1336,10 @@ class DividerSetting extends SettingElement {
         return this.element;
     }
     renderSimple() {
-        return '-----------------';
+        return '-'.repeat(15 + this.index);
     }
 }
+DividerSetting.index = 0;
 class CheckboxSetting extends SettingElement {
     constructor(options, parent) {
         super(options, parent);
@@ -2271,18 +2308,21 @@ var Notes;
             }
             static setupDB(event, db) {
                 let notesStore, tagsStore;
-                if (event.oldVersion !== event.newVersion) {
+                const transaction = event.target.transaction;
+                try {
                     notesStore = db.createObjectStore(Presentation.NOTES_STORE, { keyPath: 'id' });
+                }
+                catch (_a) {
+                    notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                }
+                try {
                     tagsStore = db.createObjectStore(Presentation.TAGS_STORE, { keyPath: 'name' });
                 }
-                else {
-                    const transaction = event.target.transaction;
-                    notesStore = transaction.objectStore(Presentation.NOTES_STORE);
+                catch (_b) {
                     tagsStore = transaction.objectStore(Presentation.TAGS_STORE);
                 }
                 Presentation.generateIndexes(notesStore, Presentation.NOTES_INDEXES);
                 Presentation.generateIndexes(tagsStore, Presentation.TAGS_INDEXES);
-                // notesStore.createIndex('id', 'id', { unique: true })
                 return notesStore;
             }
             static generateIndexes(store, indexes) {
@@ -2298,7 +2338,7 @@ var Notes;
             }
             static createAsync(screenid, lessonID) {
                 return __awaiter(this, void 0, void 0, function* () {
-                    const db = yield getIndexedDB("NotesDatabase", 5, Presentation.setupDB);
+                    const db = yield getIndexedDB("NotesDatabase", Presentation.dbVersion, Presentation.setupDB);
                     const notesCollection = new Presentation(db, screenid, lessonID);
                     return notesCollection;
                 });
@@ -2486,6 +2526,7 @@ var Notes;
                 options: { unique: true }
             }
         };
+        Presentation.dbVersion = 6;
         Collections.Presentation = Presentation;
     })(Collections = Notes.Collections || (Notes.Collections = {}));
 })(Notes || (Notes = {}));
@@ -2621,15 +2662,14 @@ class NotesRendering {
         return __awaiter(this, void 0, void 0, function* () {
             const presentationMetadata = this.app.presentationMetadata;
             this.app.notesCollection = yield Notes.Collections.Presentation.createAsync(presentationMetadata.screenID, presentationMetadata.lessonID);
-            if (this.app.tools && this.app.tools.getValue('useNotes')) {
-                this.setupTagsNamesAndColors();
-                return this.renderNotes(this.app.slideNumber);
-            }
+            this.setupTagList();
+            return this.renderNotes(this.app.slideNumber);
         });
     }
-    setupTagsNamesAndColors() {
+    setupTagList() {
         return __awaiter(this, void 0, void 0, function* () {
             const tags = yield this.app.notesCollection.getAllTagNames();
+            this.app.addTagListContainer();
             const tagToOption = (tag) => {
                 const opt = document.createElement('option');
                 opt.value = tag.name;
@@ -2637,14 +2677,30 @@ class NotesRendering {
                 opt.innerHTML = tag.name;
                 return opt;
             };
+            const tagToTagListElem = (tag) => {
+                const el = document.createElement('a');
+                el.className = 'custom-tag';
+                el.innerText = tag.name;
+                el.style.background = tag.color;
+                el.style.color = getForegroundColor(tag.color);
+                el.addEventListener('click', ev => {
+                    ev.preventDefault();
+                    this.app.searchInBottomContainer.performSearch(`"${tag.name}"`);
+                });
+                return el;
+            };
             const suggestions = tags.map(tagToOption);
+            const tagListElems = tags.map(tagToTagListElem);
             const suggestionsContainer = document.createElement('datalist');
+            const tagListContainer = document.querySelector(`.${"custom-tagListContainer" /* tagListContainer */}`);
             suggestionsContainer.id = 'custom-tags-list';
             suggestionsContainer.append(...suggestions);
+            tagListContainer.append(...tagListElems);
             document.body.append(suggestionsContainer);
             this.app.notesCollection.addEventListener('changedTags', desc => {
                 if (desc.added && desc.added.length) {
                     suggestionsContainer.append(...desc.added.map(tagToOption));
+                    tagListContainer.append(...desc.added.map(tagToTagListElem));
                 }
             });
         });
@@ -3011,7 +3067,10 @@ function addSlideOptions(app) {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark');
     if (!bookmarkBtn)
         return;
-    app.search.addSearchContainer();
+    const searchContainer = app.searchInSlideshow.getSearchContainer(true);
+    app.searchInSlideshow.addEventListener('dissmiss', () => Toggles.search.state = false);
+    app.searchInSlideshow.addEventListener('searchEnd', () => app.searchInSlideshow.searchInput.focus());
+    document.querySelector('.order-number-container').after(searchContainer);
     const slideOptionsContainer = document.createElement('div');
     slideOptionsContainer.innerHTML = slideshowOptionsBtn;
     const additionalOptionsContainer = document.createElement('div');
@@ -3131,21 +3190,20 @@ class App extends CustomEventEmmiter {
             background.classList.remove("image-custom-background");
             background.classList.add("white-custom-background");
         }
-        this.search = new SearchConstructor(this);
+        this.searchInSlideshow = new SearchConstructor(this);
+        this.searchInBottomContainer = new SearchConstructor(this);
         this.lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
         if (this.lessonView !== null) {
-            this.addSliderContainer();
-            this.addSettingsContainer();
-            this.addToolsContainer();
+            this.addBottomContainer();
         }
         if (GM_getValue(`option_keyboardControl`))
             Keyboard.setupControl(this);
         addChapterInfo(this);
         addSlideOptions(this);
-        if (this.tools && this.tools.getValue('useNotes')) {
-            this.notesRendering.loadNotes();
-            this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current));
-        }
+        // if (this.tools && this.tools.getValue('useNotes')) {
+        //     this.notesRendering.loadNotes()
+        //     this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
+        // }
         this.addEventListener('slideChange', () => this.updateTabTitle());
         this._loaded = true;
         this.trigger('loaded');
@@ -3153,6 +3211,24 @@ class App extends CustomEventEmmiter {
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload();
         });
+    }
+    addBottomContainer() {
+        this.bottomContainer = document.createElement('div');
+        this.bottomContainer.className = "custom-script-bottom-container" /* bottomContainer */;
+        this.addSliderContainer();
+        // this.addTagListContainer()
+        this.bottomContainer.append(this.searchInBottomContainer.getSearchContainer(false));
+        this.addToolsContainer();
+        this.addSettingsContainer();
+        this.lessonView.append(this.bottomContainer);
+    }
+    addTagListContainer() {
+        const tagListContainer = document.createElement('div');
+        tagListContainer.style.order = '-1';
+        tagListContainer.innerHTML = `
+            <span class='metadata'>tagi</span>
+            <div class=${"custom-tagListContainer" /* tagListContainer */}></div>`;
+        this.bottomContainer.append(tagListContainer);
     }
     setupObserveSidenav() {
         if (this.sidenavObserver)
@@ -3195,7 +3271,8 @@ class App extends CustomEventEmmiter {
             return;
         const sliderContainer = document.createElement('div');
         sliderContainer.innerHTML = zoomSliderHTML;
-        this.lessonView.appendChild(sliderContainer);
+        sliderContainer.className = "custom-script-zoom-slider-container" /* zoomSliderContainer */;
+        this.bottomContainer.appendChild(sliderContainer);
         sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
             .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
         sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
@@ -3216,7 +3293,7 @@ class App extends CustomEventEmmiter {
         toolsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">narzędzia</span>
             <div></div>`;
-        this.lessonView.appendChild(toolsContainer);
+        this.bottomContainer.appendChild(toolsContainer);
         toolsContainer.append(this.tools.render());
     }
     addSettingsContainer() {
@@ -3228,7 +3305,7 @@ class App extends CustomEventEmmiter {
         optionsContainer.innerHTML = `
             <span class="metadata" style="display: block;margin-bottom: 15px;">ustawienia</span>
             <div></div>`;
-        this.lessonView.appendChild(optionsContainer);
+        this.bottomContainer.appendChild(optionsContainer);
         optionsContainer.append(this.options.render());
         const pIncr = this.options.getSetting('percentIncrease');
         pIncr.lowerLimit = 60;
@@ -3293,6 +3370,21 @@ const styles = `
 
 html {
     scroll-behavior: smooth;
+}
+
+.${"custom-script-bottom-container" /* bottomContainer */} {    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.${"custom-script-bottom-container" /* bottomContainer */} > div {
+    border: 1px solid rgb(239, 240, 243);
+    padding: 15px;
+    flex-grow: 1;
+    flex-basis: 45%;
 }
 
 .questionsList__paginationContainer {
@@ -3454,10 +3546,10 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
 .custom-script-summary{
     left: 10px;
 }
-.custom-script-search {
+.slideshow-container .custom-script-search {
     right: 10px;
 }
-.custom-script-summary, .custom-script-search, 
+.custom-script-summary, .slideshow-container .custom-script-search, 
 .custom-script-notes-column {
     position: absolute;
     top: 50px;
@@ -3475,6 +3567,54 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
     min-width: 11rem;
 }
 
+.custom-script-search {
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.custom-script-search>.custom-search-results {
+    height: 100%;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+.custom-search-input-container {
+    display: flex;
+    align-items: center;
+}
+
+a.custom-clear-search {
+    position: absolute;
+    display: flex;
+    right: 0.6rem;
+    color: #555;
+}
+
+.custom-search-input-container a.custom-search-submit {
+    display: flex;
+    padding: 0 0.4rem;
+}
+
+.custom-search-input-container div {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    position: relative;
+}
+
+.custom-search-input-container input {
+    width: 100%;
+    border-radius: 0;
+    border: 0;
+    background: #eff0f3;
+}
+
+.slideshow-container .custom-search-input-container input {
+    border-radius: 5px;
+    background: white;
+    border: solid 1px #666;
+}
+
 .custom-search-result {
     margin: 0.2rem;
     background: white;
@@ -3486,9 +3626,20 @@ body.${"custom-script-hide-cursor" /* hideCursor */} {
     word-break: break-word;
 }
 
+.${"custom-script-bottom-container" /* bottomContainer */} .custom-search-result {
+    background: #eff0f3;
+}
+
 .custom-search-result em {
     font-weight: 900;
     padding-right: 0.2rem;
+}
+
+.${"custom-tagListContainer" /* tagListContainer */} {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
 }
 
 a.custom-script-summary-link {
@@ -3588,13 +3739,6 @@ a.custom-options-btn.active svg {transform: none;}
     height: 0.8rem;
     background: var(--color-primary-text);
     border-radius: 0.4rem;
-}
-
-.${"custom-script-zoom-slider-container" /* zoomSliderContainer */}, .${"custom-script-settings-container" /* settingsContainer */}, 
-.${"custom-script-tools-container" /* toolsContainer */} {
-    margin-top: 1rem; 
-    border: 1px solid rgb(239, 240, 243); 
-    padding: 15px; 
 }
 
 .custom-notes-btns-container {
