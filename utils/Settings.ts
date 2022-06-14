@@ -14,7 +14,7 @@ type SettingEvents<T> = {
 }
 
 enum SettingType {
-    Checkbox, Percent, Integer, Button
+    Checkbox, Percent, Integer, Button, Divider
 }
 
 interface SettingInit<T> {
@@ -33,7 +33,7 @@ interface SettingInit<T> {
     onchange?: (this: SettingElement<T>, event: SettingEvents<T>["change"]) => any
 }
 
-type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined>
+type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit
 
 class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
     name: string
@@ -46,7 +46,7 @@ class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
         this.name = options.name
         this.type = options.type
 
-        if (this.type !== SettingType.Button) {
+        if (this.type !== SettingType.Button && this.type !== SettingType.Divider) {
             GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
                 if (this._value === value) return
                 this._value = value
@@ -146,6 +146,33 @@ interface IntegerSettingInit extends SettingInit<number> {
 
 interface ButtonSettingInit extends SettingInit<undefined> {
     type: SettingType.Button
+}
+
+interface DividerInit {
+    type: SettingType.Divider
+}
+
+class DividerSetting extends SettingElement<undefined> {
+    element: HTMLElement
+
+    constructor(parent: Settings) {
+        super({
+            name: '_divider',
+            desc: 'Divider',
+            type: SettingType.Divider
+        }, parent)
+    }
+
+    render() {
+        this.element = document.createElement('div')
+        this.element.className = 'custom-setting-divider'
+        this.element.innerHTML = `<div></div>`
+        return this.element
+    }
+
+    renderSimple() {
+        return '-----------------'
+    }
 }
 
 class CheckboxSetting extends SettingElement<boolean> {
@@ -310,7 +337,7 @@ type SettingsEvents = {
 type ValueChanger<T> = (old: T) => T
 
 class Settings extends CustomEventEmmiter<SettingsEvents> {
-    addSettings(settings: (SettingElement<any> | SettingInit<any>)[]) {
+    addSettings(settings: (SettingElement<any> | SettingInitAny)[]) {
         settings.forEach(sett => this.addSetting(sett))
     }
     settings: SettingElement<any>[] = []
@@ -319,7 +346,7 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
         super()
     }
 
-    addSetting<T>(setting: SettingElement<T> | SettingInit<T>) {
+    addSetting<T>(setting: SettingElement<T> | SettingInitAny) {
         let sett: SettingElement<any>
         if (setting instanceof SettingElement) {
             setting.parent = this
@@ -328,6 +355,8 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
             sett = new CheckboxSetting((setting as any), this)
         } else if (setting.type === SettingType.Button) {
             sett = new ButtonSetting((setting as any), this)
+        } else if (setting.type === SettingType.Divider) {
+            sett = new DividerSetting(this)
         } else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
             sett = new NumberSetting((setting as any), this)
         }

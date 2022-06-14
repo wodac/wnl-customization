@@ -142,6 +142,7 @@ class NotesRendering {
 
     renderTags() {
         const tagContainer = document.querySelector('.custom-tags-container') as HTMLElement
+        if (!tagContainer) return
         const toRemove = Array.from(tagContainer.children)
         toRemove.pop()
         toRemove.forEach(el => el.remove())

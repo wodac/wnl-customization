@@ -17,6 +17,7 @@ declare const enum BODY_CLASS_NAMES {
     hideCursor = 'custom-script-hide-cursor',
     invertImages = 'custom-script-invert-images',
     hideChat = 'custom-script-hide-chat',
+    hideSlideNav = 'custom-script-hide-chat',
 }
 
 declare const enum SELECTORS {

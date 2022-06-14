@@ -115,6 +115,14 @@ sub.small {
     margin-right: 0!important;
 }
 
+.custom-setting-divider {
+    padding: 0.5rem;
+}
+
+.custom-setting-divider>div {
+    border-bottom: solid 1px #eff0f3;
+}
+
 .${CLASS_NAMES.pageNumberContainer} {
     position: absolute;
     top: 30px;
@@ -595,6 +603,17 @@ div.custom-tag:not(.editing):hover .custom-change-color {
 
 .${BODY_CLASS_NAMES.invertImages} img.iv-large-image, .logo-mobile {
     filter: invert(1) hue-rotate(180deg) saturate(1.4);
+}
+
+.${BODY_CLASS_NAMES.hideSlideNav} .navigate-right.wnl-slideshow-control, 
+.${BODY_CLASS_NAMES.hideSlideNav} .navigate-left.wnl-slideshow-control {
+    opacity: 0.2;
+    transition: opacity 0.4s;
+}
+
+.${BODY_CLASS_NAMES.hideSlideNav} .navigate-right.wnl-slideshow-control:hover, 
+.${BODY_CLASS_NAMES.hideSlideNav} .navigate-left.wnl-slideshow-control:hover {
+    opacity: 1;
 }`
 
 const head = unsafeWindow.document.querySelector('head')

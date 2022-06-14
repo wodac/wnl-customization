@@ -3,7 +3,7 @@
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible')
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column')
 
-let uploadInput, viewNotesBtnToggle: ClassToggler, viewTagsBtnToggle: ClassToggler
+let uploadInput: HTMLInputElement
 
 const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
     {
@@ -65,10 +65,10 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
                 app.notesRendering.addNotesColumn()
                 setupNotesBtns(app)
                 app.notesRendering.loadNotes()
-                if (isMobile()) {
-                    viewNotesBtnToggle.state = true
-                    viewTagsBtnToggle.state = true
-                }
+                // if (isMobile()) {
+                //     viewNotesBtnToggle.state = true
+                //     viewTagsBtnToggle.state = true
+                // }
             }
             this.parent.getSetting('exportNotes').disabled = !state.value
             this.parent.getSetting('importNotes').disabled = !state.value
@@ -143,7 +143,7 @@ function setupNotesBtns(app: App) {
 
     const viewTagsBtn = document.querySelector('.custom-tags-view-btn') as HTMLElement
     const viewTagsToggle = new ClassToggler('custom-script-tags-visible')
-    viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state)
+    const viewTagsBtnToggle = new ClassToggler('active', viewTagsBtn, t => viewTagsToggle.state = t.state)
     viewTagsBtn.addEventListener('click', () => viewTagsBtnToggle.toggle())
 
     const addTagBtns = document.querySelectorAll('.custom-new-tag, .custom-add-tag-btn')
@@ -182,7 +182,7 @@ function setupNotesBtns(app: App) {
             app.notesRendering.renderNotes(app.presentationMetadata.slideNumber)
         })
     })
-    viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
+    const viewNotesBtnToggle = new ClassToggler('active', viewNotesBtn, t => {
         hiddenBtnsToggle.state = !t.state
         notesOverlayToggle.state = !viewTypeBtnToggle.state && t.state
         noteColumnToggle.state = !(viewTypeBtnToggle.state && t.state)
@@ -204,6 +204,11 @@ function setupNotesBtns(app: App) {
     Keyboard.registerShortcut({
         keys: ['v'], callback: () => viewTypeBtnToggle.toggle()
     })
+
+    if (isMobile()) {
+        viewNotesBtnToggle.state = true
+        viewTagsBtnToggle.state = true
+    }
 
     function addTag() {
         app.currentSlideNotes.addTag({

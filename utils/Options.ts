@@ -34,70 +34,6 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         key: 'a'
     },
     {
-        name: "hideChat",
-        icon: {
-            emoji: "💬",
-            html: SVGIcons.chat
-        },
-        desc: "Ukryj czat",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideChat, state.value),
-        defaultValue: false,
-        key: 'c'
-    },
-    {
-        name: "smoothScroll",
-        icon: {
-            emoji: "↕️",
-            html: SVGIcons.chevronExpand
-        },
-        desc: "Płynne przewijanie strzałkami",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        key: 's'
-    },
-    {
-        name: "keyboardControl",
-        icon: {
-            emoji: "⌨️",
-            html: SVGIcons.keyboard
-        },
-        desc: "Sterowanie klawiaturą",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (state.value) {
-                Keyboard.setupControl(app)
-            }
-            else {
-                document.querySelectorAll('sub.small').forEach(sub => sub.remove())
-                Keyboard.disableControl()
-                if (app.slideObserver) app.slideObserver.disconnect()
-            }
-        },
-        defaultValue: true,
-        key: 'k'
-    },
-    {
-        name: "changeTitle",
-        icon: {
-            emoji: "🆎",
-            html: SVGIcons.capitalT
-        },
-        desc: "Zmień tytuł karty",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (!state.value) {
-                if (app.originalTitle) unsafeWindow.document.title = app.originalTitle
-            }
-            app.updateTabTitle()
-        },
-        onrender: () => {
-            app.originalTitle = unsafeWindow.document.title
-        },
-        defaultValue: false,
-        key: 't'
-    },
-    {
         name: "uniformFontSize",
         icon: {
             emoji: "🔤",
@@ -113,61 +49,6 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         },
         defaultValue: false,
         key: 'u'
-    },
-    {
-        name: "invertImages",
-        icon: {
-            emoji: "🔃",
-            html: SVGIcons.pallete
-        },
-        desc: "Odwróć kolory obrazów",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
-        key: 'i'
-    },
-    {
-        name: "showMainCourseSidebar",
-        icon: {
-            emoji: "📗",
-            html: SVGIcons.viewStack
-        },
-        desc: "Pokaż nawigację całego kursu w panelu bocznym",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => {
-            if (state.value) {
-                if (!app.courseSidebar) {
-                    setupSidebar()
-                    app.addEventListener('unloaded', () => app.courseSidebar.destroy())
-                }
-                app.addEventListener('loaded', setupSidebar)
-                app.courseSidebar.show()
-            } else {
-                app.removeEventListener('loaded', setupSidebar)
-                if (app.courseSidebar) app.courseSidebar.hide()
-            }
-
-            function setupSidebar() {
-                app.courseSidebar = new CourseSidebar()
-                const sidenav = document.querySelector('aside.course-sidenav')
-                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
-                    app.courseSidebar.attach(sidenav)
-                } else {
-                    app.setupObserveSidenav()
-                    app.addEventListener('sidenavOpened', opened => {
-                        if (opened) {
-                            const sidenav = document.querySelector('aside.course-sidenav')
-                            app.courseSidebar.attach(sidenav)
-                        }
-                    })
-                }
-                app.courseSidebar.addEventListener('urlChange', toOpen => {
-                    app.tabOpener.openSlide(toOpen)
-                })
-            }
-        },
-        key: 'i'
     },
     {
         name: "percentIncrease",
@@ -219,5 +100,140 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
             })
         },
         key: 'p'
-    }
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideChat",
+        icon: {
+            emoji: "💬",
+            html: SVGIcons.chat
+        },
+        desc: "Ukryj czat",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideChat, state.value),
+        defaultValue: false,
+        key: 'c'
+    },
+    {
+        name: "hideSlideNav",
+        icon: {
+            emoji: "↔️",
+            html: SVGIcons.code
+        },
+        desc: "Ukryj strzałki nawigacji na slajdach",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideSlideNav, state.value),
+    },
+    {
+        name: "showMainCourseSidebar",
+        icon: {
+            emoji: "📗",
+            html: SVGIcons.viewStack
+        },
+        desc: "Pokaż nawigację całego kursu w panelu bocznym",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                if (!app.courseSidebar) {
+                    setupSidebar()
+                    app.addEventListener('unloaded', () => app.courseSidebar.destroy())
+                }
+                app.addEventListener('loaded', setupSidebar)
+                app.courseSidebar.show()
+            } else {
+                app.removeEventListener('loaded', setupSidebar)
+                if (app.courseSidebar) app.courseSidebar.hide()
+            }
+
+            function setupSidebar() {
+                app.courseSidebar = new CourseSidebar()
+                const sidenav = document.querySelector('aside.course-sidenav')
+                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                    app.courseSidebar.attach(sidenav)
+                } else {
+                    app.setupObserveSidenav()
+                    app.addEventListener('sidenavOpened', opened => {
+                        if (opened) {
+                            const sidenav = document.querySelector('aside.course-sidenav')
+                            app.courseSidebar.attach(sidenav)
+                        }
+                    })
+                }
+                app.courseSidebar.addEventListener('urlChange', toOpen => {
+                    app.tabOpener.openSlide(toOpen)
+                })
+            }
+        },
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "keyboardControl",
+        icon: {
+            emoji: "⌨️",
+            html: SVGIcons.keyboard
+        },
+        desc: "Sterowanie klawiaturą",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (state.value) {
+                Keyboard.setupControl(app)
+            }
+            else {
+                document.querySelectorAll('sub.small').forEach(sub => sub.remove())
+                Keyboard.disableControl()
+                if (app.slideObserver) app.slideObserver.disconnect()
+            }
+        },
+        defaultValue: isMobile(),
+        key: 'k'
+    },
+    {
+        name: "changeTitle",
+        icon: {
+            emoji: "🆎",
+            html: SVGIcons.capitalT
+        },
+        desc: "Zmień tytuł karty",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (!state.value) {
+                if (app.originalTitle) unsafeWindow.document.title = app.originalTitle
+            }
+            app.updateTabTitle()
+        },
+        onrender: () => {
+            app.originalTitle = unsafeWindow.document.title
+        },
+        defaultValue: !isMobile(),
+        key: 't'
+    },
+    {
+        name: "invertImages",
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.pallete
+        },
+        desc: "Odwróć kolory obrazów",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
+        key: 'i'
+    },
+    {
+        name: "smoothScroll",
+        icon: {
+            emoji: "↕️",
+            html: SVGIcons.chevronExpand
+        },
+        desc: "Płynne przewijanie strzałkami",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        key: 's'
+    },
 ]
