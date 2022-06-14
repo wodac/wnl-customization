@@ -1274,6 +1274,7 @@ class Setting extends CustomEventEmmiter {
                 this.trigger('change', { oldValue, remote, value });
             });
             this._value = GM_getValue(this.name, options.defaultValue);
+            GM_setValue(this.name, this._value);
             if (options.isInRange)
                 this.isInRange = options.isInRange;
         }
