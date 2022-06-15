@@ -42,7 +42,7 @@ function main(cb) {
     return src(['dist/without-styles.js', 'dist/style.js'])
         .pipe(gulpuglify())
         .pipe(src('packageMetadata.ts'))
-        .pipe(gulpconcat('wnl-customization.gulp.user.js'))
+        .pipe(gulpconcat('wnl-customization.user.js'))
         .pipe(dest('dist'))
 }
 
