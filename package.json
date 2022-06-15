@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
-    "start": "npx tsc -w & cd .. && http-server wnl-customization/dist -S -C cert.pem -o /"
+    "start": "gulp & cd .. && http-server wnl-customization/dist -S -C cert.pem -o /"
   },
   "repository": {
     "type": "git",
@@ -19,9 +19,16 @@
   },
   "homepage": "https://wodac.github.io/wnl-customization/",
   "devDependencies": {
-    "typescript": "^4.6.4"
+    "gulp": "^4.0.2",
+    "gulp-clean-css": "^4.3.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-insert": "^0.5.0",
+    "gulp-rename": "^2.0.0",
+    "gulp-uglify": "^3.0.2",
+    "typescript": "^4.7.3"
   },
   "dependencies": {
+    "gulp-typescript": "^6.0.0-alpha.1",
     "json-schema-to-typescript": "^10.1.5"
   }
 }
