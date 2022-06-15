@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.10.5
+// @version      1.10.5b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -210,7 +210,7 @@ class SlideshowChapters extends CustomEventEmmiter {
         return chapters;
     }
     openMenu() {
-        const menuBtn = document.querySelector(".topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint" /* menuBtn */);
+        const menuBtn = document.querySelector(".topNavContainer__beforeLogo.topNavContainer__megaMenuMobileEntryPoint" /* SELECTORS.menuBtn */);
         if (menuBtn) {
             menuBtn.click();
             this.menuOpened = true;
@@ -310,7 +310,7 @@ class PresentationMetadata extends CustomEventEmmiter {
         this.addEventListener('slideChange', slide => this.slideshowChapters.setCurrentPage(slide));
     }
     get appDiv() {
-        return document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+        return document.querySelector(".wnl-app-layout.wnl-course-layout" /* SELECTORS.appDiv */);
     }
     getAttrVal(name) {
         const el = document.querySelector(`[${name}]`);
@@ -548,12 +548,12 @@ const zoomSliderHTML = `
             <label class="metadata">POWIĘKSZENIE</label>
         </span>
         <div style="text-align: right;">
-            <input class="${"custom-script-font-size-input" /* fontSizeInput */}" 
+            <input class="${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}" 
                 type="range" size="3" maxlength="3" min="70" max="200" 
                 step="5">
-            <a class="${"custom-script-font-size-input" /* fontSizeInput */}-decrease">${SVGIcons.zoomOut}</a>
-            <span class="${"custom-script-font-size-label" /* fontSizeLabel */}">120%</span>
-            <a class="${"custom-script-font-size-input" /* fontSizeInput */}-increase">${SVGIcons.zoomIn}</a>
+            <a class="${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}-decrease">${SVGIcons.zoomOut}</a>
+            <span class="${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}">120%</span>
+            <a class="${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}-increase">${SVGIcons.zoomIn}</a>
         </div>`;
 function toggleBodyClass(className, isOn) {
     let body = document.body;
@@ -768,7 +768,7 @@ class SearchConstructor extends CustomEventEmmiter {
     }
     getSearchContainer(dissmisible = false) {
         this.searchContainer = document.createElement('div');
-        this.searchContainer.className = `${"custom-script-search" /* searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
+        this.searchContainer.className = `${"custom-script-search" /* CLASS_NAMES.searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
         this.searchContainer.innerHTML = SearchConstructor.searchMenu;
         this.searchResultsContainer = document.createElement('div');
         this.searchResultsContainer.className = 'custom-search-results';
@@ -1170,7 +1170,7 @@ var Keyboard;
         const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
         const options = { top: y, left: 0, behavior };
         const views = [
-            document.querySelector(".present .present" /* currentSlideContainer */),
+            document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */),
             document.querySelector('.m-modal__content'),
             document.querySelector('.wnl-comments')
         ];
@@ -1244,7 +1244,7 @@ var Keyboard;
     function toggleMouseVisibility(visible) {
         mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
         //console.log({ mouseVisible, visible })
-        toggleBodyClass("custom-script-hide-cursor" /* hideCursor */, !mouseVisible);
+        toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, !mouseVisible);
         if (!mouseVisible)
             document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
     }
@@ -1694,7 +1694,7 @@ const getOptions = (app) => [
             if (state.value) {
                 this.parent.setValue("uniformFontSize", false);
             }
-            toggleBodyClass("custom-script-increase-font-size" /* increaseFontSize */, state.value);
+            toggleBodyClass("custom-script-increase-font-size" /* BODY_CLASS_NAMES.increaseFontSize */, state.value);
         },
         defaultValue: true,
         key: 'f'
@@ -1707,7 +1707,7 @@ const getOptions = (app) => [
         },
         desc: "Zwiększ wielkość czcionki w przypisach",
         type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-increase-annotations" /* increaseAnnotations */, state.value),
+        onchange: state => toggleBodyClass("custom-script-increase-annotations" /* BODY_CLASS_NAMES.increaseAnnotations */, state.value),
         defaultValue: false,
         key: 'a'
     },
@@ -1723,7 +1723,7 @@ const getOptions = (app) => [
             if (state.value) {
                 this.parent.setValue("increaseFontSize", false);
             }
-            toggleBodyClass("custom-script-uniform-font-size" /* uniformFontSize */, state.value);
+            toggleBodyClass("custom-script-uniform-font-size" /* BODY_CLASS_NAMES.uniformFontSize */, state.value);
         },
         defaultValue: false,
         key: 'u'
@@ -1740,8 +1740,8 @@ const getOptions = (app) => [
         defaultValue: 110,
         onchange: state => {
             updateFontSize(state.value);
-            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
             if (rangeInput) {
                 rangeInput.value = state.value.toString();
                 rangeInput.title = state.value.toString();
@@ -1750,8 +1750,8 @@ const getOptions = (app) => [
                 rangeLabel.innerText = `${state.value}%`;
         },
         onrender: function () {
-            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
-            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`);
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
             if (rangeInput) {
                 rangeInput.value = this.value.toString();
                 rangeLabel.innerText = `${this.value}%`;
@@ -1791,7 +1791,7 @@ const getOptions = (app) => [
         },
         desc: "Ukryj czat",
         type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hide-chat" /* hideChat */, state.value),
+        onchange: state => toggleBodyClass("custom-script-hide-chat" /* BODY_CLASS_NAMES.hideChat */, state.value),
         defaultValue: false,
         key: 'c'
     },
@@ -1804,7 +1804,7 @@ const getOptions = (app) => [
         desc: "Ukryj strzałki nawigacji na slajdach",
         type: SettingType.Checkbox,
         defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-slide-nav-chat" /* hideSlideNav */, state.value),
+        onchange: state => toggleBodyClass("custom-script-slide-nav-chat" /* BODY_CLASS_NAMES.hideSlideNav */, state.value),
     },
     {
         name: "showMainCourseSidebar",
@@ -1905,7 +1905,7 @@ const getOptions = (app) => [
         desc: "Odwróć kolory obrazów",
         type: SettingType.Checkbox,
         defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-invert-images" /* invertImages */, state.value),
+        onchange: state => toggleBodyClass("custom-script-invert-images" /* BODY_CLASS_NAMES.invertImages */, state.value),
         key: 'i'
     },
     {
@@ -1930,7 +1930,7 @@ const getOptions = (app) => [
         },
         desc: "Ukryj narzędzia",
         type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideTools" /* hideTools */, state.value),
+        onchange: state => toggleBodyClass("custom-script-hideTools" /* BODY_CLASS_NAMES.hideTools */, state.value),
         defaultValue: false,
     },
     {
@@ -1941,7 +1941,7 @@ const getOptions = (app) => [
         },
         desc: "Ukryj listę tagów",
         type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideTags" /* hideTags */, state.value),
+        onchange: state => toggleBodyClass("custom-script-hideTags" /* BODY_CLASS_NAMES.hideTags */, state.value),
         defaultValue: false,
     },
     {
@@ -1952,7 +1952,7 @@ const getOptions = (app) => [
         },
         desc: "Ukryj narzędzie wyszukiwania pod slajdem",
         type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideBottomSearch" /* hideBottomSearch */, state.value),
+        onchange: state => toggleBodyClass("custom-script-hideBottomSearch" /* BODY_CLASS_NAMES.hideBottomSearch */, state.value),
         defaultValue: false,
     },
 ];
@@ -2694,7 +2694,7 @@ class NotesRendering {
         this.notesChangedListener = (change) => this.slideNotesChanged(change);
         this.addNoteBtnHandler = (event) => {
             if (this.app.currentSlideNotes) {
-                const slide = document.querySelector(".present .present" /* currentSlideContainer */);
+                const slide = document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */);
                 slide.style.cursor = `copy`;
                 const newNote = this.app.currentSlideNotes.addNote({
                     content: '', position: { x: 0, y: 1 },
@@ -2752,7 +2752,7 @@ class NotesRendering {
             const suggestions = tags.map(tagToOption);
             const tagListElems = tags.map(tagToTagListElem);
             const suggestionsContainer = document.createElement('datalist');
-            const tagListContainer = document.querySelector(`.${"custom-tagList" /* tagList */}`);
+            const tagListContainer = document.querySelector(`.${"custom-tagList" /* CLASS_NAMES.tagList */}`);
             suggestionsContainer.id = 'custom-tags-list';
             suggestionsContainer.append(...suggestions);
             tagListContainer.append(...tagListElems);
@@ -2778,7 +2778,7 @@ class NotesRendering {
             if (this.app.tools && this.app.tools.getValue('useNotes') && this.app.notesCollection) {
                 if (noteTarget)
                     noteTarget.innerHTML = '';
-                const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
+                const currentSlide = document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */);
                 if (!currentSlide)
                     return;
                 const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay');
@@ -2832,7 +2832,7 @@ class NotesRendering {
             return;
         this.btnsContainerNoNotes.state = false;
         let parent;
-        const currentSlide = document.querySelector(".present .present" /* currentSlideContainer */);
+        const currentSlide = document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */);
         if (!currentSlide)
             return;
         if (noteTarget) {
@@ -3174,7 +3174,7 @@ function addChapterInfo(app) {
 }
 function updateChapterProgress(app) {
     return __awaiter(this, void 0, void 0, function* () {
-        const pageNumberContainer = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+        const pageNumberContainer = document.querySelector(`.${"custom-script-page-number-container" /* CLASS_NAMES.pageNumberContainer */}`);
         if (!pageNumberContainer)
             return;
         const chapterPath = app.slideshowChapters.getProgress();
@@ -3183,15 +3183,15 @@ function updateChapterProgress(app) {
             do {
                 progress = chapterPath.pop();
             } while (chapterPath.length && progress.actualLength < 5);
-            const relativeCurrentContainer = pageNumberContainer.querySelector(`.${"current-number" /* currentChapterPage */}`);
+            const relativeCurrentContainer = pageNumberContainer.querySelector(`.${"current-number" /* CLASS_NAMES.currentChapterPage */}`);
             relativeCurrentContainer.innerText = progress.current.toString();
-            const chapterLengthContainer = pageNumberContainer.querySelector(`.${"n-of-pages" /* chapterLength */}`);
+            const chapterLengthContainer = pageNumberContainer.querySelector(`.${"n-of-pages" /* CLASS_NAMES.chapterLength */}`);
             chapterLengthContainer.innerText = progress.actualLength.toString();
         }
     });
 }
 function addPageNumberContainer() {
-    const classNames = ["custom-script-page-number-container" /* pageNumberContainer */, "current-number" /* currentChapterPage */, '', "n-of-pages" /* chapterLength */];
+    const classNames = ["custom-script-page-number-container" /* CLASS_NAMES.pageNumberContainer */, "current-number" /* CLASS_NAMES.currentChapterPage */, '', "n-of-pages" /* CLASS_NAMES.chapterLength */];
     const spans = classNames.map(name => {
         const span = document.createElement('span');
         span.className = name;
@@ -3238,21 +3238,21 @@ class App extends CustomEventEmmiter {
         this.notesRendering = new NotesRendering(this);
         this.tools.addSettings(getToolsConfig(this));
         if (!this.appDiv) {
-            this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+            this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* SELECTORS.appDiv */);
             if (!this.appDiv)
                 return;
         }
         this.presentationMetadata.observe();
         this.presentationMetadata.addEventListener('slideChange', slide => this.trigger('slideChange', slide));
         this.tabOpener = new TabOpener(this);
-        let background = document.querySelector(".image-custom-background" /* background */);
+        let background = document.querySelector(".image-custom-background" /* SELECTORS.background */);
         if (background !== null) {
             background.classList.remove("image-custom-background");
             background.classList.add("white-custom-background");
         }
         this.searchInSlideshow = new SearchConstructor(this);
         this.searchInBottomContainer = new SearchConstructor(this);
-        this.lessonView = document.querySelector(".wnl-lesson-view" /* lessonView */);
+        this.lessonView = document.querySelector(".wnl-lesson-view" /* SELECTORS.lessonView */);
         if (this.lessonView !== null) {
             this.addBottomContainer();
         }
@@ -3274,7 +3274,7 @@ class App extends CustomEventEmmiter {
     }
     addBottomContainer() {
         this.bottomContainer = document.createElement('div');
-        this.bottomContainer.className = "custom-script-bottom-container" /* bottomContainer */;
+        this.bottomContainer.className = "custom-script-bottom-container" /* CLASS_NAMES.bottomContainer */;
         this.addSliderContainer();
         // this.addTagListContainer()
         this.bottomContainer.append(this.searchInBottomContainer.getSearchContainer(false));
@@ -3285,13 +3285,13 @@ class App extends CustomEventEmmiter {
     addTagListContainer() {
         const tagListContainer = document.createElement('div');
         tagListContainer.style.order = '-1';
-        tagListContainer.className = "custom-tagListContainer" /* tagListContainer */;
+        tagListContainer.className = "custom-tagListContainer" /* CLASS_NAMES.tagListContainer */;
         tagListContainer.innerHTML = `
             <span class='custom-heading'>
                 ${SVGIcons.tags}
                 <span class='metadata'>tagi</span>
             </span>
-            <div class=${"custom-tagList" /* tagList */}></div>`;
+            <div class=${"custom-tagList" /* CLASS_NAMES.tagList */}></div>`;
         this.bottomContainer.append(tagListContainer);
     }
     setupObserveSidenav() {
@@ -3330,30 +3330,30 @@ class App extends CustomEventEmmiter {
         }
     }
     addSliderContainer() {
-        const test = document.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`);
+        const test = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
         if (test)
             return;
         const sliderContainer = document.createElement('div');
         sliderContainer.innerHTML = zoomSliderHTML;
-        sliderContainer.className = "custom-script-zoom-slider-container" /* zoomSliderContainer */;
+        sliderContainer.className = "custom-script-zoom-slider-container" /* CLASS_NAMES.zoomSliderContainer */;
         this.bottomContainer.appendChild(sliderContainer);
-        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* fontSizeInput */}`)
-            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* fontSizeLabel */}`).innerText = `${e.target.value}%`);
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-increase`)
+        sliderContainer.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`)
+            .addEventListener('input', e => document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`).innerText = `${e.target.value}%`);
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}-increase`)
             .addEventListener('click', () => {
             this.options.setValue('percentIncrease', (state) => state + 5);
         });
-        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* fontSizeInput */}-decrease`)
+        sliderContainer.querySelector(`.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}-decrease`)
             .addEventListener('click', () => {
             this.options.setValue('percentIncrease', (state) => state - 5);
         });
     }
     addToolsContainer() {
-        const test = document.querySelector(`.${"custom-script-tools-container" /* toolsContainer */}`);
+        const test = document.querySelector(`.${"custom-script-tools-container" /* CLASS_NAMES.toolsContainer */}`);
         if (test)
             return;
         const toolsContainer = document.createElement('div');
-        toolsContainer.classList.add("custom-script-tools-container" /* toolsContainer */);
+        toolsContainer.classList.add("custom-script-tools-container" /* CLASS_NAMES.toolsContainer */);
         toolsContainer.innerHTML = `
             <span class='custom-heading'>
                 ${SVGIcons.tools}
@@ -3364,11 +3364,11 @@ class App extends CustomEventEmmiter {
         toolsContainer.append(this.tools.render());
     }
     addSettingsContainer() {
-        const test = document.querySelector(`.${"custom-script-settings-container" /* settingsContainer */}`);
+        const test = document.querySelector(`.${"custom-script-settings-container" /* CLASS_NAMES.settingsContainer */}`);
         if (test)
             return;
         const optionsContainer = document.createElement('div');
-        optionsContainer.classList.add("custom-script-settings-container" /* settingsContainer */);
+        optionsContainer.classList.add("custom-script-settings-container" /* CLASS_NAMES.settingsContainer */);
         optionsContainer.innerHTML = `
             <span class='custom-heading'>
                 ${SVGIcons.gear}
@@ -3385,14 +3385,14 @@ class App extends CustomEventEmmiter {
         this.options = new Settings(this);
         this.tools = new Settings(this);
         this.awaitLoad();
-        this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* appDiv */);
+        this.appDiv = document.querySelector(".wnl-app-layout.wnl-course-layout" /* SELECTORS.appDiv */);
         this.presentationMetadata = new PresentationMetadata(this);
     }
     awaitLoad() {
         let checkLoadedInterval;
         this.isAwaiting = true;
         checkLoadedInterval = setInterval(() => {
-            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+            const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* CLASS_NAMES.pageNumberContainer */}`);
             if (testExtensionLoaded) {
                 this.isAwaiting = false;
                 clearInterval(checkLoadedInterval);
@@ -3407,7 +3407,7 @@ class App extends CustomEventEmmiter {
         }, 300);
     }
     checkUnloaded() {
-        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* pageNumberContainer */}`);
+        const testExtensionLoaded = document.querySelector(`.${"custom-script-page-number-container" /* CLASS_NAMES.pageNumberContainer */}`);
         if (!this.isAwaiting && !testExtensionLoaded) {
             this.onUnload();
             this.awaitLoad();
@@ -3430,747 +3430,9 @@ class App extends CustomEventEmmiter {
             this.slideObserver.disconnect();
     }
 }
-///<reference path="globals.d.ts" />
-///<reference path="utils/enums.ts" />
-const styles = `
-:root {
-    --uniform-font-size: 0.93em;
-    --scaled-font-size: 110%;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-.${"custom-script-bottom-container" /* bottomContainer */} {    
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-    gap: 1rem;
-}
-
-.${"custom-script-bottom-container" /* bottomContainer */} > div {
-    border: 1px solid rgb(239, 240, 243);
-    padding: 15px;
-    flex-grow: 1;
-    flex-basis: 45%;
-}
-
-.questionsList__paginationContainer {
-    /* position: absolute!important; */
-    top: 0;
-    left: 0;
-    z-index: 1000;
-    background: white;
-}
-
-.${"custom-script-increase-font-size" /* increaseFontSize */} .sl-block-content span[style*='21px'] {
-    font-size: 0.75em!important;
-}
-
-.${"custom-script-option-container" /* optionContainer */} {
-    padding: 5px 15px;
-}
-
-.${"custom-script-option-container" /* optionContainer */}:hover {
-    background-color: #f6f6f6
-}
-
-a.custom-script-option {
-    color: #0c1726
-}
-
-.${"custom-script-increase-annotations" /* increaseAnnotations */} article.content.-styleguide p {
-    font-size: var(--scaled-font-size);
-    line-height: 150%;
-}
-
-.${"custom-script-increase-font-size" /* increaseFontSize */} .sl-block-content p {
-    font-size: var(--scaled-font-size)!important;
-}
-
-.${"custom-script-uniform-font-size" /* uniformFontSize */} .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
-    font-size: var(--uniform-font-size)!important;
-}
-
-@media screen and (orientation:landscape) {
-   section.stack.present section {
-       overflow-y: auto;
-       overflow-x: hidden;
-       padding-bottom: 1em;
-   }
-}
-
-@media screen and (max-width: 980px) {
-    .custom-notes-view-btn,
-    .custom-tags-view-btn {
-        display: none!important;
-    }
-
-    div.custom-tag:not(.editing) .custom-remove,
-    div.custom-tag:not(.editing) .custom-change-color {
-        width: 16px;
-    }
-
-    .${"custom-script-bottom-container" /* bottomContainer */}>div {
-        flex-basis: 100%;
-    }
-}
-
-.${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference {
-    margin-left: 0.5em
-}
-
-.${"custom-script-increase-font-size" /* increaseFontSize */} .wnl-reference svg,
-.${"custom-script-uniform-font-size" /* uniformFontSize */} .wnl-reference svg {
-    transform: scale(1.6)!important;
-}
-
-sub.small {
-    margin-left: 0.5rem!important;
-    font-size: 1.5rem!important;
-}
-
-.m-imageFullscreenWrapper {
-    max-height: 80vh;
-    text-align: center;
-}
-
-.m-imageFullscreenWrapper img {
-    max-height: 80vh;
-    margin: auto!important;
-}
-
-.image-fullscreen-index {
-    margin: 0 0.3rem;
-    color: #8b8b8b;
-    padding: 0;
-    font-size: 0.8rem;
-}
-
-.custom-script-setting {
-    padding: 0.3rem;    
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-.custom-script-setting svg {
-    flex-shrink: 0;
-}
-
-.custom-script-setting * {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-right: 0!important;
-}
-
-.custom-setting-divider {
-    padding: 0.5rem;
-}
-
-.custom-setting-divider>div {
-    border-bottom: solid 1px #eff0f3;
-}
-
-.${"custom-script-page-number-container" /* pageNumberContainer */} {
-    position: absolute;
-    top: 30px;
-    left: 0;
-    z-index: 10;
-    font-size: 0.8rem;
-    color: #7a7a7a;
-    padding-left: 10px;
-    padding-bottom: 1rem;
-    padding-right: 1.5rem;
-    cursor: pointer;
-}
-
-body.${"custom-script-hide-cursor" /* hideCursor */} {
-    cursor: none;
-}
-
-.custom-script-hidden {
-    visibility: hidden;
-    top: -70vh!important;
-}
-
-.custom-script-summary-close {
-    text-align: center;
-    cursor: pointer;
-    background: #ffffff8c;
-    margin: 0.2rem;
-    border-radius: 5px;
-    height: 16px;
-}
-
-.custom-script-summary-link-container ul {
-    margin-left: 1rem;
-}
-
-.custom-script-summary-link-container:not(.active) ul {
-    display: none;
-}
-
-.custom-script-summary-link-container.active>a {
-    font-weight: 700;
-}
-
-.custom-script-summary{
-    left: 10px;
-}
-.slideshow-container .custom-script-search {
-    right: 10px;
-}
-.custom-script-summary, .slideshow-container .custom-script-search, 
-.custom-script-notes-column {
-    position: absolute;
-    top: 50px;
-    left: 10px;
-    z-index: 10;
-    font-size: 0.8rem;
-    width: 11rem;
-    max-height: 70%;
-    overflow-y: auto;
-    background-color: rgb(247 247 247 / 90%);
-    border-radius: 5px;
-    box-shadow: 0px 1px 2px 2px #00000014;
-    transition: top 1s, visibility 1s;
-    resize: horizontal;
-    min-width: 11rem;
-}
-
-.custom-script-search {
-    max-height: 80vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.custom-script-search>.custom-search-results {
-    height: 100%;
-    overflow-y: auto;
-    max-height: 70vh;
-}
-
-p.custom-search-invitation {
-    display: flex;
-    height: 100%;
-    opacity: 0.6;
-    justify-content: center;
-    align-items: center;
-    padding: 0.5rem;
-}
-
-.custom-search-input-container {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-}
-
-.custom-search-result.custom-loading {
-    opacity: 0.6;
-}
-
-.custom-search-result.custom-loading:nth-child(2) {
-    opacity: 0.3;
-}
-
-.custom-search-result.custom-loading>div {
-    background: linear-gradient(314deg, #707070, #ffffff);
-    background-size: 400% 400%;
-    margin: 0.4rem 0;
-    border-radius: 5px;
-    animation: LoadingParagraph 4s ease infinite;
-}
-
-@keyframes LoadingParagraph {
-    0%{background-position:0% 50%}
-    50%{background-position:100% 50%}
-    100%{background-position:0% 50%}
-}
-
-a.custom-clear-search {
-    position: absolute;
-    display: flex;
-    right: 4px;
-    color: #555;
-}
-
-.custom-search-input-container a.custom-search-submit {
-    display: flex;
-    padding: 0 0.4rem;
-}
-
-.custom-search-input-container div {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    position: relative;
-}
-
-.custom-search-input-container input {
-    width: 100%;
-    border-radius: 0;
-    border: 0;
-    background: #eff0f3;
-}
-
-.slideshow-container .custom-search-input-container input {
-    border-radius: 5px;
-    background: white;
-    border: solid 1px #666;
-}
-
-.custom-search-result {
-    margin: 0.2rem;
-    background: white;
-    border-radius: 5px;
-    padding: 5px;
-    display: block;
-    color: #222;
-    overflow: hidden;
-    word-break: break-word;
-    flex-shrink: 0;
-}
-
-.${"custom-script-bottom-container" /* bottomContainer */} .custom-search-result {
-    background: #eff0f3;
-}
-
-.custom-search-result em {
-    font-weight: 900;
-    padding-right: 0.2rem;
-}
-
-.${"custom-tagList" /* tagList */} {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.4rem;
-}
-
-a.custom-script-summary-link {
-    display: block;
-    padding: 0.1rem 0.2rem;
-}
-
-.custom-script-additional-options {
-    position: absolute;
-    top: 55px;
-    right: 5px;
-    max-height: 30%;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    width: 100px;
-    align-items: flex-end;
-    transition: all 1s;
-}
-
-a.custom-script-slideshow-btn.wnl-rounded-button {
-    align-items: center;
-    flex-direction: column;
-    z-index: 5;
-    display: flex;
-    background-color: #fafafabf;
-    border-radius: 5%;
-    height: 40px;
-    justify-content: center;
-    width: 40px;
-    margin: 5px;
-    overflow: hidden;
-    transition: width 0.5s, margin 0.5s;
-}
-
-span.custom-btn-caption {
-    font-size: 0.675rem;
-    line-height: 1.2rem;
-}
-
-a.wnl-rounded-button.bookmark {
-    position: unset;
-    margin: 5px;
-}
-
-a.custom-options-btn {
-    top: 5px;
-    position: absolute;
-    right: 5px;
-}
-
-a.custom-options-btn svg {
-    transform: rotateX(180deg);
-    transition: transform 1s;
-}
-
-a.custom-options-btn.active svg {transform: none;}
-
-.${"custom-script-font-size-label" /* fontSizeLabel */} {
-    margin: 0 0.5rem;
-    height: 16px;
-    font-size: 24px; 
-    vertical-align: top;
-    width: 4.3rem;
-    display: inline-block;
-    text-align: center;
-}
-
-.${"custom-script-font-size-input" /* fontSizeInput */}-increase, .${"custom-script-font-size-input" /* fontSizeInput */}-decrease {
-    vertical-align: sub;
-}
-
-.${"custom-script-font-size-input" /* fontSizeInput */}, .custom-script-setting input[type=range] {
-    -webkit-appearance: none;
-    appearance: none;
-    margin-right: 0.9em;
-    outline: none;
-    height: 0.6rem;
-    background: #96dbdf!important;
-    border-radius: 5px;
-    vertical-align: middle;
-}
-
-.${"custom-script-font-size-input" /* fontSizeInput */}::-webkit-slider-thumb, .custom-script-setting input::-webkit-slider-thumb {
-    -webkit-appearance: none; 
-    appearance: none;
-    cursor: pointer;
-    width: 0.8rem;
-    height: 0.8rem;
-    background: var(--color-primary-text);
-    border-radius: 0.4rem;
-}
-
-.${"custom-script-font-size-input" /* fontSizeInput */}::-moz-range-thumb {
-    cursor: pointer;
-    width: 0.8rem;
-    height: 0.8rem;
-    background: var(--color-primary-text);
-    border-radius: 0.4rem;
-}
-
-.custom-notes-btns-container {
-    flex-direction: row;
-    align-items: flex-start;
-    flex-wrap: wrap-reverse;
-    display: none!important;
-}
-
-.custom-notes-additional-btns {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-}
-
-.custom-add-note-btns.active {
-    height: 90px;
-}
-
-.custom-add-note-btns {
-    height: 0;
-    overflow: hidden;
-    transition: height 0.5s;
-}
-
-.custom-add-note-btns-container {
-    display: flex;
-    flex-direction: column-reverse;
-}
-
-.custom-script-use-notes .fullscreen-mode .wnl-comments, 
-.custom-script-use-notes .wnl-lesson-previous-next-nav {
-    z-index: 12!important;
-}
-
-.custom-notes-btns-container .wnl-rounded-button {
-    color: black!important;
-}
-
-.slideshow-container.fullscreen .custom-notes-btns-container {
-    margin-left: 70px;
-}
-
-.custom-script-notes-column:empty {
-    display: none;
-}
-
-.custom-script-notes-column .custom-note {
-    display: flex;
-    align-content: space-between;
-    flex-direction: row;
-    padding: 5px;
-    margin: 5px;
-    border-radius: 5px;
-    background: white;
-}
-
-.custom-script-notes-column .custom-note .custom-note-move {display: none;}
-
-.custom-script-notes-column .custom-note .custom-note-remove {
-    color: black;
-    margin-right: 0;
-    margin-left: auto;
-}
-
-.custom-notes-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: none;
-}
-
-.custom-notes-overlay .custom-note {
-    font-size: 1.6rem!important;
-    background: #feffcc;
-    position: absolute;
-    border: solid 2px #b1b18e;
-    padding: 0.5rem 35px 0.5rem 0.5rem!important;
-    border-radius: 0.5rem 0.5rem 1.5rem 0.5rem;
-    box-shadow: 2px 1px 2px 2px #72725c57;
-    min-width: 7rem;
-    max-width: 25%;
-    max-height: 30%;
-    z-index: 11;
-    min-height: 70px;
-    overflow-y: auto;
-}
-
-.custom-note form,
-.custom-tag form {display: none;}
-
-.custom-note.editing form, 
-.custom-tag.editing form {display: block;}
-
-.custom-note.editing .custom-note-content, 
-.custom-tag.editing .custom-tag-content {display: none;}
-
-.custom-note textarea,
-.custom-tag input {
-    appearance: none;
-    border: none;
-    width: 100%!important;
-    height: 100%!important;
-    background: none;
-}
-
-.custom-tag input[type=color] {
-    display: none;
-}
-
-.custom-notes-overlay a.custom-note-remove {    
-    top: 0;
-}
-
-a.custom-note-move {    
-    bottom: 12px;
-    cursor: move;
-}
-
-.custom-note-content {    
-    text-align: left;
-}
-
-.custom-notes-overlay a.custom-note-remove, a.custom-note-move {
-    position: absolute!important;
-    right: 4px;
-    color: black!important;
-    width: 25px;
-    height: 25px;
-    transition: color 0.5s;
-}
-
-.custom-notes-overlay a.custom-note-remove svg, a.custom-note-move svg {
-    width: 25px;
-    height: 25px;
-}
-
-a.custom-note-remove:hover {color: red!important;}
-
-div.custom-tags-container:hover {    
-    opacity: 1;
-}
-
-.custom-tags-and-btns-container {    
-    left: 5px;
-    position: absolute;
-    bottom: 5px;
-    z-index: 11;
-    display: flex;
-    flex-direction: column;
-    max-width: 25%;
-}
-
-div.custom-tags-container {    
-    z-index: 11;
-    flex-wrap: wrap-reverse;
-    opacity: 0.5;
-    transition: opacity 0.4s;
-    display: none;
-    gap: 3px 5px;
-}
-
-.custom-tag.custom-new-tag {
-    color: #95b9f9;
-    background: none;
-    align-items: center;
-}
-
-.custom-tag {
-    border-radius: 5px;
-    padding: 2px 5px;
-    display: flex;
-    font-size: 12px;
-    max-width: 70px;
-    height: 25px;
-    overflow: hidden;
-    align-content: space-between;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    flex-direction: row;
-}
-
-.custom-tag-content {
-    overflow: hidden;
-    display: inline-block;
-    text-overflow: ellipsis; 
-}
-
-div.custom-tag .custom-remove,
-div.custom-tag .custom-change-color {
-    display: inline-block;
-    text-align: right;
-    cursor: pointer;
-    width: 0;
-    overflow: hidden;
-    transition: width 0.5s, color 0.5s;
-    color: inherit;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-div.custom-tag .custom-remove:hover {
-    color: #870000;
-}
-
-div.custom-tag .custom-remove svg,
-div.custom-tag .custom-change-color svg {
-    width: 13px;
-    height: 13px;
-}
-
-div.custom-tag:not(.editing):hover .custom-remove,
-div.custom-tag:not(.editing):hover .custom-change-color {
-    width: 16px;
-}
-
-.custom-notes-btns-container.custom-no-notes .custom-clear-notes-btn, 
-.custom-notes-btns-container.custom-no-notes .custom-notes-view-type-btn,
-.inactive.custom-notes-additional-btns > .wnl-rounded-button {
-    width: 0;
-    margin: 5px 0;
-}
-
-.custom-new-tag.custom-tag:only-child {
-    display: none;
-}
-
-.custom-while-active {display: none!important;}
-
-.active .custom-while-active.a-icon {display: inline-flex!important;}
-
-.active .custom-while-inactive {display: none!important;}
-
-.custom-script-use-notes.custom-script-notes-visible .custom-notes-overlay {display: block!important;}
-
-.custom-script-use-notes .custom-notes-btns-container, 
-.custom-script-use-notes.custom-script-tags-visible div.custom-tags-container {
-    display: flex!important;
-}
-
-.custom-main-nav-container>a svg {
-    transition: transform 0.5s;
-    transform: rotateX(180deg);
-}
-
-.custom-main-nav-container>a {    
-    display: flex;
-    padding: 15px;
-    width: 100%;
-    gap: 0.4rem;
-    text-align: center;
-    align-items: center;
-    font-size: 11px;
-}
-
-.custom-main-nav-container.active>a svg {
-    transform: none;
-}
-
-.custom-main-nav-container>div {
-    transition: height 0.6s;
-    height: 0;
-    overflow: hidden;
-}
-
-.custom-main-nav-container.active>div {
-    height: 100%;
-    overflow: auto;
-}
-
-.custom-main-nav-container.active {
-    height: 100%;
-}
-
-.custom-main-nav-container {
-    transition: height 0.6s;
-    height: 3.3rem;
-    padding-bottom: 3.3rem;
-}
-
-span.custom-heading {
-    margin-bottom: 0.9rem;
-    display: flex;
-    gap: 0.4rem;
-}
-
-.${"custom-script-hideBottomSearch" /* hideBottomSearch */} .${"custom-script-bottom-container" /* bottomContainer */} .${"custom-script-search" /* searchContainer */},
-.${"custom-script-hideTools" /* hideTools */} .${"custom-script-tools-container" /* toolsContainer */},
-.${"custom-script-hideTags" /* hideTags */} .${"custom-tagListContainer" /* tagListContainer */},
-.${"custom-script-hide-chat" /* hideChat */} .wnl-chat-toggle {
-    display: none!important;
-}
-
-.${"custom-script-hide-chat" /* hideChat */} .wnl-course-content.wnl-column {
-    max-width: initial!important;
-}
-
-.${"custom-script-invert-images" /* invertImages */} img.iv-large-image, .logo-mobile {
-    filter: invert(1) hue-rotate(180deg) saturate(1.4);
-}
-
-.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control, 
-.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control {
-    opacity: 0.2;
-    transition: opacity 0.4s;
-}
-
-.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-right.wnl-slideshow-control:hover, 
-.${"custom-script-slide-nav-chat" /* hideSlideNav */} .navigate-left.wnl-slideshow-control:hover {
-    opacity: 1;
-}`;
-const head = unsafeWindow.document.querySelector('head');
-const stylesheet = document.createElement('style');
-stylesheet.innerHTML = styles;
-head.appendChild(stylesheet);
 ///<reference path="packageMetadata.ts" />
 ///<reference path="globals.d.ts" />
 ///<reference path="App.ts" />
-///<reference path="style.ts" />
 (function () {
     'use strict';
     try {
