@@ -3413,7 +3413,7 @@ class App extends CustomEventEmmiter {
         this.addEventListener('unloaded', () => this.sidenavObserver.disconnect());
     }
     updateTabTitle() {
-        if (GM_getValue('option_changeTitle') && this.presentationMetadata) {
+        if (this.options.getValue('changeTitle') && this.presentationMetadata) {
             let mainTitle;
             mainTitle = this.presentationMetadata.presentationName;
             mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : '';
