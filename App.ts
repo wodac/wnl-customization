@@ -163,7 +163,7 @@ class App extends CustomEventEmmiter<AppEvents> {
     }
 
     updateTabTitle() {
-        if (GM_getValue('option_changeTitle') && this.presentationMetadata) {
+        if (this.options.getValue('changeTitle') && this.presentationMetadata) {
             let mainTitle: string
             mainTitle = this.presentationMetadata.presentationName
             mainTitle = mainTitle && mainTitle.match(/\w/) ? `${mainTitle} - ` : ''
