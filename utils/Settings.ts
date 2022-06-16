@@ -14,7 +14,7 @@ type SettingEvents<T> = {
 }
 
 enum SettingType {
-    Checkbox, Percent, Integer, Button, Divider
+    Checkbox, Percent, Integer, Button, Divider, Enum
 }
 
 interface SettingInit<T> {
@@ -26,6 +26,7 @@ interface SettingInit<T> {
     desc: string
     key?: string
     defaultValue?: T
+    enum?: EnumOption<T extends string ? T : string>[]
     isInRange?: (value: T) => boolean
     type: SettingType
     onrender?: (this: SettingElement<T>) => any
@@ -33,7 +34,7 @@ interface SettingInit<T> {
     onchange?: (this: SettingElement<T>, event: SettingEvents<T>["change"]) => any
 }
 
-type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit
+type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit | EnumSettingInit<any, string>
 
 class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
     name: string
@@ -146,6 +147,17 @@ interface IntegerSettingInit extends SettingInit<number> {
 
 interface ButtonSettingInit extends SettingInit<undefined> {
     type: SettingType.Button
+}
+
+type EnumOption<Keys extends string> = {
+        value: Keys
+        desc: string
+    }
+
+interface EnumSettingInit<T extends EnumOption<Keys extends string ? Keys : string>, Keys extends string> 
+extends SettingInit<Keys> {
+    type: SettingType.Enum
+    enum: T[]
 }
 
 interface DividerInit {
@@ -332,6 +344,61 @@ class NumberSetting extends SettingElement<number> {
     }
 }
 
+class EnumSetting<Key extends string> 
+extends SettingElement<Key> {
+    element: HTMLElement
+    select: HTMLSelectElement
+    keys: (Key extends string ? Key : string)[]
+
+    constructor(options: SettingInit<Key>, parent: Settings) {
+        super(options, parent)
+        this.keys = this.options.enum.map(opt => opt.value)
+        this.addEventListener('tmMenuClicked', () => {
+            const currentIndex = this.keys.findIndex(key => {
+                return key === this.value
+            }) + 1
+            this.value = this.keys[currentIndex >= this.keys.length ? 0 : currentIndex] as Key
+        })
+    }
+
+    getHTML() {
+        return `
+            ${this.getIconHTML()}
+            <label>${this.options.desc}</label>
+            <div>
+                <select name='${this.name}'>
+                    ${this.options.enum.map(opt => {
+                        return `<option value='${opt.value}' 
+                        ${opt.value === 'default' ? 'default' : ''}>
+                        ${opt.desc}</option>`
+                    }).join('')}
+                </select>
+            </div>`
+    }
+
+    render() {
+        this.element = document.createElement('div')
+        this.element.innerHTML = this.getHTML()
+        this.element.classList.add('custom-script-setting')
+        this.select = this.element.querySelector('select')
+        this.select.value = this.value
+        this.addEventListener('change', ({ value }) => this.select.value = value.toString())
+        this.select.addEventListener('change', (ev) => this.value = this.select.value as Key)
+        // this.select.addEventListener(
+        //     'input', 
+        //     (ev) => this.trigger('input', { value: this.select.value as Key })
+        // )
+        this.trigger('rendered')
+        return this.element
+    }
+
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc + ` (${
+            this.options.enum.find(opt => opt.value === this.value).desc
+        })`
+    }
+}
+
 type SettingsEvents = {
     rendered: {}
     change: {}
@@ -362,6 +429,8 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
             sett = new DividerSetting(this)
         } else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
             sett = new NumberSetting((setting as any), this)
+        } else if (setting.type === SettingType.Enum) {
+            sett = new EnumSetting((setting as EnumSettingInit<any, string>), this)
         }
         if (!sett) return
         this.settings.push(sett)

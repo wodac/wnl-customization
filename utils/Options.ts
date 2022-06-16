@@ -1,3 +1,7 @@
+type Themes = 'default' | 'white' | 'black' | 'image'
+
+type ThemeEnum = EnumOption<Themes>
+
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />
 ///<reference path="Settings.ts" />
@@ -225,6 +229,38 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         onchange: state => toggleBodyClass(BODY_CLASS_NAMES.invertImages, state.value),
         key: 'i'
     },
+    {
+        name: "changeTheme",
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.palette2
+        },
+        enum: [
+            {
+                value: 'default',
+                desc: 'nie zmieniaj'
+            },
+            {
+                value: 'white',
+                desc: 'biały'
+            },
+            {
+                value: 'black',
+                desc: 'czarny'
+            },
+            {
+                value: 'image',
+                desc: 'obrazek'
+            }
+        ],
+        desc: "Zmień domyślny motyw...",
+        type: SettingType.Enum,
+        defaultValue: "default",
+        onchange: state => {
+            app.setBackground()
+        },
+        key: 'i'
+    } as EnumSettingInit<ThemeEnum, Themes>,
     {
         name: "smoothScroll",
         icon: {

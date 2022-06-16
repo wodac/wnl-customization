@@ -25,7 +25,7 @@ function styles(cb) {
 
 function cssToJS(stream) {
     return stream
-        .pipe(gulpcss())
+        // .pipe(gulpcss())
         .pipe(gulpinsert.wrap(addStylesheetJS1, addStylesheetJS2))
         .pipe(gulprename(path => {path.extname = '.js'}))
         .pipe(dest('dist'))
@@ -49,7 +49,9 @@ function main(cb) {
 exports.default = defaultTask
 exports.build = series(parallel(typescript, styles), main)
 
-function defaultTask() {
-    watch(['*.ts', 'utils/*.ts', '*.css'], series(parallel(typescript, styles), main))
+function defaultTask(cb) {
+    watch(['*.ts', 'utils/*.ts'], series(typescript, main))
+    watch(['*.css'], series(styles, main))
+    return series(parallel(typescript, styles), main)(cb)
 }
 

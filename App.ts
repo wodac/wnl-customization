@@ -66,11 +66,7 @@ class App extends CustomEventEmmiter<AppEvents> {
         this.presentationMetadata.addEventListener('slideChange', slide => this.trigger('slideChange', slide))
         this.tabOpener = new TabOpener(this)
 
-        let background = document.querySelector(SELECTORS.background)
-        if (background !== null) {
-            background.classList.remove("image-custom-background")
-            background.classList.add("white-custom-background")
-        }
+        this.setBackground()
 
         this.searchInSlideshow = new SearchConstructor(this)
         this.searchInBottomContainer = new SearchConstructor(this)
@@ -100,6 +96,24 @@ class App extends CustomEventEmmiter<AppEvents> {
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload()
         })
+    }
+
+    setBackground() {
+        const backgrounds = {
+            image: "image-custom-background",
+            white: "white-custom-background",
+            black: "dark-custom-background"
+        }
+        const theme = this.options.getValue('changeTheme')
+        if (theme === 'default') return
+        const backgroundClasses = Object.values(backgrounds)
+        const backgroundEl = document.querySelector(
+            backgroundClasses.map(s => `.${s}`).join(',')
+        )
+        if (backgroundEl !== null) {
+            backgroundEl.classList.remove(...backgroundClasses)
+            backgroundEl.classList.add(backgrounds[theme])
+        }
     }
 
     private addBottomContainer() {
