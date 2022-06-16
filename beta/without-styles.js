@@ -954,7 +954,7 @@ const getOptions = (app) => [
                     app.slideObserver.disconnect();
             }
         },
-        defaultValue: isMobile(),
+        defaultValue: !isMobile(),
         key: 'k'
     },
     {
