@@ -194,7 +194,7 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
                 if (app.slideObserver) app.slideObserver.disconnect()
             }
         },
-        defaultValue: isMobile(),
+        defaultValue: !isMobile(),
         key: 'k'
     },
     {
