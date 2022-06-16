@@ -541,6 +541,8 @@ const SVGIcons = {
     tools: inSVG `<path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z"/>`,
     gear: inSVG `<path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
     <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>`,
+    palette2: inSVG `<path d="M0 .5A.5.5 0 0 1 .5 0h5a.5.5 0 0 1 .5.5v5.277l4.147-4.131a.5.5 0 0 1 .707 0l3.535 3.536a.5.5 0 0 1 0 .708L10.261 10H15.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5H3a2.99 2.99 0 0 1-2.121-.879A2.99 2.99 0 0 1 0 13.044m6-.21 7.328-7.3-2.829-2.828L6 7.188v5.647zM4.5 13a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0zM15 15v-4H9.258l-4.015 4H15zM0 .5v12.495V.5z"/>
+    <path d="M0 12.995V13a3.07 3.07 0 0 0 0-.005z"/>`,
 };
 const zoomSliderHTML = `
         <span class='custom-heading'>
@@ -756,926 +758,6 @@ function getIndexedDB(name, version, setupCb) {
         });
     });
 }
-///<reference path="common.ts" />
-///<reference path="../App.ts" />
-class SearchConstructor extends CustomEventEmmiter {
-    constructor(app) {
-        super();
-        this.app = app;
-    }
-    getSearchURL(q) {
-        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
-    }
-    getSearchContainer(dissmisible = false) {
-        this.searchContainer = document.createElement('div');
-        this.searchContainer.className = `${"custom-script-search" /* CLASS_NAMES.searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
-        this.searchContainer.innerHTML = SearchConstructor.searchMenu;
-        this.searchResultsContainer = document.createElement('div');
-        this.searchResultsContainer.className = 'custom-search-results';
-        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
-        this.searchContainer.append(this.searchResultsContainer);
-        this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
-        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
-            ev.preventDefault();
-            this.performSearch();
-        });
-        if (dissmisible) {
-            const closeBtn = document.createElement('div');
-            closeBtn.className = 'custom-script-summary-close';
-            closeBtn.innerHTML = SVGIcons.chevronUp;
-            this.searchContainer.prepend(closeBtn);
-            closeBtn.addEventListener('click', () => this.trigger('dissmiss'));
-            this.searchInput.addEventListener('keyup', ev => {
-                if (ev.key === 'Escape') {
-                    ev.preventDefault();
-                    ev.stopImmediatePropagation();
-                    this.trigger('dissmiss');
-                }
-            });
-        }
-        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
-        this.setupClearBtn();
-        return this.searchContainer;
-    }
-    setupClearBtn() {
-        const clearBtn = this.searchContainer.querySelector('.custom-clear-search');
-        this.clearBtnToggle = new ClassToggler('hidden', clearBtn);
-        this.clearBtnToggle.invert = true;
-        clearBtn.addEventListener('click', ev => {
-            ev.preventDefault();
-            this.clearSearch();
-        });
-        this.searchInput.addEventListener('input', ev => {
-            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length;
-            this.clearBtnToggle.state = showClearBtn;
-        });
-    }
-    clearSearch() {
-        this.searchInput.value = '';
-        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
-        this.clearBtnToggle.state = false;
-        this.searchInput.focus();
-        this.trigger('clear');
-    }
-    performSearch(query) {
-        if (!this.searchContainer)
-            return;
-        if (query)
-            this.searchInput.value = query;
-        const q = this.searchInput.value;
-        if (!q) {
-            this.clearSearch();
-            return;
-        }
-        this.searchContainer.scrollIntoView({ behavior: 'smooth' });
-        const interpretation = this.interpretQuery(q);
-        this.trigger('searchStart', interpretation);
-        this.searchResultsContainer.innerHTML = `
-            <div class='custom-search-result custom-loading'>
-                <div style="height: 2rem;width: 65%;"></div>
-                <div style="height: 1.6rem;width: 79%;"></div>
-            </div>`.repeat(2);
-        this.getSearchResponseHTML(interpretation).then(resp => {
-            if (this.searchResultsContainer) {
-                this.searchResultsContainer.innerHTML = '';
-                this.searchResultsContainer.append(...resp);
-                this.clearBtnToggle.state = true;
-            }
-            this.trigger('searchEnd');
-        });
-    }
-    interpretQuery(rawQuery) {
-        let query = rawQuery.replace(/"/g, '');
-        rawQuery = rawQuery.toLowerCase();
-        const quotesRegExp = /"([^"]+)"/g;
-        const hasntRegExp = /-\w+/g;
-        let mustContain = rawQuery.match(quotesRegExp);
-        let musntContain = rawQuery.match(hasntRegExp);
-        if (musntContain)
-            musntContain.forEach(toReplace => {
-                query.replace(`-${toReplace}`, '');
-            });
-        query = query.trim();
-        if (mustContain)
-            mustContain = mustContain.map(s => s.slice(1, -1));
-        if (musntContain)
-            musntContain = musntContain.map(s => s.slice(1));
-        return { query, rawQuery, mustContain, musntContain };
-    }
-    getSearchResponseHTML(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const response = yield this.searchRequest(q);
-            if (response.length) {
-                return response.map(el => {
-                    const link = document.createElement('a');
-                    link.innerHTML = `
-                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
-                    link.href = getHref(el);
-                    link.target = '_blank';
-                    link.className = 'custom-search-result';
-                    link.addEventListener('click', ev => {
-                        ev.preventDefault();
-                        this.app.tabOpener.openSlide({
-                            currentTab: -2,
-                            lessonID: el.context.lesson.id,
-                            screenID: el.context.screen.id,
-                            slide: el.context.slideshow.order_number
-                        });
-                    });
-                    return link;
-                });
-            }
-            const notFoundInfo = document.createElement('p');
-            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
-            notFoundInfo.style.padding = '0.5rem';
-            return [notFoundInfo];
-            function getHref(el) {
-                const fragm = {
-                    f1: el.context.lesson,
-                    f2: el.context.screen,
-                    f3: el.context.slideshow
-                };
-                if (Object.values(fragm).every(val => val)) {
-                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
-                    if (path.every(val => val)) {
-                        return [WNL_LESSON_LINK, ...path].join('/');
-                    }
-                }
-                if (el.id)
-                    return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id;
-                return '#';
-            }
-        });
-    }
-    searchRequest(q) {
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                url: this.getSearchURL(q.query),
-                method: 'GET',
-                responseType: "json",
-                onload: ({ response }) => {
-                    const entries = Object.entries(response);
-                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
-                    const parsed = results.map(el => {
-                        return {
-                            highlight: el.scout_metadata.highlight,
-                            details: el.snippet,
-                            context: el.context,
-                            id: el.id
-                        };
-                    });
-                    resolve(this.filterSearch(parsed, q));
-                },
-                onerror: reject
-            });
-        });
-    }
-    filterSearch(parsed, q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let filtered = parsed;
-            const hasSomePhrases = (result, phrases) => {
-                return phrases.map(toSearch => {
-                    return Object.values(result.highlight).some(highlighted => {
-                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
-                    });
-                });
-            };
-            if (q.mustContain) {
-                filtered = parsed.filter(result => {
-                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
-                });
-            }
-            if (q.musntContain) {
-                filtered = filtered.filter(result => {
-                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
-                });
-            }
-            filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID));
-            function sortUpSome(predicate) {
-                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
-            }
-            return (yield this.getTagsAsResults(q)).concat(filtered);
-        });
-    }
-    getTagsAsResults(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.app.notesCollection)
-                return [];
-            const tagColors = this.app.notesCollection.tags;
-            const tags = yield this.app.notesCollection.getAllTagsWithName(q.query);
-            return tags.map(tag => {
-                const record = tagColors.find(record => record.name === tag.content);
-                return {
-                    highlight: {
-                        "snippet.content": [
-                            `<div title='${tag.content}'
-                         style='background:${record.color};color:${getForegroundColor(record.color)}'
-                         class='custom-tag'>${tag.content}</div>`
-                        ]
-                    },
-                    details: {
-                        header: tag.presentationTitle,
-                        subheader: tag.slideTitle,
-                    },
-                    context: {
-                        screen: { id: tag.screenid },
-                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
-                        slideshow: {
-                            order_number: tag.slide
-                        }
-                    }
-                };
-            });
-        });
-    }
-    stripHTMLTags(s) {
-        const tagStripper = /<[^>]+>/g;
-        return s.toLowerCase().replace(tagStripper, '');
-    }
-}
-SearchConstructor.searchMenu = `
-        <form class="custom-search-input-container">
-            <div>
-                <input class="custom-search-result" placeholder="Szukaj...">
-                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
-            </div>
-            <a class='custom-search-submit'>${SVGIcons.search}</a>
-        </form>
-        `;
-SearchConstructor.searchInvitation = `
-        <p class="custom-search-invitation">
-            <span class='custom-script-heading'>
-                ${SVGIcons.search}
-                <span>Zacznij wyszukiwanie</span>
-            </span>
-        </p>`;
-SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
-///<reference path="common.ts" />
-///<reference path="../App.ts" />
-///<reference path="Search.ts" />
-var Keyboard;
-(function (Keyboard) {
-    let keyboardShortcuts = [
-        {
-            keys: ['ArrowUp'],
-            callback: showImage
-        },
-        {
-            keys: ['ArrowDown', 'q', '0', 'Escape'],
-            callback: hideImage
-        },
-        {
-            keys: ['q', '0', 'Escape'],
-            callback: hideModal
-        },
-        {
-            keys: ['q', '0', 'Escape'],
-            callback: () => {
-                Toggles.optionsBtn.state = false;
-                Toggles.search.state = false;
-                Toggles.summary.state = false;
-            }
-        },
-        {
-            keys: ['m'],
-            callback: () => toggleMouseVisibility()
-        },
-        {
-            keys: ['o'],
-            callback: () => Toggles.optionsBtn.toggle()
-        },
-        {
-            keys: ['s'],
-            callback: () => Toggles.optionsBtn.flash(3000)
-        },
-        {
-            keys: ['?', '/'],
-            callback: () => Toggles.search.toggle()
-        },
-        {
-            keys: ['l'],
-            callback: () => Toggles.summary.toggle()
-        },
-        {
-            keys: ['Enter'],
-            callback: () => {
-                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
-                if (quizVerifyBtn)
-                    quizVerifyBtn.click();
-            }
-        }
-    ];
-    function registerShortcut(shortcut) {
-        keyboardShortcuts.push(shortcut);
-    }
-    Keyboard.registerShortcut = registerShortcut;
-    function shortcutListener(event) {
-        const tagName = event.target.nodeName;
-        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
-            return;
-        }
-        keyboardShortcuts.forEach(shortcut => {
-            if (shortcut.keys.includes(event.key))
-                shortcut.callback(event);
-        });
-        const charCode = event.keyCode;
-        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
-            numericKeyPressed(event.key);
-    }
-    if (!isMobile()) {
-        document.addEventListener('fullscreenchange', ev => {
-            if (!document.fullscreenElement) {
-                if (document.querySelector('.o-referenceModal')) {
-                    hideModal();
-                    toggleFullscreen();
-                }
-                else if (Toggles.search.state) {
-                    Toggles.search.state = false;
-                    toggleFullscreen();
-                }
-                else if (Toggles.summary.state) {
-                    Toggles.summary.state = false;
-                    toggleFullscreen();
-                }
-            }
-        });
-    }
-    function setupControl(app) {
-        const slides = document.querySelectorAll('.slides .stack');
-        if (!slides.length)
-            return;
-        slides.forEach(slide => {
-            let counter = 1;
-            const icons = slide.querySelectorAll('.a-icon');
-            icons.forEach(icon => addSubToRef(icon, counter++));
-        });
-        observeSlides(app, addSubsToRefs);
-        // document.body.addEventListener('click', updateTabTitle)
-        // document.body.addEventListener('keyup', updateTabTitle)
-        document.body.addEventListener('keydown', event => {
-            if (event.key === ' ' || event.key === 'l') {
-                // event.preventDefault()
-                event.stopImmediatePropagation();
-            }
-            if (event.key === 'ArrowUp') {
-                scrollView(-60);
-                return false;
-            }
-            if (event.key === 'ArrowDown' || event.key === ' ') {
-                scrollView(60);
-                return false;
-            }
-        });
-        document.body.addEventListener('keyup', shortcutListener);
-    }
-    Keyboard.setupControl = setupControl;
-    function disableControl() {
-        document.body.removeEventListener('keyup', shortcutListener);
-    }
-    Keyboard.disableControl = disableControl;
-    function observeSlides(app, cb) {
-        //console.log('observeSlides')
-        app.slideObserver = new MutationObserver(cb);
-        app.slideObserver.observe(document.querySelector('div.slides'), {
-            childList: true,
-            subtree: true
-        });
-    }
-    function addSubsToRefs(mutations) {
-        //console.log('mutation observed')
-        let counter = 1;
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
-                //console.log('node added')
-                let ref = mutation.addedNodes[0];
-                if (ref.className && ref.className.includes('m-referenceTrigger')) {
-                    addSubToRef(ref, counter);
-                    counter++;
-                }
-            }
-        });
-    }
-    function addSubToRef(ref, counter) {
-        if (ref.className.includes('sub-id-'))
-            return;
-        const sub = document.createElement('sub');
-        sub.innerText = counter.toString();
-        sub.className = `small`;
-        ref.classList.add(`sub-id-${counter}`);
-        ref.appendChild(sub);
-    }
-    function scrollView(y) {
-        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
-        const options = { top: y, left: 0, behavior };
-        const views = [
-            document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */),
-            document.querySelector('.m-modal__content'),
-            document.querySelector('.wnl-comments')
-        ];
-        views.forEach(view => {
-            if (view)
-                view.scrollBy(options);
-        });
-    }
-    function showImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
-        if (fullscreenBtn)
-            fullscreenBtn.click();
-    }
-    function hideImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function hideModal() {
-        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function numericKeyPressed(key) {
-        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
-        if (quiz) {
-            const index = parseInt(key) - 1;
-            const answers = quiz.querySelectorAll('.quizAnswer');
-            if (index >= answers.length)
-                return;
-            answers[index].click();
-            return;
-        }
-        if (annotationImages.length > 0) {
-            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-        }
-        else {
-            const selector = `.present .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-            setTimeout(() => {
-                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-                let counter = 1;
-                annotationImages.forEach(image => {
-                    const btn = image.querySelector('.a-icon');
-                    btn.classList.add(`sub-id-${counter}`);
-                    const index = document.createElement('span');
-                    index.innerText = counter.toString();
-                    index.className = 'image-fullscreen-index';
-                    btn.appendChild(index);
-                    counter++;
-                });
-            }, 300);
-        }
-    }
-    let mouseVisible = true;
-    function toggleMouseVisibility(visible) {
-        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
-        //console.log({ mouseVisible, visible })
-        toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, !mouseVisible);
-        if (!mouseVisible)
-            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
-    }
-})(Keyboard || (Keyboard = {}));
-///<reference path="CustomEventEmmiter.ts" />
-///<reference path="../globals.d.ts" />
-var SettingType;
-(function (SettingType) {
-    SettingType[SettingType["Checkbox"] = 0] = "Checkbox";
-    SettingType[SettingType["Percent"] = 1] = "Percent";
-    SettingType[SettingType["Integer"] = 2] = "Integer";
-    SettingType[SettingType["Button"] = 3] = "Button";
-    SettingType[SettingType["Divider"] = 4] = "Divider";
-})(SettingType || (SettingType = {}));
-class Setting extends CustomEventEmmiter {
-    constructor(options, parent) {
-        super();
-        this.options = options;
-        this.parent = parent;
-        this.name = options.name;
-        this.type = options.type;
-        if (this.type !== SettingType.Button && this.type !== SettingType.Divider) {
-            GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
-                if (this._value === value)
-                    return;
-                this._value = value;
-                this.trigger('change', { oldValue, remote, value });
-            });
-            this._value = GM_getValue(this.name, options.defaultValue);
-            if (options.isInRange)
-                this.isInRange = options.isInRange;
-        }
-    }
-    get value() {
-        return this._value;
-    }
-    set value(value) {
-        if (this.type === SettingType.Button || this._value === value)
-            return;
-        if (this.isInRange && !this.isInRange(value)) {
-            this.trigger('change', { value: this._value, oldValue: this._value, remote: false });
-            return;
-        }
-        const oldValue = this._value;
-        this._value = value;
-        GM_setValue(this.name, value);
-        this.trigger('change', { value, oldValue, remote: false });
-    }
-}
-class SettingElement extends Setting {
-    constructor(options, parent) {
-        super(options, parent);
-        if (options.onchange)
-            this.addEventListener('change', options.onchange);
-        if (options.onrender)
-            this.addEventListener('rendered', options.onrender);
-        if (options.onclick)
-            this.addEventListener('tmMenuClicked', options.onclick);
-    }
-    getIconHTML() {
-        if (this.options.icon) {
-            if (this.options.icon.html) {
-                return this.options.icon.html;
-            }
-            else if (this.options.icon.emoji) {
-                return `<span class='custom-script-emoji'>${this.options.icon.emoji}</span>`;
-            }
-        }
-        return '';
-    }
-    getIconEmoji() {
-        if (this.options.icon && this.options.icon.emoji) {
-            return this.options.icon.emoji + ' ';
-        }
-        return '';
-    }
-    removeFromTMMenu() {
-        GM_unregisterMenuCommand(this.tmHandle);
-    }
-    set disabled(val) {
-        if (this._disabled === val)
-            return;
-        this._disabled = val;
-        if (val)
-            this.removeFromTMMenu();
-        if (this.element) {
-            if (val)
-                this.element.style.display = 'none';
-            else
-                this.element.style.display = '';
-        }
-        this.trigger('disabled', val);
-    }
-    addToTMMenu() {
-        if (this._disabled)
-            return;
-        this.tmHandle = GM_registerMenuCommand(this.renderSimple(), () => this.trigger('tmMenuClicked'), this.options.key);
-    }
-}
-class DividerSetting extends SettingElement {
-    constructor(parent) {
-        super({
-            name: '_divider',
-            desc: 'Divider',
-            type: SettingType.Divider
-        }, parent);
-        this.index = DividerSetting.index++;
-    }
-    render() {
-        this.element = document.createElement('div');
-        this.element.className = 'custom-setting-divider';
-        this.element.innerHTML = `<div></div>`;
-        return this.element;
-    }
-    renderSimple() {
-        return '-'.repeat(15 + this.index);
-    }
-}
-DividerSetting.index = 0;
-class CheckboxSetting extends SettingElement {
-    constructor(options, parent) {
-        super(options, parent);
-        this.addEventListener('tmMenuClicked', () => {
-            this.value = !this.value;
-        });
-    }
-    getHTML() {
-        return `
-        <input type='checkbox' id='custom-input-${this.name}' name='${this.name}' />
-        ${this.getIconHTML()}
-        <label for='custom-input-${this.name}'>${this.options.desc}</label>`;
-    }
-    render() {
-        this.element = document.createElement('div');
-        this.element.innerHTML = this.getHTML();
-        this.element.classList.add('custom-script-setting');
-        this.input = this.element.querySelector('input');
-        this.input.checked = this.value;
-        this.addEventListener('change', ({ value }) => this.input.checked = value);
-        this.input.addEventListener('change', (ev) => this.value = this.input.checked);
-        this.trigger('rendered');
-        return this.element;
-    }
-    renderSimple() {
-        return CheckboxSetting.getCheckboxEmoji(this.value) + ' ' +
-            this.getIconEmoji() + this.options.desc;
-    }
-}
-CheckboxSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
-class ButtonSetting extends SettingElement {
-    constructor(options, parent) {
-        super(options, parent);
-    }
-    getHTML() {
-        let inner = this.getIconHTML();
-        inner += this.options.desc;
-        return `<a name='${this.name}'>${inner}</a>`;
-    }
-    render() {
-        this.element = document.createElement('div');
-        this.element.innerHTML = this.getHTML();
-        this.element.classList.add('custom-script-setting');
-        this.btn = this.element.querySelector('a');
-        this.btn.addEventListener('click', () => this.trigger('tmMenuClicked'));
-        this.trigger('rendered');
-        return this.element;
-    }
-    renderSimple() {
-        return this.getIconEmoji() + this.options.desc;
-    }
-}
-ButtonSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
-class NumberSetting extends SettingElement {
-    constructor(options, parent) {
-        super(options, parent);
-        this.addEventListener('tmMenuClicked', () => {
-            const isPercent = options.type === SettingType.Percent;
-            this.value = parseInt(prompt(`Podaj wartość ${isPercent ? "procentową " : ''}dla ustawienia (obecnie ${this.value}${isPercent ? '%' : ''}):\n${this.options.desc}`));
-        });
-    }
-    set upperLimit(ul) {
-        this.input && (this.input.max = ul.toString());
-    }
-    set lowerLimit(ll) {
-        this.input && (this.input.min = ll.toString());
-    }
-    getHTML() {
-        const isPercent = this.type === SettingType.Percent;
-        if (isPercent) {
-            return `
-                ${this.getIconHTML()}
-                <label>${this.options.desc}</label>
-                <div>
-                    <a>${SVGIcons.minusCircle}</a>
-                    <input type='range' name='${this.name}' />
-                    <a>${SVGIcons.plusCircle}</a>
-                    <span class='custom-range-val'></span>
-                </div>`;
-        }
-        else {
-            return `
-                ${this.getIconHTML()}
-                <label>${this.options.desc}</label>
-                <input type='number' name='${this.name}' />`;
-        }
-    }
-    render() {
-        this.element = document.createElement('div');
-        this.element.innerHTML = this.getHTML();
-        this.element.classList.add('custom-script-setting');
-        this.input = this.element.querySelector('input');
-        this.input.value = this.value.toString();
-        if (this.type === SettingType.Percent) {
-            this.element.style.flexWrap = 'wrap';
-            const valueEl = this.element.querySelector('span');
-            valueEl.innerText = `${this.value}%`;
-            const btnElems = this.element.querySelectorAll('a');
-            btnElems.forEach((btn, i) => {
-                btn.addEventListener('click', (ev) => {
-                    ev.preventDefault();
-                    const delta = Math.ceil(this.value * 0.05);
-                    this.value = this.value + (i ? delta : -delta);
-                });
-            });
-            this.addEventListener('change', ({ value }) => valueEl.innerText = `${value}%`);
-            this.input.addEventListener('input', () => valueEl.innerText = `${this.input.value}%`);
-        }
-        this.addEventListener('change', ({ value }) => this.input.value = value.toString());
-        this.input.addEventListener('change', (ev) => this.value = this.parse(this.input.value));
-        this.input.addEventListener('input', (ev) => this.trigger('input', { value: this.parse(this.input.value) }));
-        this.trigger('rendered');
-        return this.element;
-    }
-    parse(value) {
-        return parseFloat(value.replace(',', '.'));
-    }
-    renderSimple() {
-        const percentSymb = this.type === SettingType.Percent ? '%' : '';
-        return this.getIconEmoji() + this.options.desc + ` (${this.value}${percentSymb})`;
-    }
-}
-class Settings extends CustomEventEmmiter {
-    constructor(app) {
-        super();
-        this.app = app;
-        this.settings = [];
-    }
-    addSettings(settings) {
-        settings.forEach(sett => this.addSetting(sett));
-    }
-    addSetting(setting) {
-        let sett;
-        if (setting instanceof SettingElement) {
-            setting.parent = this;
-            sett = setting;
-        }
-        else if (setting.type === SettingType.Checkbox) {
-            sett = new CheckboxSetting(setting, this);
-        }
-        else if (setting.type === SettingType.Button) {
-            sett = new ButtonSetting(setting, this);
-        }
-        else if (setting.type === SettingType.Divider) {
-            sett = new DividerSetting(this);
-        }
-        else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
-            sett = new NumberSetting(setting, this);
-        }
-        if (!sett)
-            return;
-        this.settings.push(sett);
-        this.app.addEventListener('loaded', () => sett.trigger('change', {
-            value: sett.value,
-            oldValue: sett.options.defaultValue,
-            remote: false
-        }));
-        sett.addEventListener('change', () => {
-            this.renderInTMMenu();
-        });
-    }
-    setValue(name, value) {
-        let toSave;
-        if (typeof value === "function")
-            toSave = value(this.getValue(name));
-        else
-            toSave = value;
-        GM_setValue(name, toSave);
-    }
-    getValue(name) {
-        return GM_getValue(name);
-    }
-    getSetting(name) {
-        return this.settings.find(s => s.name === name);
-    }
-    renderInTMMenu() {
-        this.settings.forEach(setting => {
-            setting.removeFromTMMenu();
-            setting.addToTMMenu();
-        });
-    }
-    render() {
-        this.element = document.createElement('div');
-        this.element.append(...this.settings.map(setting => setting.render()));
-        return this.element;
-    }
-}
-///<reference path="CustomEventEmmiter.ts" />
-class ExternalFragment extends CustomEventEmmiter {
-    constructor(initialURL, selector) {
-        super();
-        this.initialURL = initialURL;
-        this.selector = selector;
-        this.iframe = document.createElement('iframe');
-        this.iframe.width = '1300';
-        this.iframe.height = '800';
-        this.iframe.style.position = 'absolute';
-        this.iframe.style.bottom = '100vh';
-        document.body.append(this.iframe);
-        this.load();
-    }
-    load() {
-        if (this.interval)
-            clearInterval(this.interval);
-        if (this.element)
-            this.element.remove();
-        this.iframe.src = this.initialURL;
-        this.triesLeft = 20;
-        this.iframe.addEventListener('load', (ev) => __awaiter(this, void 0, void 0, function* () {
-            this.element = yield this.getElement();
-            this.setupURLChangeDetection();
-            this.trigger('loaded', this.element);
-        }), { once: true });
-        this.childWindow = this.iframe.contentWindow;
-    }
-    getElement() {
-        this.iframe.hidden = false;
-        return new Promise(resolve => {
-            const doc = this.iframe.contentDocument;
-            if (!doc)
-                return resolve(null);
-            const interval = setInterval(() => {
-                const element = doc.querySelector(this.selector);
-                if (!element && this.triesLeft--)
-                    return;
-                clearInterval(interval);
-                this.iframe.hidden = true;
-                resolve(element);
-            }, 100);
-        });
-    }
-    setupURLChangeDetection() {
-        if (!this.childWindow)
-            return;
-        this.url = this.childWindow.location.href;
-        this.interval = setInterval(() => {
-            if (!this.childWindow)
-                return;
-            if (this.url === this.childWindow.location.href)
-                return;
-            this.url = this.childWindow.location.href;
-            console.log({ changedURL: this.url });
-            this.trigger('iframeURLChange', this.url);
-        }, 100);
-    }
-    destroy() {
-        clearInterval(this.interval);
-        this.iframe.remove();
-        this.element.remove();
-        this.element = this.iframe = this.childWindow = this.url = null;
-    }
-}
-///<reference path="ExternalFragment.ts" />
-///<reference path="../globals.d.ts" />
-class CourseSidebar extends ExternalFragment {
-    constructor() {
-        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div');
-        this.prepareContainer();
-        this.addEventListener('loaded', el => {
-            if (!el)
-                return;
-            this.container.append(el);
-        });
-        this.setupOpenLinks();
-    }
-    setupOpenLinks() {
-        this.lastURLUpdate = Date.now();
-        const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/;
-        this.addEventListener('iframeURLChange', newURL => {
-            const now = Date.now();
-            console.log({ now });
-            if (now - this.lastURLUpdate < 500)
-                return;
-            const matching = urlRegExp.exec(newURL);
-            if (!matching)
-                return;
-            this.trigger('urlChange', {
-                url: newURL,
-                lessonID: parseInt(matching[1]),
-                screenID: parseInt(matching[2]),
-                slide: parseInt(matching[3]),
-            });
-            this.load();
-        });
-    }
-    prepareContainer() {
-        this.container = document.createElement('div');
-        this.container.innerHTML = CourseSidebar.CONTAINER_HTML;
-        this.container.classList.add('custom-main-nav-container');
-        this.collapseToggler = new ClassToggler('active', this.container);
-        this.container.querySelector('a').addEventListener('click', () => this.collapseToggler.toggle());
-        // sidenav.prepend(this.container)
-    }
-    attach(parent) {
-        parent.prepend(this.container);
-    }
-    show() {
-        this.container && (this.container.style.display = '');
-    }
-    hide() {
-        this.container && (this.container.style.display = 'none');
-    }
-    destroy() {
-        this.container.remove();
-        super.destroy();
-    }
-}
-CourseSidebar.CONTAINER_HTML = `
-    <a>
-        ${SVGIcons.chevronUp}
-        <span>CAŁY KURS</span>
-    </a>`;
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />
 ///<reference path="Settings.ts" />
@@ -1909,6 +991,38 @@ const getOptions = (app) => [
         key: 'i'
     },
     {
+        name: "changeTheme",
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.palette2
+        },
+        enum: [
+            {
+                value: 'default',
+                desc: 'nie zmieniaj'
+            },
+            {
+                value: 'white',
+                desc: 'biały'
+            },
+            {
+                value: 'black',
+                desc: 'czarny'
+            },
+            {
+                value: 'image',
+                desc: 'obrazek'
+            }
+        ],
+        desc: "Zmień domyślny motyw...",
+        type: SettingType.Enum,
+        defaultValue: "default",
+        onchange: state => {
+            app.setBackground();
+        },
+        key: 'i'
+    },
+    {
         name: "smoothScroll",
         icon: {
             emoji: "↕️",
@@ -1956,6 +1070,481 @@ const getOptions = (app) => [
         defaultValue: false,
     },
 ];
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="../globals.d.ts" />
+var SettingType;
+(function (SettingType) {
+    SettingType[SettingType["Checkbox"] = 0] = "Checkbox";
+    SettingType[SettingType["Percent"] = 1] = "Percent";
+    SettingType[SettingType["Integer"] = 2] = "Integer";
+    SettingType[SettingType["Button"] = 3] = "Button";
+    SettingType[SettingType["Divider"] = 4] = "Divider";
+    SettingType[SettingType["Enum"] = 5] = "Enum";
+})(SettingType || (SettingType = {}));
+class Setting extends CustomEventEmmiter {
+    constructor(options, parent) {
+        super();
+        this.options = options;
+        this.parent = parent;
+        this.name = options.name;
+        this.type = options.type;
+        if (this.type !== SettingType.Button && this.type !== SettingType.Divider) {
+            GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
+                if (this._value === value)
+                    return;
+                this._value = value;
+                this.trigger('change', { oldValue, remote, value });
+            });
+            this._value = GM_getValue(this.name, options.defaultValue);
+            if (options.isInRange)
+                this.isInRange = options.isInRange;
+        }
+    }
+    get value() {
+        return this._value;
+    }
+    set value(value) {
+        if (this.type === SettingType.Button || this._value === value)
+            return;
+        if (this.isInRange && !this.isInRange(value)) {
+            this.trigger('change', { value: this._value, oldValue: this._value, remote: false });
+            return;
+        }
+        const oldValue = this._value;
+        this._value = value;
+        GM_setValue(this.name, value);
+        this.trigger('change', { value, oldValue, remote: false });
+    }
+}
+class SettingElement extends Setting {
+    constructor(options, parent) {
+        super(options, parent);
+        if (options.onchange)
+            this.addEventListener('change', options.onchange);
+        if (options.onrender)
+            this.addEventListener('rendered', options.onrender);
+        if (options.onclick)
+            this.addEventListener('tmMenuClicked', options.onclick);
+    }
+    getIconHTML() {
+        if (this.options.icon) {
+            if (this.options.icon.html) {
+                return this.options.icon.html;
+            }
+            else if (this.options.icon.emoji) {
+                return `<span class='custom-script-emoji'>${this.options.icon.emoji}</span>`;
+            }
+        }
+        return '';
+    }
+    getIconEmoji() {
+        if (this.options.icon && this.options.icon.emoji) {
+            return this.options.icon.emoji + ' ';
+        }
+        return '';
+    }
+    removeFromTMMenu() {
+        GM_unregisterMenuCommand(this.tmHandle);
+    }
+    set disabled(val) {
+        if (this._disabled === val)
+            return;
+        this._disabled = val;
+        if (val)
+            this.removeFromTMMenu();
+        if (this.element) {
+            if (val)
+                this.element.style.display = 'none';
+            else
+                this.element.style.display = '';
+        }
+        this.trigger('disabled', val);
+    }
+    addToTMMenu() {
+        if (this._disabled)
+            return;
+        this.tmHandle = GM_registerMenuCommand(this.renderSimple(), () => this.trigger('tmMenuClicked'), this.options.key);
+    }
+}
+class DividerSetting extends SettingElement {
+    constructor(parent) {
+        super({
+            name: '_divider',
+            desc: 'Divider',
+            type: SettingType.Divider
+        }, parent);
+        this.index = DividerSetting.index++;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.className = 'custom-setting-divider';
+        this.element.innerHTML = `<div></div>`;
+        return this.element;
+    }
+    renderSimple() {
+        return '-'.repeat(15 + this.index);
+    }
+}
+DividerSetting.index = 0;
+class CheckboxSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.addEventListener('tmMenuClicked', () => {
+            this.value = !this.value;
+        });
+    }
+    getHTML() {
+        return `
+        <input type='checkbox' id='custom-input-${this.name}' name='${this.name}' />
+        ${this.getIconHTML()}
+        <label for='custom-input-${this.name}'>${this.options.desc}</label>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.input = this.element.querySelector('input');
+        this.input.checked = this.value;
+        this.addEventListener('change', ({ value }) => this.input.checked = value);
+        this.input.addEventListener('change', (ev) => this.value = this.input.checked);
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return CheckboxSetting.getCheckboxEmoji(this.value) + ' ' +
+            this.getIconEmoji() + this.options.desc;
+    }
+}
+CheckboxSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
+class ButtonSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+    }
+    getHTML() {
+        let inner = this.getIconHTML();
+        inner += this.options.desc;
+        return `<a name='${this.name}'>${inner}</a>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.btn = this.element.querySelector('a');
+        this.btn.addEventListener('click', () => this.trigger('tmMenuClicked'));
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc;
+    }
+}
+ButtonSetting.getCheckboxEmoji = isOn => isOn ? "☑️" : "🔲";
+class NumberSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.addEventListener('tmMenuClicked', () => {
+            const isPercent = options.type === SettingType.Percent;
+            this.value = parseInt(prompt(`Podaj wartość ${isPercent ? "procentową " : ''}dla ustawienia (obecnie ${this.value}${isPercent ? '%' : ''}):\n${this.options.desc}`));
+        });
+    }
+    set upperLimit(ul) {
+        this.input && (this.input.max = ul.toString());
+    }
+    set lowerLimit(ll) {
+        this.input && (this.input.min = ll.toString());
+    }
+    getHTML() {
+        const isPercent = this.type === SettingType.Percent;
+        if (isPercent) {
+            return `
+                ${this.getIconHTML()}
+                <label>${this.options.desc}</label>
+                <div>
+                    <a>${SVGIcons.minusCircle}</a>
+                    <input type='range' name='${this.name}' />
+                    <a>${SVGIcons.plusCircle}</a>
+                    <span class='custom-range-val'></span>
+                </div>`;
+        }
+        else {
+            return `
+                ${this.getIconHTML()}
+                <label>${this.options.desc}</label>
+                <input type='number' name='${this.name}' />`;
+        }
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.input = this.element.querySelector('input');
+        this.input.value = this.value.toString();
+        if (this.type === SettingType.Percent) {
+            this.element.style.flexWrap = 'wrap';
+            const valueEl = this.element.querySelector('span');
+            valueEl.innerText = `${this.value}%`;
+            const btnElems = this.element.querySelectorAll('a');
+            btnElems.forEach((btn, i) => {
+                btn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    const delta = Math.ceil(this.value * 0.05);
+                    this.value = this.value + (i ? delta : -delta);
+                });
+            });
+            this.addEventListener('change', ({ value }) => valueEl.innerText = `${value}%`);
+            this.input.addEventListener('input', () => valueEl.innerText = `${this.input.value}%`);
+        }
+        this.addEventListener('change', ({ value }) => this.input.value = value.toString());
+        this.input.addEventListener('change', (ev) => this.value = this.parse(this.input.value));
+        this.input.addEventListener('input', (ev) => this.trigger('input', { value: this.parse(this.input.value) }));
+        this.trigger('rendered');
+        return this.element;
+    }
+    parse(value) {
+        return parseFloat(value.replace(',', '.'));
+    }
+    renderSimple() {
+        const percentSymb = this.type === SettingType.Percent ? '%' : '';
+        return this.getIconEmoji() + this.options.desc + ` (${this.value}${percentSymb})`;
+    }
+}
+class EnumSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.keys = this.options.enum.map(opt => opt.value);
+        this.addEventListener('tmMenuClicked', () => {
+            const currentIndex = this.keys.findIndex(key => {
+                return key === this.value;
+            }) + 1;
+            this.value = this.keys[currentIndex >= this.keys.length ? 0 : currentIndex];
+        });
+    }
+    getHTML() {
+        return `
+            ${this.getIconHTML()}
+            <label>${this.options.desc}</label>
+            <div>
+                <select name='${this.name}'>
+                    ${this.options.enum.map(opt => {
+            return `<option value='${opt.value}' 
+                        ${opt.value === 'default' ? 'default' : ''}>
+                        ${opt.desc}</option>`;
+        }).join('')}
+                </select>
+            </div>`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.select = this.element.querySelector('select');
+        this.select.value = this.value;
+        this.addEventListener('change', ({ value }) => this.select.value = value.toString());
+        this.select.addEventListener('change', (ev) => this.value = this.select.value);
+        // this.select.addEventListener(
+        //     'input', 
+        //     (ev) => this.trigger('input', { value: this.select.value as Key })
+        // )
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc + ` (${this.options.enum.find(opt => opt.value === this.value).desc})`;
+    }
+}
+class Settings extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+        this.settings = [];
+    }
+    addSettings(settings) {
+        settings.forEach(sett => this.addSetting(sett));
+    }
+    addSetting(setting) {
+        let sett;
+        if (setting instanceof SettingElement) {
+            setting.parent = this;
+            sett = setting;
+        }
+        else if (setting.type === SettingType.Checkbox) {
+            sett = new CheckboxSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Button) {
+            sett = new ButtonSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Divider) {
+            sett = new DividerSetting(this);
+        }
+        else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
+            sett = new NumberSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Enum) {
+            sett = new EnumSetting(setting, this);
+        }
+        if (!sett)
+            return;
+        this.settings.push(sett);
+        this.app.addEventListener('loaded', () => sett.trigger('change', {
+            value: sett.value,
+            oldValue: sett.options.defaultValue,
+            remote: false
+        }));
+        sett.addEventListener('change', () => {
+            this.renderInTMMenu();
+        });
+    }
+    setValue(name, value) {
+        let toSave;
+        if (typeof value === "function")
+            toSave = value(this.getValue(name));
+        else
+            toSave = value;
+        GM_setValue(name, toSave);
+    }
+    getValue(name) {
+        return GM_getValue(name);
+    }
+    getSetting(name) {
+        return this.settings.find(s => s.name === name);
+    }
+    renderInTMMenu() {
+        this.settings.forEach(setting => {
+            setting.removeFromTMMenu();
+            setting.addToTMMenu();
+        });
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.append(...this.settings.map(setting => setting.render()));
+        return this.element;
+    }
+}
+///<reference path="CustomEventEmmiter.ts" />
+class ExternalFragment extends CustomEventEmmiter {
+    constructor(initialURL, selector) {
+        super();
+        this.initialURL = initialURL;
+        this.selector = selector;
+        this.iframe = document.createElement('iframe');
+        this.iframe.width = '1300';
+        this.iframe.height = '800';
+        this.iframe.style.position = 'absolute';
+        this.iframe.style.bottom = '100vh';
+        document.body.append(this.iframe);
+        this.load();
+    }
+    load() {
+        if (this.interval)
+            clearInterval(this.interval);
+        if (this.element)
+            this.element.remove();
+        this.iframe.src = this.initialURL;
+        this.triesLeft = 20;
+        this.iframe.addEventListener('load', (ev) => __awaiter(this, void 0, void 0, function* () {
+            this.element = yield this.getElement();
+            this.setupURLChangeDetection();
+            this.trigger('loaded', this.element);
+        }), { once: true });
+        this.childWindow = this.iframe.contentWindow;
+    }
+    getElement() {
+        this.iframe.hidden = false;
+        return new Promise(resolve => {
+            const doc = this.iframe.contentDocument;
+            if (!doc)
+                return resolve(null);
+            const interval = setInterval(() => {
+                const element = doc.querySelector(this.selector);
+                if (!element && this.triesLeft--)
+                    return;
+                clearInterval(interval);
+                this.iframe.hidden = true;
+                resolve(element);
+            }, 100);
+        });
+    }
+    setupURLChangeDetection() {
+        if (!this.childWindow)
+            return;
+        this.url = this.childWindow.location.href;
+        this.interval = setInterval(() => {
+            if (!this.childWindow)
+                return;
+            if (this.url === this.childWindow.location.href)
+                return;
+            this.url = this.childWindow.location.href;
+            console.log({ changedURL: this.url });
+            this.trigger('iframeURLChange', this.url);
+        }, 100);
+    }
+    destroy() {
+        clearInterval(this.interval);
+        this.iframe.remove();
+        this.element.remove();
+        this.element = this.iframe = this.childWindow = this.url = null;
+    }
+}
+///<reference path="ExternalFragment.ts" />
+///<reference path="../globals.d.ts" />
+class CourseSidebar extends ExternalFragment {
+    constructor() {
+        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div');
+        this.prepareContainer();
+        this.addEventListener('loaded', el => {
+            if (!el)
+                return;
+            this.container.append(el);
+        });
+        this.setupOpenLinks();
+    }
+    setupOpenLinks() {
+        this.lastURLUpdate = Date.now();
+        const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/;
+        this.addEventListener('iframeURLChange', newURL => {
+            const now = Date.now();
+            console.log({ now });
+            if (now - this.lastURLUpdate < 500)
+                return;
+            const matching = urlRegExp.exec(newURL);
+            if (!matching)
+                return;
+            this.trigger('urlChange', {
+                url: newURL,
+                lessonID: parseInt(matching[1]),
+                screenID: parseInt(matching[2]),
+                slide: parseInt(matching[3]),
+            });
+            this.load();
+        });
+    }
+    prepareContainer() {
+        this.container = document.createElement('div');
+        this.container.innerHTML = CourseSidebar.CONTAINER_HTML;
+        this.container.classList.add('custom-main-nav-container');
+        this.collapseToggler = new ClassToggler('active', this.container);
+        this.container.querySelector('a').addEventListener('click', () => this.collapseToggler.toggle());
+        // sidenav.prepend(this.container)
+    }
+    attach(parent) {
+        parent.prepend(this.container);
+    }
+    show() {
+        this.container && (this.container.style.display = '');
+    }
+    hide() {
+        this.container && (this.container.style.display = 'none');
+    }
+    destroy() {
+        this.container.remove();
+        super.destroy();
+    }
+}
+CourseSidebar.CONTAINER_HTML = `
+    <a>
+        ${SVGIcons.chevronUp}
+        <span>CAŁY KURS</span>
+    </a>`;
 ///<reference path="common.ts" />
 var Notes;
 (function (Notes) {
@@ -3098,6 +2687,499 @@ function setupNotesBtns(app) {
     }
 }
 ///<reference path="common.ts" />
+///<reference path="../App.ts" />
+class SearchConstructor extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+    }
+    getSearchURL(q) {
+        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
+    }
+    getSearchContainer(dissmisible = false) {
+        this.searchContainer = document.createElement('div');
+        this.searchContainer.className = `${"custom-script-search" /* CLASS_NAMES.searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
+        this.searchContainer.innerHTML = SearchConstructor.searchMenu;
+        this.searchResultsContainer = document.createElement('div');
+        this.searchResultsContainer.className = 'custom-search-results';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
+        this.searchContainer.append(this.searchResultsContainer);
+        this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
+        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
+            ev.preventDefault();
+            this.performSearch();
+        });
+        if (dissmisible) {
+            const closeBtn = document.createElement('div');
+            closeBtn.className = 'custom-script-summary-close';
+            closeBtn.innerHTML = SVGIcons.chevronUp;
+            this.searchContainer.prepend(closeBtn);
+            closeBtn.addEventListener('click', () => this.trigger('dissmiss'));
+            this.searchInput.addEventListener('keyup', ev => {
+                if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    this.trigger('dissmiss');
+                }
+            });
+        }
+        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
+        this.setupClearBtn();
+        return this.searchContainer;
+    }
+    setupClearBtn() {
+        const clearBtn = this.searchContainer.querySelector('.custom-clear-search');
+        this.clearBtnToggle = new ClassToggler('hidden', clearBtn);
+        this.clearBtnToggle.invert = true;
+        clearBtn.addEventListener('click', ev => {
+            ev.preventDefault();
+            this.clearSearch();
+        });
+        this.searchInput.addEventListener('input', ev => {
+            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length;
+            this.clearBtnToggle.state = showClearBtn;
+        });
+    }
+    clearSearch() {
+        this.searchInput.value = '';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
+        this.clearBtnToggle.state = false;
+        this.searchInput.focus();
+        this.trigger('clear');
+    }
+    performSearch(query) {
+        if (!this.searchContainer)
+            return;
+        if (query)
+            this.searchInput.value = query;
+        const q = this.searchInput.value;
+        if (!q) {
+            this.clearSearch();
+            return;
+        }
+        this.searchContainer.scrollIntoView({ behavior: 'smooth' });
+        const interpretation = this.interpretQuery(q);
+        this.trigger('searchStart', interpretation);
+        this.searchResultsContainer.innerHTML = `
+            <div class='custom-search-result custom-loading'>
+                <div style="height: 2rem;width: 65%;"></div>
+                <div style="height: 1.6rem;width: 79%;"></div>
+            </div>`.repeat(2);
+        this.getSearchResponseHTML(interpretation).then(resp => {
+            if (this.searchResultsContainer) {
+                this.searchResultsContainer.innerHTML = '';
+                this.searchResultsContainer.append(...resp);
+                this.clearBtnToggle.state = true;
+            }
+            this.trigger('searchEnd');
+        });
+    }
+    interpretQuery(rawQuery) {
+        let query = rawQuery.replace(/"/g, '');
+        rawQuery = rawQuery.toLowerCase();
+        const quotesRegExp = /"([^"]+)"/g;
+        const hasntRegExp = /-\w+/g;
+        let mustContain = rawQuery.match(quotesRegExp);
+        let musntContain = rawQuery.match(hasntRegExp);
+        if (musntContain)
+            musntContain.forEach(toReplace => {
+                query.replace(`-${toReplace}`, '');
+            });
+        query = query.trim();
+        if (mustContain)
+            mustContain = mustContain.map(s => s.slice(1, -1));
+        if (musntContain)
+            musntContain = musntContain.map(s => s.slice(1));
+        return { query, rawQuery, mustContain, musntContain };
+    }
+    getSearchResponseHTML(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield this.searchRequest(q);
+            if (response.length) {
+                return response.map(el => {
+                    const link = document.createElement('a');
+                    link.innerHTML = `
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
+                    link.href = getHref(el);
+                    link.target = '_blank';
+                    link.className = 'custom-search-result';
+                    link.addEventListener('click', ev => {
+                        ev.preventDefault();
+                        this.app.tabOpener.openSlide({
+                            currentTab: -2,
+                            lessonID: el.context.lesson.id,
+                            screenID: el.context.screen.id,
+                            slide: el.context.slideshow.order_number
+                        });
+                    });
+                    return link;
+                });
+            }
+            const notFoundInfo = document.createElement('p');
+            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
+            notFoundInfo.style.padding = '0.5rem';
+            return [notFoundInfo];
+            function getHref(el) {
+                const fragm = {
+                    f1: el.context.lesson,
+                    f2: el.context.screen,
+                    f3: el.context.slideshow
+                };
+                if (Object.values(fragm).every(val => val)) {
+                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
+                    if (path.every(val => val)) {
+                        return [WNL_LESSON_LINK, ...path].join('/');
+                    }
+                }
+                if (el.id)
+                    return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id;
+                return '#';
+            }
+        });
+    }
+    searchRequest(q) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                url: this.getSearchURL(q.query),
+                method: 'GET',
+                responseType: "json",
+                onload: ({ response }) => {
+                    const entries = Object.entries(response);
+                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
+                    const parsed = results.map(el => {
+                        return {
+                            highlight: el.scout_metadata.highlight,
+                            details: el.snippet,
+                            context: el.context,
+                            id: el.id
+                        };
+                    });
+                    resolve(this.filterSearch(parsed, q));
+                },
+                onerror: reject
+            });
+        });
+    }
+    filterSearch(parsed, q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let filtered = parsed;
+            const hasSomePhrases = (result, phrases) => {
+                return phrases.map(toSearch => {
+                    return Object.values(result.highlight).some(highlighted => {
+                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
+                    });
+                });
+            };
+            if (q.mustContain) {
+                filtered = parsed.filter(result => {
+                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
+                });
+            }
+            if (q.musntContain) {
+                filtered = filtered.filter(result => {
+                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
+                });
+            }
+            filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID));
+            function sortUpSome(predicate) {
+                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
+            }
+            return (yield this.getTagsAsResults(q)).concat(filtered);
+        });
+    }
+    getTagsAsResults(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.app.notesCollection)
+                return [];
+            const tagColors = this.app.notesCollection.tags;
+            const tags = yield this.app.notesCollection.getAllTagsWithName(q.query);
+            return tags.map(tag => {
+                const record = tagColors.find(record => record.name === tag.content);
+                return {
+                    highlight: {
+                        "snippet.content": [
+                            `<div title='${tag.content}'
+                         style='background:${record.color};color:${getForegroundColor(record.color)}'
+                         class='custom-tag'>${tag.content}</div>`
+                        ]
+                    },
+                    details: {
+                        header: tag.presentationTitle,
+                        subheader: tag.slideTitle,
+                    },
+                    context: {
+                        screen: { id: tag.screenid },
+                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
+                        slideshow: {
+                            order_number: tag.slide
+                        }
+                    }
+                };
+            });
+        });
+    }
+    stripHTMLTags(s) {
+        const tagStripper = /<[^>]+>/g;
+        return s.toLowerCase().replace(tagStripper, '');
+    }
+}
+SearchConstructor.searchMenu = `
+        <form class="custom-search-input-container">
+            <div>
+                <input class="custom-search-result" placeholder="Szukaj...">
+                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
+            </div>
+            <a class='custom-search-submit'>${SVGIcons.search}</a>
+        </form>
+        `;
+SearchConstructor.searchInvitation = `
+        <p class="custom-search-invitation">
+            <span class='custom-script-heading'>
+                ${SVGIcons.search}
+                <span>Zacznij wyszukiwanie</span>
+            </span>
+        </p>`;
+SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
+///<reference path="common.ts" />
+///<reference path="../App.ts" />
+///<reference path="Search.ts" />
+var Keyboard;
+(function (Keyboard) {
+    let keyboardShortcuts = [
+        {
+            keys: ['ArrowUp'],
+            callback: showImage
+        },
+        {
+            keys: ['ArrowDown', 'q', '0', 'Escape'],
+            callback: hideImage
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: hideModal
+        },
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: () => {
+                Toggles.optionsBtn.state = false;
+                Toggles.search.state = false;
+                Toggles.summary.state = false;
+            }
+        },
+        {
+            keys: ['m'],
+            callback: () => toggleMouseVisibility()
+        },
+        {
+            keys: ['o'],
+            callback: () => Toggles.optionsBtn.toggle()
+        },
+        {
+            keys: ['s'],
+            callback: () => Toggles.optionsBtn.flash(3000)
+        },
+        {
+            keys: ['?', '/'],
+            callback: () => Toggles.search.toggle()
+        },
+        {
+            keys: ['l'],
+            callback: () => Toggles.summary.toggle()
+        },
+        {
+            keys: ['Enter'],
+            callback: () => {
+                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
+                if (quizVerifyBtn)
+                    quizVerifyBtn.click();
+            }
+        }
+    ];
+    function registerShortcut(shortcut) {
+        keyboardShortcuts.push(shortcut);
+    }
+    Keyboard.registerShortcut = registerShortcut;
+    function shortcutListener(event) {
+        const tagName = event.target.nodeName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+        keyboardShortcuts.forEach(shortcut => {
+            if (shortcut.keys.includes(event.key))
+                shortcut.callback(event);
+        });
+        const charCode = event.keyCode;
+        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
+            numericKeyPressed(event.key);
+    }
+    if (!isMobile()) {
+        document.addEventListener('fullscreenchange', ev => {
+            if (!document.fullscreenElement) {
+                if (document.querySelector('.o-referenceModal')) {
+                    hideModal();
+                    toggleFullscreen();
+                }
+                else if (Toggles.search.state) {
+                    Toggles.search.state = false;
+                    toggleFullscreen();
+                }
+                else if (Toggles.summary.state) {
+                    Toggles.summary.state = false;
+                    toggleFullscreen();
+                }
+            }
+        });
+    }
+    function setupControl(app) {
+        const slides = document.querySelectorAll('.slides .stack');
+        if (!slides.length)
+            return;
+        slides.forEach(slide => {
+            let counter = 1;
+            const icons = slide.querySelectorAll('.a-icon');
+            icons.forEach(icon => addSubToRef(icon, counter++));
+        });
+        observeSlides(app, addSubsToRefs);
+        // document.body.addEventListener('click', updateTabTitle)
+        // document.body.addEventListener('keyup', updateTabTitle)
+        document.body.addEventListener('keydown', event => {
+            if (event.key === ' ' || event.key === 'l') {
+                // event.preventDefault()
+                event.stopImmediatePropagation();
+            }
+            if (event.key === 'ArrowUp') {
+                scrollView(-60);
+                return false;
+            }
+            if (event.key === 'ArrowDown' || event.key === ' ') {
+                scrollView(60);
+                return false;
+            }
+        });
+        document.body.addEventListener('keyup', shortcutListener);
+    }
+    Keyboard.setupControl = setupControl;
+    function disableControl() {
+        document.body.removeEventListener('keyup', shortcutListener);
+    }
+    Keyboard.disableControl = disableControl;
+    function observeSlides(app, cb) {
+        //console.log('observeSlides')
+        app.slideObserver = new MutationObserver(cb);
+        app.slideObserver.observe(document.querySelector('div.slides'), {
+            childList: true,
+            subtree: true
+        });
+    }
+    function addSubsToRefs(mutations) {
+        //console.log('mutation observed')
+        let counter = 1;
+        mutations.forEach(mutation => {
+            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
+                //console.log('node added')
+                let ref = mutation.addedNodes[0];
+                if (ref.className && ref.className.includes('m-referenceTrigger')) {
+                    addSubToRef(ref, counter);
+                    counter++;
+                }
+            }
+        });
+    }
+    function addSubToRef(ref, counter) {
+        if (ref.className.includes('sub-id-'))
+            return;
+        const sub = document.createElement('sub');
+        sub.innerText = counter.toString();
+        sub.className = `small`;
+        ref.classList.add(`sub-id-${counter}`);
+        ref.appendChild(sub);
+    }
+    function scrollView(y) {
+        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
+        const options = { top: y, left: 0, behavior };
+        const views = [
+            document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */),
+            document.querySelector('.m-modal__content'),
+            document.querySelector('.wnl-comments')
+        ];
+        views.forEach(view => {
+            if (view)
+                view.scrollBy(options);
+        });
+    }
+    function showImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
+        if (fullscreenBtn)
+            fullscreenBtn.click();
+    }
+    function hideImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function hideModal() {
+        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function numericKeyPressed(key) {
+        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
+        if (quiz) {
+            const index = parseInt(key) - 1;
+            const answers = quiz.querySelectorAll('.quizAnswer');
+            if (index >= answers.length)
+                return;
+            answers[index].click();
+            return;
+        }
+        if (annotationImages.length > 0) {
+            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+        }
+        else {
+            const selector = `.present .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+            setTimeout(() => {
+                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+                let counter = 1;
+                annotationImages.forEach(image => {
+                    const btn = image.querySelector('.a-icon');
+                    btn.classList.add(`sub-id-${counter}`);
+                    const index = document.createElement('span');
+                    index.innerText = counter.toString();
+                    index.className = 'image-fullscreen-index';
+                    btn.appendChild(index);
+                    counter++;
+                });
+            }, 300);
+        }
+    }
+    let mouseVisible = true;
+    function toggleMouseVisibility(visible) {
+        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
+        //console.log({ mouseVisible, visible })
+        toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, !mouseVisible);
+        if (!mouseVisible)
+            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
+    }
+})(Keyboard || (Keyboard = {}));
+///<reference path="common.ts" />
 ///<reference path="ChapterMetadata.ts" />
 ///<reference path="../App.ts" />
 const slideshowOptionsBtn = `
@@ -3245,11 +3327,7 @@ class App extends CustomEventEmmiter {
         this.presentationMetadata.observe();
         this.presentationMetadata.addEventListener('slideChange', slide => this.trigger('slideChange', slide));
         this.tabOpener = new TabOpener(this);
-        let background = document.querySelector(".image-custom-background" /* SELECTORS.background */);
-        if (background !== null) {
-            background.classList.remove("image-custom-background");
-            background.classList.add("white-custom-background");
-        }
+        this.setBackground();
         this.searchInSlideshow = new SearchConstructor(this);
         this.searchInBottomContainer = new SearchConstructor(this);
         this.lessonView = document.querySelector(".wnl-lesson-view" /* SELECTORS.lessonView */);
@@ -3271,6 +3349,22 @@ class App extends CustomEventEmmiter {
         unsafeWindow.addEventListener('beforeunload', ev => {
             this.onUnload();
         });
+    }
+    setBackground() {
+        const backgrounds = {
+            image: "image-custom-background",
+            white: "white-custom-background",
+            black: "dark-custom-background"
+        };
+        const theme = this.options.getValue('changeTheme');
+        if (theme === 'default')
+            return;
+        const backgroundClasses = Object.values(backgrounds);
+        const backgroundEl = document.querySelector(backgroundClasses.map(s => `.${s}`).join(','));
+        if (backgroundEl !== null) {
+            backgroundEl.classList.remove(...backgroundClasses);
+            backgroundEl.classList.add(backgrounds[theme]);
+        }
     }
     addBottomContainer() {
         this.bottomContainer = document.createElement('div');
