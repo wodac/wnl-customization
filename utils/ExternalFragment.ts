@@ -1,15 +1,16 @@
-///<reference path="CustomEventEmmiter.ts" />
-namespace ExternalFragment {
+import CustomEventEmmiter, { EventsInterface } from "./CustomEventEmmiter"
+
+export namespace ExternalFragment {
     export type BaseEvents = {
         loaded: Element | null
         iframeURLChange: string
     }
     export type Events<Evts> = Evts extends BaseEvents ? Evts : BaseEvents & Omit<Evts, keyof BaseEvents>
 }
-class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeURLChange">>
+export class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeURLChange">>
     extends CustomEventEmmiter<ExternalFragment.Events<Events>> {
     element: HTMLElement | null
-    iframe: HTMLIFrameElement
+    iframe: HTMLIFrameElement | null
     childWindow: Window | null
     triesLeft: number
     url: string
@@ -27,6 +28,7 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
     }
 
     load() {
+        if (!this.iframe) return
         if (this.interval) clearInterval(this.interval)
         if (this.element) this.element.remove()
         this.iframe.src = this.initialURL
@@ -39,17 +41,19 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
         this.childWindow = this.iframe.contentWindow
     }
 
-    getElement() {        
+    getElement() {   
+        if (!this.iframe) return null
         this.iframe.hidden = false
         return new Promise<HTMLElement | null>(
             resolve => {
+                if (!this.iframe) return resolve(null)
                 const doc = this.iframe.contentDocument
                 if (!doc) return resolve(null)
                 const interval = setInterval(() => {
                     const element = doc.querySelector(this.selector) as HTMLElement
                     if (!element && this.triesLeft--) return
                     clearInterval(interval)
-                    this.iframe.hidden = true
+                    this.iframe && (this.iframe.hidden = true)
                     resolve(element)
                 }, 100)
             }
@@ -70,8 +74,9 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
 
     destroy() {
         clearInterval(this.interval)
-        this.iframe.remove()
-        this.element.remove()
-        this.element = this.iframe = this.childWindow = this.url = null
+        this.iframe && this.iframe.remove()
+        if (this.element) this.element.remove()
+        this.element = this.iframe = this.childWindow = null
+        this.url = ''
     }
 }

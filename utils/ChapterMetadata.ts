@@ -1,13 +1,14 @@
-///<reference path="CustomEventEmmiter.ts" />
-///<reference path="common.ts" />
-///<reference path="enums.ts" />
+import App from "../App"
+import { ClassToggler } from "./common"
+import CustomEventEmmiter from "./CustomEventEmmiter"
+import { SELECTORS } from "./enums"
 
-interface ChapterMetadata {
-    href?: string
-    name?: string
-    chapterLength?: number
-    startPage?: number
-    endPage?: number
+export interface ChapterMetadata {
+    href: string
+    name: string
+    chapterLength: number
+    startPage: number
+    endPage: number
     children?: ChapterMetadata[]
 }
 
@@ -16,7 +17,7 @@ type ChapterEvent = {
     activeChange: boolean
 }
 
-class ChapterListElement extends CustomEventEmmiter<ChapterEvent> {
+export class ChapterListElement extends CustomEventEmmiter<ChapterEvent> {
     children: ChapterListElement[]
     element: HTMLDivElement
     activeToggler: ClassToggler
@@ -63,7 +64,7 @@ class ChapterListElement extends CustomEventEmmiter<ChapterEvent> {
             this.element.append(list)
         }        
         this.activeToggler = new ClassToggler('active', this.element)
-        const link = this.element.querySelector('a')
+        const link = this.element.querySelector('a') as HTMLAnchorElement
         link.addEventListener('click', event => {
             event.preventDefault()
             this.parent.app.slideNumber = this.metadata.startPage
@@ -81,12 +82,12 @@ type SlideshowChaptersEvents = {
     }
 }
 
-interface ChapterProgress extends ChapterMetadata {
+export interface ChapterProgress extends ChapterMetadata {
     current: number
     actualLength: number
 }
 
-class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
+export default class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
     menuOpened: boolean
     chapterMetadata: ChapterMetadata[]
     slideCount: number
@@ -118,7 +119,7 @@ class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
     }
 
     getProgress(): ChapterProgress[] {
-        if (!this.currentChapterPath) return
+        if (!this.currentChapterPath) return []
         return this.currentChapterPath.map(chapter => {
             return {
                 ...chapter.metadata,
@@ -157,17 +158,17 @@ class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
         return this.currentChapterPath
     }
 
-    private getEndPages(chapters: ChapterMetadata[], length: number) {
-        let chapterEnd = length, currentChapter: ChapterMetadata
+    private getEndPages(chapters: Omit<ChapterMetadata, "endPage">[], length: number) {
+        let chapterEnd = length, currentChapter: ChapterMetadata | null = null
         for (let index = chapters.length - 1; index >= 0; index--) {
             if (currentChapter) chapterEnd = currentChapter.startPage -1
-            currentChapter = chapters[index]
+            currentChapter = chapters[index] as ChapterMetadata
             currentChapter.endPage = chapterEnd
             if (currentChapter.children) {
                 currentChapter.children = this.getEndPages(currentChapter.children, currentChapter.endPage)
             }
         }
-        return chapters
+        return chapters as ChapterMetadata[]
     }
 
     openMenu() {
@@ -181,24 +182,24 @@ class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
     async getMetadata(): Promise<ChapterMetadata[]> {
         if (this.chapterMetadata) return this.chapterMetadata
         const menu = await this.getMenu()
-        if (!menu) return
+        if (!menu) return []
         const active = menu.querySelector('.item-wrapper.is-active') as HTMLElement
         if (!active) {
-            return 
+            return []
         }
         this.slideCount = this.getSlideCount(active)
         const listParent = active.parentElement
         if (!listParent) {
-            return 
+            return []
         }
         const list = Array.from(listParent.children)
         if (this.menuOpened) this.closeMenu()
         if (list.length === 0) {
-            return 
+            return []
         }
         const wrappers = list.filter(el => el.nodeName === 'DIV') as HTMLElement[]
         if (wrappers.length === 0) {
-            return 
+            return []
         }
         const chapters = this.getMetadataFromLinks(wrappers)
         // console.log({chapters})
@@ -216,25 +217,26 @@ class SlideshowChapters extends CustomEventEmmiter<SlideshowChaptersEvents> {
         return parseInt(t.slice(1, -1))
     }
 
-    getMetadataFromLinks(wrappers: HTMLElement[]): ChapterMetadata[] {
+    getMetadataFromLinks(wrappers: HTMLElement[]): Omit<ChapterMetadata, "endPage">[] {
         const links = wrappers.map(div => div.querySelector('a'))
         // console.log({links})
-        return links.map((a, i) => {
-            if (!a.href)
-                return {}
+        const result: Omit<ChapterMetadata, "endPage">[] = []
+        links.forEach((a, i) => {
+            if (!a || !a.href) return 
             const chapterLength = this.getSlideCount(a)
-            let children: ChapterMetadata[]
+            let children: Omit<ChapterMetadata, "endPage">[] = []
             const subwrappers: NodeListOf<HTMLDivElement> = wrappers[i].querySelectorAll('div')
             if (subwrappers.length) {
                 children = this.getMetadataFromLinks(Array.from(subwrappers))
             }
-            return {
+            result.push({
                 href: a.href,
                 name: (a.querySelector('span span') as HTMLSpanElement).innerText,
-                chapterLength, children,
-                startPage: parseInt(a.href.split('/').pop())
-            }
+                chapterLength, children: children as ChapterMetadata[],
+                startPage: parseInt(a.href.split('/').pop() as string)
+            })
         })
+        return result
     }
 
     async getMenu() {

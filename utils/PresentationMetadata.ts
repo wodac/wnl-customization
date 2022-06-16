@@ -1,6 +1,7 @@
-///<reference path="enums.ts" />
-///<reference path="common.ts" />
-///<reference path="ChapterMetadata.ts" />
+import App from "../App"
+import SlideshowChapters from "./ChapterMetadata"
+import CustomEventEmmiter from "./CustomEventEmmiter"
+import { SELECTORS } from './enums'
 
 interface PresentationEvents {
     slideChange: number
@@ -8,7 +9,7 @@ interface PresentationEvents {
     lessonidChange: number
 }
 
-class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
+export default class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     slideshowChapters: SlideshowChapters
 
     constructor(public app: App) {
@@ -23,7 +24,7 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     }
 
     get appDiv() {
-        return document.querySelector(SELECTORS.appDiv)
+        return document.querySelector(SELECTORS.appDiv) as HTMLDivElement
     }
 
     private observer: MutationObserver   
@@ -35,7 +36,7 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
 
     get slideNumber(): number {      
         const n = this.getAttrVal('slide')
-        return parseInt(n) 
+        return n ? parseInt(n) : NaN
     }
 
     set slideNumber(n: number) {
@@ -49,17 +50,18 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     }
 
     get screenID(): number {
-        return parseInt(this.getAttrVal('screenid'))
+        const screenid = this.getAttrVal('screenid')
+        return screenid ? parseInt(screenid) : NaN
     }
 
-    public get presentationName(): string {
+    public get presentationName(): string | null {
         const mainHeaderElem = document.querySelector('.o-lesson__title__left__header') as HTMLElement
         return mainHeaderElem && 
                 mainHeaderElem.textContent && 
                 mainHeaderElem.textContent.trim()
     }
 
-    public get slideTitle(): string {
+    public get slideTitle(): string | null {
         const currentTitleHeader = document.querySelector('.present .sl-block-content h2')
         return currentTitleHeader && 
                 currentTitleHeader.textContent && 
@@ -67,7 +69,8 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     }
     
     get lessonID(): number {
-        return parseInt(this.getAttrVal('lesson-id'))
+        const lessonID = this.getAttrVal('lesson-id')
+        return lessonID ? parseInt(lessonID) : NaN
     }
 
     private createObserver() {
@@ -76,11 +79,11 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
                 const value = this.getAttrFromMutation(mutation)
                 switch (mutation.attributeName) {
                     case 'screenid':
-                        this.trigger('screenidChange', parseInt(value))
+                        this.trigger('screenidChange', value ? parseInt(value) : NaN)
                         break
 
                     case 'slide':
-                        this.trigger('slideChange', parseInt(value))
+                        this.trigger('slideChange', value ? parseInt(value) : NaN)
                         break
                 }
             }
@@ -88,7 +91,7 @@ class PresentationMetadata extends CustomEventEmmiter<PresentationEvents> {
     }
 
     private getAttrFromMutation(mutation: MutationRecord) {
-        const attr = (mutation.target as Element).attributes.getNamedItem(mutation.attributeName)
+        const attr = (mutation.target as Element).attributes.getNamedItem(mutation.attributeName as string)
         return attr ? attr.value : null
     }
 

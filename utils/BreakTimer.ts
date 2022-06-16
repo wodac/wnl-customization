@@ -1,5 +1,6 @@
-///<reference path="common.ts" />
-class BreakTimer {
+import App from "../App";
+
+export default class BreakTimer {
     constructor(public app: App) {
         app.addEventListener('unloaded', () => this.timer && clearTimeout(this.timer))
     }

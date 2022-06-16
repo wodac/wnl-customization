@@ -1,11 +1,14 @@
-///<reference path="common.ts" />
-///<reference path="../App.ts" />
+import App from "../App"
+import { ParsedSearchResult, SearchResults } from "../interfaces"
+import { ClassToggler, SVGIcons, WNL_LESSON_LINK, getForegroundColor } from "./common"
+import CustomEventEmmiter from "./CustomEventEmmiter"
+import { CLASS_NAMES } from "./enums"
 
-type QueryInterpretation = {
+export type QueryInterpretation = {
     query: string
     rawQuery: string
-    mustContain?: string[]
-    musntContain?: string[]
+    mustContain: string[] | null
+    musntContain: string[] | null
 }
 
 type SearchEvents = {
@@ -15,7 +18,7 @@ type SearchEvents = {
     searchEnd: {}
 }
 
-class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
+export default class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
     searchInput: HTMLInputElement
     clearBtnToggle: ClassToggler
     private static readonly searchMenu = `
@@ -55,7 +58,8 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
         this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation
         this.searchContainer.append(this.searchResultsContainer)
         this.searchInput = this.searchContainer.querySelector('input.custom-search-result') as HTMLInputElement
-        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
+        const searchForm = this.searchContainer.querySelector('form') as HTMLFormElement
+        searchForm.addEventListener('submit', ev => {
             ev.preventDefault()
             this.performSearch()
         })
@@ -74,7 +78,8 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                 }
             })
         }
-        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch())
+        const submitBtn = this.searchContainer.querySelector('a.custom-search-submit') as HTMLAnchorElement
+        submitBtn.addEventListener('click', () => this.performSearch())
         this.setupClearBtn()
         return this.searchContainer
     }
@@ -159,9 +164,9 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                     ev.preventDefault()
                     this.app.tabOpener.openSlide({
                         currentTab: -2,
-                        lessonID: el.context.lesson.id,
-                        screenID: el.context.screen.id,
-                        slide: el.context.slideshow.order_number
+                        lessonID: el.context?.lesson?.id as number,
+                        screenID: el.context?.screen?.id as number,
+                        slide: el.context?.slideshow?.order_number as number
                     })
                 })
                 return link
@@ -179,7 +184,7 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                 f3: el.context.slideshow
             }
             if (Object.values(fragm).every(val => val)) {
-                const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number]
+                const path = [fragm.f1?.id, fragm.f2?.id, fragm.f3?.order_number]
                 if (path.every(val => val)) {
                     return [WNL_LESSON_LINK, ...path].join('/')
                 }
@@ -224,15 +229,15 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
         }
         if (q.mustContain) {
             filtered = parsed.filter(result => {
-                return hasSomePhrases(result, q.mustContain).every(includes => includes)
+                return hasSomePhrases(result, q.mustContain as string[]).every(includes => includes)
             })
         }
         if (q.musntContain) {
             filtered = filtered.filter(result => {
-                return !hasSomePhrases(result, q.musntContain).some(includes => includes)
+                return !hasSomePhrases(result, q.musntContain as string[]).some(includes => includes)
             })
         }
-        filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID))
+        filtered.sort(sortUpSome(res => res.context?.screen?.id === this.app.presentationMetadata.screenID))
         function sortUpSome<T>(predicate: (val: T) => boolean) {
             return (val1: T, val2: T) => predicate(val1) && !predicate(val2) ? -1 : 1
         }
@@ -243,9 +248,11 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
         if (!this.app.notesCollection) return []
         const tagColors = this.app.notesCollection.tags
         const tags = await this.app.notesCollection.getAllTagsWithName(q.query)
-        return tags.map(tag => {
+        const result: ParsedSearchResult[] = []
+        tags.forEach(tag => {
             const record = tagColors.find(record => record.name === tag.content)
-            return {
+            if (!record) return
+            result.push({
                 highlight: {
                     "snippet.content": [
                         `<div title='${tag.content}'
@@ -264,8 +271,9 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                         order_number: tag.slide
                     }
                 }
-            }
+            })
         })
+        return result
     }
 
     stripHTMLTags(s: string) {

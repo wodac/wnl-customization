@@ -1,13 +1,11 @@
-///<reference path="../interfaces.d.ts" />
-///<reference path="CustomEventEmmiter.ts" />
-///<reference path="PresentationMetadata.ts" />
-///<reference path="TabOpener.ts" />
+import CustomEventEmmiter from "./CustomEventEmmiter"
+import { CLASS_NAMES } from "./enums"
 
 document = unsafeWindow.document
 
-const WNL_LESSON_LINK = 'https://lek.wiecejnizlek.pl/app/courses/1/lessons'
+export const WNL_LESSON_LINK = 'https://lek.wiecejnizlek.pl/app/courses/1/lessons'
 const inSVG = (s: TemplateStringsArray) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">${s[0]}</svg>`
-const SVGIcons = {
+export const SVGIcons = {
     chevronUp: inSVG`<path fill-rule="evenodd" d="M7.776 5.553a.5.5 0 0 1 .448 0l6 3a.5.5 0 1 1-.448.894L8 6.56 2.224 9.447a.5.5 0 1 1-.448-.894l6-3z"/>`,
     dots: inSVG`<path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>`,
     search: inSVG`<path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>`,
@@ -66,7 +64,7 @@ const SVGIcons = {
 
 }
 
-const zoomSliderHTML = `
+export const zoomSliderHTML = `
         <span class='custom-heading'>
             ${SVGIcons.zoomIn}
             <label class="metadata">POWIĘKSZENIE</label>
@@ -80,13 +78,13 @@ const zoomSliderHTML = `
             <a class="${CLASS_NAMES.fontSizeInput}-increase">${SVGIcons.zoomIn}</a>
         </div>`
 
-function toggleBodyClass(className: string, isOn: boolean) {
+export function toggleBodyClass(className: string, isOn: boolean) {
     let body = document.body
     if (isOn) body.classList.add(className)
     else body.classList.remove(className)
 }
 
-function getForegroundColor(hex: string) {
+export function getForegroundColor(hex: string) {
     if (hex.indexOf('#') === 0) {
         hex = hex.slice(1);
     }
@@ -106,36 +104,36 @@ function getForegroundColor(hex: string) {
         : '#FFFFFF';
 }
 
-function getRandomElement<T>(a: T[]) {
+export function getRandomElement<T>(a: T[]) {
     if (!a || !a.length) return
     const i = Math.random() * a.length
     return a[Math.floor(i)]
 }
 
-const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93
+export const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93
 const root = unsafeWindow.document.querySelector(":root") as HTMLElement
-const updateFontSize = (fontSize: number) => {
+export const updateFontSize = (fontSize: number) => {
     root.style.setProperty("--uniform-font-size", `${getUniformFontSize(fontSize)}em`)
     root.style.setProperty("--scaled-font-size", `${fontSize}%`)
 }
 
-function isMobile() {
+export function isMobile() {
     return screen.width < 980
 }
 
-namespace ClassToggler {
+export namespace ClassToggler {
     export type Events = {
         stateChange: boolean
     }
 }
 
-class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
+export class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     private _unresolved = true
     public invert = false
 
     constructor(
         public className: string,
-        private _elementOrSelector: Element | string = document.body,
+        private _elementOrSelector: HTMLElement | string = document.body,
         public onchange?: (toggler: ClassToggler) => any
     ) {
         super()
@@ -145,6 +143,7 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     private _state: boolean
 
     private _getClassState() {
+        if (!this.element) return
         if (this.invert) this._state = !this.element.classList.contains(this.className)
         else this._state = this.element.classList.contains(this.className)
         this._unresolved = false
@@ -152,7 +151,7 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
 
     get element() {
         if (typeof this._elementOrSelector === 'string') {
-            return document.querySelector(this._elementOrSelector)
+            return document.querySelector(this._elementOrSelector) as HTMLElement
         }
         return this._elementOrSelector
     }
@@ -214,7 +213,7 @@ class ClassToggler extends CustomEventEmmiter<ClassToggler.Events> {
     }
 }
 
-namespace Toggles {
+export namespace Toggles {
     export const summary = new ClassToggler('custom-script-hidden', '.custom-script-summary', t => {
         if (!t.state) {
             const summaryContainer = document.querySelector('custom-script-summary')
@@ -245,7 +244,7 @@ namespace Toggles {
     optionsBtn.setDismissible(true)
 }
 
-function downloadFile(mimetype: string, name: string, data: string | Buffer) {
+export function downloadFile(mimetype: string, name: string, data: string | Buffer) {
     let dataText: string
     if (typeof data === 'string') dataText = data
     else {
@@ -264,7 +263,7 @@ function downloadFile(mimetype: string, name: string, data: string | Buffer) {
     dlAnchorElem.click();
 }
 
-function toggleFullscreen() {
+export function toggleFullscreen() {
     setTimeout(
         () => document.dispatchEvent(new KeyboardEvent('keydown', {
             key: 'f', altKey: false, bubbles: true,
@@ -277,7 +276,7 @@ function toggleFullscreen() {
     )
 }
 
-function getIndexedDB(name: string, version: number, setupCb: (ev: IDBVersionChangeEvent, db: IDBDatabase) => IDBObjectStore) {
+export function getIndexedDB(name: string, version: number, setupCb: (ev: IDBVersionChangeEvent, db: IDBDatabase) => IDBObjectStore) {
     return new Promise<IDBDatabase>((resolve, reject) => {
         var request = indexedDB.open(name, version);
         request.addEventListener('error', ev => {

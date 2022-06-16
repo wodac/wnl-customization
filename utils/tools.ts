@@ -1,5 +1,10 @@
-///<reference path="../App.ts" />
-///<reference path="NotesRendering.ts" />
+import App from "../App"
+import BreakTimer from "./BreakTimer"
+import { ClassToggler, SVGIcons, toggleBodyClass, downloadFile, isMobile } from "./common"
+import Keyboard from "./Keyboard"
+import { createNotesBtnsAndTags } from "./NotesRendering"
+import { SettingElement, SettingInit, SettingType } from "./Settings"
+
 const notesOverlayToggle = new ClassToggler('custom-script-notes-visible')
 const noteColumnToggle = new ClassToggler('custom-script-hidden', '.custom-script-notes-column')
 
@@ -24,7 +29,7 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
             } else {
                 app.breakTimer.endListening()
             }
-            this.parent.getSetting('breakTime').disabled = !state.value
+            (this.parent.getSetting('breakTime') as SettingElement<boolean>).disabled = !state.value
         },
         onrender: () => {
             app.addEventListener('loaded',
@@ -70,8 +75,8 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
                 //     viewTagsBtnToggle.state = true
                 // }
             }
-            this.parent.getSetting('exportNotes').disabled = !state.value
-            this.parent.getSetting('importNotes').disabled = !state.value
+            (this.parent.getSetting('exportNotes') as SettingElement<boolean>).disabled = !state.value;
+            (this.parent.getSetting('importNotes') as SettingElement<boolean>).disabled = !state.value
         },
         onrender: function () {
             const onLoaded = () => {
@@ -111,9 +116,9 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
         onclick: function () {
             uploadInput.addEventListener('change', (ev) => {
                 if (!app.notesCollection) return
-                if (uploadInput.files.length) {
+                if (uploadInput.files?.length) {
                     const file = uploadInput.files.item(0)
-                    file.text().then(
+                    file?.text().then(
                         imported => app.notesCollection.importNotes(JSON.parse(imported))
                     ).then(() => unsafeWindow.location.reload())
                 }
@@ -130,6 +135,7 @@ const getToolsConfig: (app: App) => SettingInit<any>[] = app => [
         }
     }
 ]
+export default getToolsConfig
 
 function setupNotesBtns(app: App) {
     createNotesBtnsAndTags()
@@ -155,14 +161,14 @@ function setupNotesBtns(app: App) {
     addTagBtns.forEach(btn => btn.addEventListener('click', onAddTag))
     Keyboard.registerShortcut({ keys: ['t'], callback: onAddTag })
 
-    const clearNotesBtn = document.querySelector('.custom-clear-notes-btn')
+    const clearNotesBtn = document.querySelector('.custom-clear-notes-btn') as HTMLElement
     clearNotesBtn.addEventListener('click', () => {
         if (app.currentSlideNotes && confirm(`Czy na pewno usunąć WSZYSTKIE (${app.currentSlideNotes.notes.length}) notatki ze slajdu ${app.currentSlideNotes.metadata.slide}?`))
             app.currentSlideNotes.removeAllNotes()
     })
 
 
-    const viewNotesBtn = document.querySelector('.custom-notes-view-btn')
+    const viewNotesBtn = document.querySelector('.custom-notes-view-btn') as HTMLElement
     const hiddenBtnsToggle = new ClassToggler('inactive', '.custom-notes-additional-btns')
 
     const viewTypeBtn = document.querySelector('.custom-notes-view-type-btn') as HTMLElement
@@ -172,10 +178,10 @@ function setupNotesBtns(app: App) {
         noteColumnToggle.state = !t.state
         notesOverlayToggle.state = !t.state
         if (t.state) {
-            noteTarget = noteColumnToggle.element as HTMLElement
-            noteTarget.innerHTML = ''
+            app.notesRendering.noteTarget = noteColumnToggle.element as HTMLElement
+            app.notesRendering.noteTarget.innerHTML = ''
         } else {
-            noteTarget = null
+            app.notesRendering.noteTarget = null
             document.querySelectorAll('.custom-notes-overlay').forEach(el => el.remove())
         }
         app.currentSlideNotes.commitChanges().then(() => {
@@ -213,8 +219,8 @@ function setupNotesBtns(app: App) {
     function addTag() {
         app.currentSlideNotes.addTag({
             content: '', color: app.notesRendering.getRandomTagColor(),
-            presentationTitle: app.presentationMetadata.presentationName,
-            slideTitle: app.presentationMetadata.slideTitle
+            presentationTitle: app.presentationMetadata.presentationName || undefined,
+            slideTitle: app.presentationMetadata.slideTitle || undefined
         })
     }
 }

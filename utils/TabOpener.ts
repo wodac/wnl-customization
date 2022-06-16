@@ -1,6 +1,6 @@
-///<reference path="../globals.d.ts" />
-///<reference path="CustomEventEmmiter.ts" />
-///<reference path="PresentationMetadata.ts" />
+import App from "../App";
+import { WNL_LESSON_LINK } from "./common";
+import CustomEventEmmiter from "./CustomEventEmmiter";
 
 enum TabOpenerIndexes {
     noAction = -1,
@@ -18,7 +18,7 @@ type SlideToOpen = {
     currentTab: number;
 };
 
-class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
+export default class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
     private _tabIndex: number;
 
     public get tabIndex(): number {

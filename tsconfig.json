@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
-      "module": "None",
+      "module": "AMD",
       "target": "ES6",
       "sourceMap": false,
-      "outFile": "dist/wnl-customization.user.js",
+      "outFile": "wnl-customization.js",
+      "noResolve": false
     },
     "lib": ["es2017"],
-    "files": [
-      "wnl-customization.ts"
+    "include": [
+      "*.ts", "utils/*.ts"
     ]
   }

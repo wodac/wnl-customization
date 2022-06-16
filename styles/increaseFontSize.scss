@@ -1,0 +1,30 @@
+:root {
+    --uniform-font-size: 0.93em;
+    --scaled-font-size: 110%;
+}
+
+.custom-script-uniform-font-size .sl-block-content :not(h1,h2,h3,h1 *,h2 *,h3 *) {
+    font-size: var(--uniform-font-size)!important;
+}
+
+.custom-script-increase-annotations article.content.-styleguide p {
+    font-size: var(--scaled-font-size);
+    line-height: 150%;
+}
+
+.custom-script-increase-font-size {
+    .sl-block-content {
+        p {
+            font-size: var(--scaled-font-size) !important;
+        }
+
+        span[style*='21px'] {
+            font-size: 0.75em !important;
+        }
+    }
+}
+
+.custom-script-increase-font-size .wnl-reference svg,
+.custom-script-uniform-font-size .wnl-reference svg {
+    transform: scale(1.6) !important;
+}

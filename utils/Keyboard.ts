@@ -1,6 +1,7 @@
-///<reference path="common.ts" />
-///<reference path="../App.ts" />
-///<reference path="Search.ts" />
+import App from "../App"
+import { isMobile, toggleBodyClass, toggleFullscreen, Toggles } from "./common"
+import { BODY_CLASS_NAMES, SELECTORS } from "./enums"
+
 namespace Keyboard {
     type KeyboardShortcut = {
         keys: string[]
@@ -122,7 +123,7 @@ namespace Keyboard {
     function observeSlides(app: App, cb: MutationCallback) {
         //console.log('observeSlides')
         app.slideObserver = new MutationObserver(cb)
-        app.slideObserver.observe(document.querySelector('div.slides'), {
+        app.slideObserver.observe(document.querySelector('div.slides') as HTMLDivElement, {
             childList: true,
             subtree: true
         });
@@ -208,6 +209,7 @@ namespace Keyboard {
                 let counter = 1
                 annotationImages.forEach(image => {
                     const btn = image.querySelector('.a-icon')
+                    if (!btn) return
                     btn.classList.add(`sub-id-${counter}`)
                     const index = document.createElement('span')
                     index.innerText = counter.toString()
@@ -227,3 +229,5 @@ namespace Keyboard {
         if (!mouseVisible) document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true })
     }
 }
+
+export default Keyboard

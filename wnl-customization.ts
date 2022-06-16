@@ -1,6 +1,5 @@
-///<reference path="packageMetadata.ts" />
-///<reference path="globals.d.ts" />
-///<reference path="App.ts" />
+import './globals'
+import App from './App'
 (function () {
     'use strict';
     try {

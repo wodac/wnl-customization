@@ -1,6 +1,8 @@
-///<reference path="common.ts" />
-///<reference path="ChapterMetadata.ts" />
-///<reference path="../App.ts" />
+import App from "../App"
+import { ChapterProgress } from "./ChapterMetadata"
+import { SVGIcons, Toggles } from "./common"
+import { CLASS_NAMES } from "./enums"
+
 const slideshowOptionsBtn = `
     <a class="custom-options-btn custom-script-slideshow-btn wnl-rounded-button">
         <div class="a-icon -x-small" title="Opcje">
@@ -26,13 +28,14 @@ const slideshowOptions = `
         </div>
     </a>`
 
-function addSlideOptions(app: App) {
+export function addSlideOptions(app: App) {
     const bookmarkBtn = document.querySelector('.wnl-rounded-button.bookmark')
     if (!bookmarkBtn) return
     const searchContainer = app.searchInSlideshow.getSearchContainer(true)
     app.searchInSlideshow.addEventListener('dissmiss', () => Toggles.search.state = false)
     app.searchInSlideshow.addEventListener('searchEnd', () => app.searchInSlideshow.searchInput.focus())
-    document.querySelector('.order-number-container').after(searchContainer)
+    const orderNumberEl = document.querySelector('.order-number-container') as HTMLElement
+    orderNumberEl.after(searchContainer)
     const slideOptionsContainer = document.createElement('div')
     slideOptionsContainer.innerHTML = slideshowOptionsBtn
     const additionalOptionsContainer = document.createElement('div')
@@ -41,24 +44,28 @@ function addSlideOptions(app: App) {
     slideOptionsContainer.append(additionalOptionsContainer)
     bookmarkBtn.after(slideOptionsContainer)
     additionalOptionsContainer.prepend(bookmarkBtn)
-    slideOptionsContainer.querySelector('.custom-options-btn').addEventListener('click', () => Toggles.optionsBtn.toggle())
-    slideOptionsContainer.querySelector('.custom-search-btn').addEventListener('click', () => {
+    const optionsBtn = slideOptionsContainer.querySelector('.custom-options-btn') as HTMLElement
+    optionsBtn.addEventListener('click', () => Toggles.optionsBtn.toggle())
+    const searchBtn = slideOptionsContainer.querySelector('.custom-search-btn') as HTMLElement
+    searchBtn.addEventListener('click', () => {
         Toggles.optionsBtn.state = false
         Toggles.search.toggle()
     })
-    slideOptionsContainer.querySelector('.custom-zoom-up-btn').addEventListener('click', () => {
+    const zoomInBtn = slideOptionsContainer.querySelector('.custom-zoom-up-btn') as HTMLElement
+    zoomInBtn.addEventListener('click', () => {
         if (app.options) {
             app.options.setValue('percentIncrease', (v: number) => v + 5)
         }
     })
-    slideOptionsContainer.querySelector('.custom-zoom-down-btn').addEventListener('click', () => {
+    const zoomOutBtn = slideOptionsContainer.querySelector('.custom-zoom-down-btn') as HTMLElement
+    zoomOutBtn.addEventListener('click', () => {
         if (app.options) {
             app.options.setValue('percentIncrease', (v: number) => v - 5)
         }
     })
 }
 
-function addSummary(app: App) {
+export function addSummary(app: App) {
     const summaryContainer = document.createElement('div')
     summaryContainer.className = 'custom-script-summary custom-script-hidden'
     const closeBtn = document.createElement('div')
@@ -67,10 +74,11 @@ function addSummary(app: App) {
     summaryContainer.prepend(closeBtn)
     closeBtn.addEventListener('click', () => Toggles.summary.state = false)
     app.slideshowChapters.render(summaryContainer)
-    document.querySelector('.order-number-container').after(summaryContainer)
+    const orderNumberEl = document.querySelector('.order-number-container') as HTMLElement
+    orderNumberEl.after(summaryContainer)
 }
 
-function addChapterInfo(app: App) {
+export function addChapterInfo(app: App) {
     addPageNumberContainer();
     addSummary(app);
 
@@ -79,7 +87,7 @@ function addChapterInfo(app: App) {
 }
 
 async function updateChapterProgress(app: App) {
-    const pageNumberContainer: HTMLSpanElement = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`)
+    const pageNumberContainer = document.querySelector(`.${CLASS_NAMES.pageNumberContainer}`) as HTMLSpanElement
     if (!pageNumberContainer) return
     const chapterPath = app.slideshowChapters.getProgress()
     if (chapterPath) {
@@ -105,7 +113,8 @@ function addPageNumberContainer(): HTMLSpanElement {
     for (let i = 1; i <= 3; i++) {
         spans[0].appendChild(spans[i])
     }
-    document.querySelector('.order-number-container').after(spans[0])
+    const orderNumberEl = document.querySelector('.order-number-container') as HTMLElement
+    orderNumberEl.after(spans[0])
     spans[0].addEventListener('click', () => Toggles.summary.toggle())
     return spans[0]
 }

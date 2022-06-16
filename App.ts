@@ -1,15 +1,19 @@
-///<reference path="globals.d.ts" />
-///<reference path="utils/enums.ts" />
-///<reference path="utils/common.ts" />
-///<reference path="utils/PresentationMetadata.ts" />
-///<reference path="utils/CustomEventEmmiter.ts" />
-///<reference path="utils/TabOpener.ts" />
-///<reference path="utils/Options.ts" />
-///<reference path="utils/Settings.ts" />
-///<reference path="utils/CourseSidebar.ts" />
-///<reference path="utils/tools.ts" />
-///<reference path="utils/Keyboard.ts" />
-///<reference path="utils/slideshowOptions.ts" />
+import BreakTimer from "./utils/BreakTimer"
+import Settings, { NumberSetting } from "./utils/Settings"
+import CustomEventEmmiter from "./utils/CustomEventEmmiter"
+import PresentationMetadata from "./utils/PresentationMetadata"
+import SlideshowChapters, {ChapterMetadata} from "./utils/ChapterMetadata"
+import CourseSidebar from "./utils/CourseSidebar"
+import Notes from "./utils/Notes"
+import NotesRendering from "./utils/NotesRendering"
+import TabOpener from "./utils/TabOpener"
+import SearchConstructor from "./utils/Search"
+import Keyboard from "./utils/Keyboard"
+import { CLASS_NAMES, SELECTORS } from "./utils/enums"
+import { SVGIcons, zoomSliderHTML } from "./utils/common"
+import getOptions from "./utils/Options"
+import getToolsConfig from "./utils/tools"
+import { addChapterInfo, addSlideOptions } from "./utils/slideshowOptions"
 
 type AppEvents = {
     loaded: {}
@@ -18,12 +22,12 @@ type AppEvents = {
     sidenavOpened: boolean
 }
 
-class App extends CustomEventEmmiter<AppEvents> {
+export default class App extends CustomEventEmmiter<AppEvents> {
     appDiv: Element
     lessonView: Element
     options: Settings
     tools: Settings
-    metadata: SlideshowChapterMetadata[]
+    metadata: ChapterMetadata[]
     tabOpener: TabOpener
     searchInSlideshow: SearchConstructor
     searchInBottomContainer: SearchConstructor
@@ -124,6 +128,7 @@ class App extends CustomEventEmmiter<AppEvents> {
             </span>
             <div class=${CLASS_NAMES.tagList}></div>`
         this.bottomContainer.append(tagListContainer)
+        return tagListContainer
     }
 
     setupObserveSidenav() {

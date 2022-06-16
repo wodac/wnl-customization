@@ -1,14 +1,14 @@
-interface EventsInterface {
+export interface EventsInterface {
     [eventName: string]: any
 }
 
-type CustomEventListener<Event> = (ev: Event) => any
+export type CustomEventListener<Event> = (ev: Event) => any
 
-type CustomEventListeners<Events extends EventsInterface> = {
+export type CustomEventListeners<Events extends EventsInterface> = {
     [Name in keyof Events]: CustomEventListener<Events[Name]>[]
 }
 
-class CustomEventEmmiter<Events extends EventsInterface> {
+export default class CustomEventEmmiter<Events extends EventsInterface> {
     private listeners = {} as CustomEventListeners<Events>;
 
     addEventListener<EventName extends keyof Events>(eventName: EventName, listener: CustomEventListener<Events[EventName]>, once?: boolean) {

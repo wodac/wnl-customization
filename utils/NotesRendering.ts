@@ -1,7 +1,7 @@
-///<reference path="common.ts" />
-///<reference path="Notes.ts" />
-///<reference path="BreakTimer.ts" />
-let noteTarget: HTMLElement
+import App from "../App"
+import { SVGIcons, ClassToggler, getForegroundColor, getRandomElement } from "./common"
+import { CLASS_NAMES, SELECTORS } from "./enums"
+import Notes from "./Notes"
 
 const tagContainerHTML = `
         <div class='custom-tags-container'> 
@@ -64,7 +64,7 @@ const notesBtnsHTML = `
             </a>
         </div>`
 
-function createNotesBtnsAndTags() {
+export function createNotesBtnsAndTags() {
     const slideshowContainer = document.querySelector('.slideshow-container')
     if (!slideshowContainer) return
     if (document.querySelector('.custom-tags-and-btns-container')) return
@@ -74,9 +74,10 @@ function createNotesBtnsAndTags() {
     slideshowContainer.append(el)
 }
 
-class NotesRendering {
+export default class NotesRendering {
     btnsContainerNoNotes: ClassToggler
     btnsContainerNoTags: ClassToggler
+    noteTarget: HTMLElement | null
 
     constructor(private app: App) {
         this.btnsContainerNoTags = new ClassToggler('custom-no-tags', '.custom-notes-btns-container')
@@ -91,7 +92,7 @@ class NotesRendering {
 
     async setupTagList() {
         const tags = await this.app.notesCollection.getAllTagNames()
-        this.app.addTagListContainer()
+        const tagListContainer = this.app.addTagListContainer()
         const tagToOption = (tag: Notes.RecordTypes.Tag): HTMLOptionElement => {
             const opt = document.createElement('option')
             opt.value = tag.name
@@ -114,7 +115,6 @@ class NotesRendering {
         const suggestions = tags.map(tagToOption)
         const tagListElems = tags.map(tagToTagListElem)
         const suggestionsContainer = document.createElement('datalist')
-        const tagListContainer = document.querySelector(`.${CLASS_NAMES.tagList}`)
         suggestionsContainer.id = 'custom-tags-list'
         suggestionsContainer.append(...suggestions)
         tagListContainer.append(...tagListElems)
@@ -133,26 +133,27 @@ class NotesRendering {
         return getRandomElement(colors) as string
     }
 
-    async renderNotes(slideNumber: number): Promise<HTMLDivElement[] | void> {
+    async renderNotes(slideNumber: number): Promise<HTMLDivElement[] | null> {
         if (this.app.currentSlideNotes) {
             this.app.currentSlideNotes.commitChanges()
             this.app.currentSlideNotes.removeEventListener('change', this.notesChangedListener)
         }
         if (this.app.tools && this.app.tools.getValue('useNotes') && this.app.notesCollection) {
-            if (noteTarget) noteTarget.innerHTML = ''
+            if (this.noteTarget) this.noteTarget.innerHTML = ''
             const currentSlide = document.querySelector(SELECTORS.currentSlideContainer)
-            if (!currentSlide) return
+            if (!currentSlide) return null
             const notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay')
             return this.app.notesCollection.getNotesBySlide(slideNumber).then(notes => {
                 this.app.currentSlideNotes = notes
                 this.renderTags()
                 this.btnsContainerNoNotes.state = !notes.notes.length
-                if (!noteTarget && notesOverlayElem) return notes.notes.map(n => n.element)
+                if (!this.noteTarget && notesOverlayElem) return notes.notes.map(n => n.element as HTMLDivElement)
                 //console.log({ currentSlideNotes })
                 this.app.currentSlideNotes.addEventListener('change', this.notesChangedListener)
                 return this.addNoteElems(notes.notes)
             })
         }
+        return null
     }
 
     renderTags() {
@@ -189,14 +190,14 @@ class NotesRendering {
         }
     }
 
-    addNoteElems(notes: Notes.RegularNote[]): HTMLDivElement[] | undefined {
-        if (!notes.length) return
+    addNoteElems(notes: Notes.RegularNote[]): HTMLDivElement[] | null {
+        if (!notes.length) return null
         this.btnsContainerNoNotes.state = false
         let parent: HTMLElement
         const currentSlide = document.querySelector(SELECTORS.currentSlideContainer)
-        if (!currentSlide) return
-        if (noteTarget) {
-            parent = noteTarget
+        if (!currentSlide) return null
+        if (this.noteTarget) {
+            parent = this.noteTarget
         } else {
             let notesOverlayElem = currentSlide.querySelector('.custom-notes-overlay') as HTMLElement
             if (!notesOverlayElem) {
@@ -227,8 +228,8 @@ class NotesRendering {
             slide.style.cursor = `copy`
             const newNote = this.app.currentSlideNotes.addNote({
                 content: '', position: { x: 0, y: 1 },
-                presentationTitle: this.app.presentationMetadata.presentationName,
-                slideTitle: this.app.presentationMetadata.slideTitle
+                presentationTitle: this.app.presentationMetadata.presentationName || undefined,
+                slideTitle: this.app.presentationMetadata.slideTitle || undefined
             })
             newNote.startFollowingMouse({ x: 0, y: 10 })
             slide.addEventListener('click', event => {
@@ -240,13 +241,14 @@ class NotesRendering {
                 this.setupContextElem(contextElem, newNote)
                 const textContext = contextElem.innerText
                 newNote.metadata.textContext = textContext
-                newNote.element.click()
+                newNote.element && newNote.element.click()
             }, { once: true })
         }
     }
 
     setupContextElem(contextElem: HTMLElement, note: Notes.RegularNote) {
         const noteElem = note.element
+        if (!noteElem) return
         contextElem.title = `Notatka: ${note.content}`
         note.addEventListener('change', ({ newContent }) => contextElem.title = `Notatka: ${newContent}`)
         note.addEventListener('remove', () => contextElem.title = '')

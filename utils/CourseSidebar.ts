@@ -1,6 +1,7 @@
-///<reference path="ExternalFragment.ts" />
-///<reference path="../globals.d.ts" />
-class CourseSidebar extends ExternalFragment<{
+import { ClassToggler, SVGIcons } from "./common"
+import { ExternalFragment } from "./ExternalFragment"
+
+export default class CourseSidebar extends ExternalFragment<{
     urlChange: {
         url: string
         lessonID: number
@@ -56,7 +57,8 @@ class CourseSidebar extends ExternalFragment<{
         this.container.innerHTML = CourseSidebar.CONTAINER_HTML
         this.container.classList.add('custom-main-nav-container')
         this.collapseToggler = new ClassToggler('active', this.container)
-        this.container.querySelector('a').addEventListener(
+        const collapseBtn = this.container.querySelector('a') as HTMLAnchorElement
+        collapseBtn.addEventListener(
             'click', () => this.collapseToggler.toggle()
         )
         // sidenav.prepend(this.container)

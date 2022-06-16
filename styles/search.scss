@@ -1,0 +1,112 @@
+.custom-script-search {
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    >.custom-search-results {
+        height: 100%;
+        overflow-y: auto;
+        max-height: 70vh;
+    }
+
+    .custom-search-input-container {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+    }
+
+    p.custom-search-invitation {
+        display: flex;
+        height: 100%;
+        opacity: 0.6;
+        justify-content: center;
+        align-items: center;
+        padding: 0.5rem;
+    }
+
+    .custom-search-input-container {
+        a.custom-search-submit {
+            display: flex;
+            padding: 0 0.4rem;
+        }
+
+        div {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        a.custom-clear-search {
+            position: absolute;
+            display: flex;
+            right: 4px;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            border-radius: 0;
+            border: 0;
+            background: #eff0f3;
+        }
+    }
+
+    .custom-search-result {
+        margin: 0.2rem;
+        background: white;
+        border-radius: 5px;
+        padding: 5px;
+        display: block;
+        color: #222;
+        overflow: hidden;
+        word-break: break-word;
+        flex-shrink: 0;
+
+        em {
+            font-weight: 900;
+            padding-right: 0.2rem;
+        }
+
+        &.custom-loading {
+            opacity: 0.6;
+
+            &:nth-child(2) {
+                opacity: 0.3;
+            }
+
+            >div {
+                background: linear-gradient(314deg, #707070, #ffffff);
+                background-size: 400% 400%;
+                margin: 0.4rem 0;
+                border-radius: 5px;
+                animation: LoadingParagraph 4s ease infinite;
+            }
+        }
+    }
+}
+
+.custom-script-bottom-container .custom-search-result {
+    background: #eff0f3;
+}
+
+.slideshow-container .custom-search-input-container input {
+    border-radius: 5px;
+    background: white;
+    border: solid 1px #666;
+}
+
+@keyframes LoadingParagraph {
+    0% {
+        background-position: 0% 50%
+    }
+
+    50% {
+        background-position: 100% 50%
+    }
+
+    100% {
+        background-position: 0% 50%
+    }
+}

@@ -1,5 +1,8 @@
-///<reference path="CustomEventEmmiter.ts" />
-///<reference path="../globals.d.ts" />
+import CustomEventEmmiter from "./CustomEventEmmiter"
+import '../globals'
+import { Http2ServerRequest } from "http2"
+import { SVGIcons } from "./common"
+import App from "../App"
 
 type SettingEvents<T> = {
     change: {
@@ -13,11 +16,11 @@ type SettingEvents<T> = {
     disabled: boolean
 }
 
-enum SettingType {
+export enum SettingType {
     Checkbox, Percent, Integer, Button, Divider
 }
 
-interface SettingInit<T> {
+export interface SettingInit<T> {
     icon?: {
         html?: string
         emoji?: string
@@ -33,18 +36,20 @@ interface SettingInit<T> {
     onchange?: (this: SettingElement<T>, event: SettingEvents<T>["change"]) => any
 }
 
-type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit
+export type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit
 
-class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
+export class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
+    parent: Settings
     name: string
     private _value: T
     type: SettingType
     isInRange: (value: T) => boolean
 
-    constructor(public options: SettingInit<T>, public parent?: Settings) {
+    constructor(public options: SettingInit<T>, parent?: Settings) {
         super()
         this.name = options.name
         this.type = options.type
+        if (parent) this.parent = parent
 
         if (this.type !== SettingType.Button && this.type !== SettingType.Divider) {
             GM_addValueChangeListener(this.name, (name, oldValue, value, remote) => {
@@ -74,7 +79,7 @@ class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
 
 }
 
-abstract class SettingElement<T> extends Setting<T> {
+export abstract class SettingElement<T> extends Setting<T> {
     abstract element: HTMLElement
     private _disabled: boolean
     // abstract input?: HTMLInputElement
@@ -132,27 +137,27 @@ abstract class SettingElement<T> extends Setting<T> {
     }
 }
 
-interface CheckboxSettingInit extends SettingInit<boolean> {
+export interface CheckboxSettingInit extends SettingInit<boolean> {
     type: SettingType.Checkbox
 }
 
-interface PercentSettingInit extends SettingInit<number> {
+export interface PercentSettingInit extends SettingInit<number> {
     type: SettingType.Percent
 }
 
-interface IntegerSettingInit extends SettingInit<number> {
+export interface IntegerSettingInit extends SettingInit<number> {
     type: SettingType.Integer
 }
 
-interface ButtonSettingInit extends SettingInit<undefined> {
+export interface ButtonSettingInit extends SettingInit<undefined> {
     type: SettingType.Button
 }
 
-interface DividerInit {
+export interface DividerInit {
     type: SettingType.Divider
 }
 
-class DividerSetting extends SettingElement<undefined> {
+export class DividerSetting extends SettingElement<undefined> {
     element: HTMLElement
     static index = 0
 
@@ -178,7 +183,7 @@ class DividerSetting extends SettingElement<undefined> {
     }
 }
 
-class CheckboxSetting extends SettingElement<boolean> {
+export class CheckboxSetting extends SettingElement<boolean> {
     element: HTMLElement
     input: HTMLInputElement
 
@@ -202,7 +207,7 @@ class CheckboxSetting extends SettingElement<boolean> {
         this.element = document.createElement('div')
         this.element.innerHTML = this.getHTML()
         this.element.classList.add('custom-script-setting')
-        this.input = this.element.querySelector('input')
+        this.input = this.element.querySelector('input') as HTMLInputElement
         this.input.checked = this.value
         this.addEventListener('change', ({ value }) => this.input.checked = value)
         this.input.addEventListener('change', (ev) => this.value = this.input.checked)
@@ -216,7 +221,7 @@ class CheckboxSetting extends SettingElement<boolean> {
     }
 }
 
-class ButtonSetting extends SettingElement<boolean> {
+export class ButtonSetting extends SettingElement<boolean> {
     element: HTMLElement
     btn: HTMLAnchorElement
 
@@ -236,7 +241,7 @@ class ButtonSetting extends SettingElement<boolean> {
         this.element = document.createElement('div')
         this.element.innerHTML = this.getHTML()
         this.element.classList.add('custom-script-setting')
-        this.btn = this.element.querySelector('a')
+        this.btn = this.element.querySelector('a') as HTMLAnchorElement
         this.btn.addEventListener('click', () => this.trigger('tmMenuClicked'))
         this.trigger('rendered')
         return this.element
@@ -247,7 +252,7 @@ class ButtonSetting extends SettingElement<boolean> {
     }
 }
 
-class NumberSetting extends SettingElement<number> {
+export class NumberSetting extends SettingElement<number> {
     element: HTMLElement
     input: HTMLInputElement
 
@@ -255,11 +260,8 @@ class NumberSetting extends SettingElement<number> {
         super(options, parent)
         this.addEventListener('tmMenuClicked', () => {
             const isPercent = options.type === SettingType.Percent
-            this.value = parseInt(
-                prompt(`Podaj wartość ${isPercent ? "procentową " : ''
-                    }dla ustawienia (obecnie ${this.value}${isPercent ? '%' : ''
-                    }):\n${this.options.desc}`)
-            )
+            const value = prompt(`Podaj wartość ${isPercent ? "procentową " : ''}dla ustawienia (obecnie ${this.value}${isPercent ? '%' : ''}):\n${this.options.desc}`)
+            if (value !== null) this.value = parseInt(value)
         })
     }
 
@@ -295,11 +297,11 @@ class NumberSetting extends SettingElement<number> {
         this.element = document.createElement('div')
         this.element.innerHTML = this.getHTML()
         this.element.classList.add('custom-script-setting')
-        this.input = this.element.querySelector('input')
+        this.input = this.element.querySelector('input') as HTMLInputElement
         this.input.value = this.value.toString()
         if (this.type === SettingType.Percent) {
             this.element.style.flexWrap = 'wrap'
-            const valueEl = this.element.querySelector('span')
+            const valueEl = this.element.querySelector('span') as HTMLSpanElement
             valueEl.innerText = `${this.value}%`
             const btnElems = this.element.querySelectorAll('a')
             btnElems.forEach((btn, i) => {
@@ -337,9 +339,9 @@ type SettingsEvents = {
     change: {}
 }
 
-type ValueChanger<T> = (old: T) => T
+export type ValueChanger<T> = (old: T) => T
 
-class Settings extends CustomEventEmmiter<SettingsEvents> {
+export default class Settings extends CustomEventEmmiter<SettingsEvents> {
     addSettings(settings: (SettingElement<any> | SettingInitAny)[]) {
         settings.forEach(sett => this.addSetting(sett))
     }
@@ -362,8 +364,7 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
             sett = new DividerSetting(this)
         } else if (setting.type === SettingType.Percent || setting.type === SettingType.Integer) {
             sett = new NumberSetting((setting as any), this)
-        }
-        if (!sett) return
+        } else return
         this.settings.push(sett)
         this.app.addEventListener('loaded',
             () => sett.trigger('change', {

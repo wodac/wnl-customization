@@ -1,4 +1,4 @@
-interface SearchResultSchema {
+export interface SearchResultSchema {
     content: string;
     is_functional: boolean;
     snippet: {
@@ -50,11 +50,11 @@ interface SearchResultSchema {
     [k: string]: unknown;
 }
 
-interface SearchResults {
+export interface SearchResults {
     [k: string]: SearchResultSchema
 }
 
-interface ParsedSearchResult {
+export interface ParsedSearchResult {
     highlight: SearchResultSchema["scout_metadata"]["highlight"],
     details: Partial<SearchResultSchema["snippet"]>,
     context: Partial<SearchResultSchema["context"]>,
@@ -62,11 +62,11 @@ interface ParsedSearchResult {
     id?: SearchResultSchema["id"]
 }
 
-type Mutable<T> = {
+export type Mutable<T> = {
     -readonly [K in keyof T]: T[K]
 }
 
-interface SlideshowChapterMetadata {
+export interface SlideshowChapterMetadata {
     href?: string,
     name?: string,
     chapterLength?: number,

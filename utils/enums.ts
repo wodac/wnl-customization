@@ -1,4 +1,4 @@
-declare const enum CLASS_NAMES {
+export declare const enum CLASS_NAMES {
     optionContainer = 'custom-script-option-container',
     pageNumberContainer = 'custom-script-page-number-container',
     currentChapterPage = 'current-number',
@@ -14,7 +14,7 @@ declare const enum CLASS_NAMES {
     searchContainer = "custom-script-search"
 }
 
-declare const enum BODY_CLASS_NAMES {
+export declare const enum BODY_CLASS_NAMES {
     increaseFontSize = 'custom-script-increase-font-size',
     increaseAnnotations = 'custom-script-increase-annotations',
     uniformFontSize = 'custom-script-uniform-font-size',
@@ -27,7 +27,7 @@ declare const enum BODY_CLASS_NAMES {
     hideTags = "custom-script-hideTags"
 }
 
-declare const enum SELECTORS {
+export declare const enum SELECTORS {
     background = ".image-custom-background",
     lessonView = '.wnl-lesson-view',
     sidebar = 'aside.sidenav-aside.course-sidenav',

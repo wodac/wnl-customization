@@ -1,8 +1,10 @@
-///<reference path="common.ts" />
-///<reference path="Keyboard.ts" />
-///<reference path="Settings.ts" />
-///<reference path="CourseSidebar.ts" />
-///<reference path="../App.ts" />
+import App from "../App"
+import { SVGIcons, toggleBodyClass, updateFontSize, isMobile } from "./common"
+import CourseSidebar from "./CourseSidebar"
+import { BODY_CLASS_NAMES, CLASS_NAMES } from "./enums"
+import Keyboard from "./Keyboard"
+import { SettingInitAny, SettingType } from "./Settings"
+
 const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
     {
         name: "increaseFontSize",
@@ -158,7 +160,7 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
                     app.setupObserveSidenav()
                     app.addEventListener('sidenavOpened', opened => {
                         if (opened) {
-                            const sidenav = document.querySelector('aside.course-sidenav')
+                            const sidenav = document.querySelector('aside.course-sidenav') as HTMLElement
                             app.courseSidebar.attach(sidenav)
                         }
                     })
@@ -273,3 +275,4 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         defaultValue: false,
     },
 ]
+export default getOptions

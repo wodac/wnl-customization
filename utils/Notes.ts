@@ -1,4 +1,7 @@
-///<reference path="common.ts" />
+import { Mutable } from "../interfaces"
+import { SVGIcons, getForegroundColor, getIndexedDB } from "./common"
+import CustomEventEmmiter from "./CustomEventEmmiter"
+
 namespace Notes {
     export namespace Events {
         export type Note = {
@@ -20,8 +23,8 @@ namespace Notes {
         protected _edited: boolean = false
         protected _editing: boolean = false
         protected _lastValue: string
-        protected _element: HTMLDivElement
-        abstract get contentElement(): HTMLDivElement
+        protected _element: HTMLDivElement | null
+        abstract get contentElement(): HTMLDivElement | null
         abstract render(): HTMLDivElement
 
         constructor(
@@ -37,7 +40,7 @@ namespace Notes {
             return this._content
         }
 
-        get element(): HTMLDivElement {
+        get element(): HTMLDivElement | null {
             return this._element
         }
 
@@ -78,26 +81,26 @@ namespace Notes {
                 //console.log('note content changed', { content })
                 this.content = content
             })
-            const form = this._element.querySelector('form')
+            const form = (this._element as HTMLElement).querySelector('form') as HTMLFormElement
             form && form.addEventListener('submit', ev => {
                 ev.preventDefault()
                 this.endEditing()
-            })
-            this._element.addEventListener('click', ev => this.startEditing(noteContentInput))
+            });
+            (this._element as HTMLElement).addEventListener('click', ev => this.startEditing(noteContentInput))
             // this._element.addEventListener('focus', ev => this.startEditing(noteContentInput))
         }
 
         private startEditing(noteContentInput: HTMLInputElement | HTMLTextAreaElement) {
             this._editing = true
-            this._lastValue = this._content
-            this._element.classList.add('editing')
+            this._lastValue = this._content;
+            (this._element as HTMLElement).classList.add('editing')
             noteContentInput.focus()
         }
 
         private endEditing() {
             if (this._editing) {
-                this._editing = false
-                this._element.classList.remove('editing')
+                this._editing = false;
+                (this._element as HTMLElement).classList.remove('editing')
                 if (this._lastValue !== this.content) this.trigger('edited', { newContent: this.content })
                 if (!this._content.trim().length) {
                     if (this._edited) this.remove()
@@ -126,8 +129,8 @@ namespace Notes {
     <a class='custom-remove' title='Usuń'>${SVGIcons.removeCircle}</a>
     `
 
-        get contentElement(): HTMLDivElement {
-            return this._element && this._element.querySelector('.custom-tag-content')
+        get contentElement() {
+            return this._element && this._element.querySelector('.custom-tag-content') as HTMLDivElement
         }
 
         render(parent?: HTMLElement): HTMLDivElement {
@@ -140,10 +143,10 @@ namespace Notes {
             const removeBtn = this._element.querySelector('.custom-remove') as HTMLElement
             const colorBtn = this._element.querySelector('.custom-change-color') as HTMLElement
             this.colorInput = this._element.querySelector('input[type=color]') as HTMLInputElement
-            this.setColor(this.metadata.color)
+            this.setColor(this.metadata.color);
 
-            this.contentElement.innerText = this.content
-            this.setupEditing(this._element.querySelector('input'))
+            (this.contentElement as HTMLElement).innerText = this.content
+            this.setupEditing(this._element.querySelector('input') as HTMLInputElement)
 
             colorBtn.addEventListener('click', (ev) => {
                 ev.stopImmediatePropagation()
@@ -164,7 +167,7 @@ namespace Notes {
 
             this._element.title = this.content
             this.addEventListener('edited', ({ newContent }) => {
-                this._element.title = newContent
+                (this._element as HTMLElement).title = newContent
                 this.setColorFromTagName()
             })
             if (parent) parent.prepend(this._element)
@@ -174,7 +177,7 @@ namespace Notes {
 
         private setColorFromTagName() {
             const tagColors = this.parent.parent.tags
-            console.log({tagColors})
+            console.log({ tagColors })
             let color = this.metadata.color
             if (tagColors.length && this.content) {
                 const tagRecord = tagColors.find(tag => tag.name === this.content)
@@ -186,6 +189,7 @@ namespace Notes {
         }
 
         private setColor(color: string) {
+            if (!this._element) return
             this._element.style.background = color
             this._element.style.color = getForegroundColor(color)
             this.colorInput.value = color
@@ -220,22 +224,23 @@ namespace Notes {
         <a class="custom-note-remove">${SVGIcons.trash}</a>
         <a class="custom-note-move">${SVGIcons.move}</a>`
 
-        private setNotePosition(pos: Position) {
+        private setNotePosition(pos?: Position) {
             if (!pos) pos = { x: 0, y: 0 }
             pos = RegularNote.normalizeFractionalPosition(pos)
+            if (!this._element) return
             this._element.style.top = `${Math.round(pos.y * 100)}%`
             this._element.style.left = `${Math.round(pos.x * 100)}%`
         }
 
         render(parent?: HTMLElement): HTMLDivElement {
-            this.parentElement = parent
+            if (parent) this.parentElement = parent
             this._element = document.createElement('div')
             this.setNotePosition(this.metadata.position)
             this._element.dataset.id = this.metadata.id
             this._element.classList.add('custom-note')
             this._element.innerHTML = RegularNote.HTML
-            const input = this._element.querySelector('textarea')
-            const noteContentElem = this.contentElement
+            const input = this._element.querySelector('textarea') as HTMLTextAreaElement
+            const noteContentElem = this.contentElement as HTMLElement
             const noteRemoveIcon = this._element.querySelector('.custom-note-remove') as HTMLAnchorElement
             noteContentElem.innerHTML = this.content.replace(/\n/g, '<br />')
             this.setupEditing(input)
@@ -253,6 +258,7 @@ namespace Notes {
         }
 
         private setupMoving() {
+            if (!this._element) return
             const noteMoveIcon = this._element.querySelector('.custom-note-move') as HTMLAnchorElement
             noteMoveIcon.addEventListener('mousedown', (ev: MouseEvent) => {
                 ev.stopPropagation()
@@ -401,7 +407,7 @@ namespace Notes {
                 return this._notes.find(note => note.metadata.position === position) as RegularNote
             }
 
-            getNoteById(id: string): Note {
+            getNoteById(id: string): Note | undefined {
                 return this._notes.find(note => note.metadata.id === id)
             }
 
@@ -410,7 +416,7 @@ namespace Notes {
                     position, content, textContext,
                     presentationTitle, slideTitle, type, color,
                     lessonID, screenid, slide
-                }: NewNoteOptions,
+                }: RecordTypes.Note,
 
                 constructor: new (arg0: NoteMetadata, arg1: string, arg2: this) => N
             ): N {
@@ -426,16 +432,16 @@ namespace Notes {
 
             addNote(options: NewNoteOptions): RegularNote {
                 options.type = NoteType.Regular
-                return this.addAnyNote(options, RegularNote)
+                return this.addAnyNote(options as RecordTypes.Note, RegularNote)
             }
 
             addTag(options: NewNoteOptions): TagNote {
                 options.type = NoteType.Tag
-                return this.addAnyNote(options, TagNote)
+                return this.addAnyNote(options as RecordTypes.Note, TagNote)
             }
 
-            private removeNoteByQuery(query: { (value: Note, index: number, obj: Note[]): boolean }): Note {
-                let deleted: Note
+            private removeNoteByQuery(query: { (value: Note, index: number, obj: Note[]): boolean }): Note | undefined {
+                let deleted: Note | null = null
                 const indexInNotes = this._notes.findIndex(query)
                 const indexInChangedNotes = this._changedNotes.findIndex(query)
                 if (indexInNotes >= 0) {
@@ -443,10 +449,12 @@ namespace Notes {
                     this._deletedNotes.push(deleted)
                 }
                 if (indexInChangedNotes >= 0) deleted = this._changedNotes.splice(indexInChangedNotes, 1)[0]
-                deleted.remove(false)
-                this.trigger('change', { deleted: [deleted] })
-                //console.log('deleting', { deleted }, 'from SlideNotesCollection')
-                return deleted
+                if (deleted) {
+                    deleted.remove(false)
+                    this.trigger('change', { deleted: [deleted] })
+                    //console.log('deleting', { deleted }, 'from SlideNotesCollection')
+                    return deleted
+                }
             }
 
             removeAllNotes() {
@@ -460,7 +468,7 @@ namespace Notes {
                 return toDelete
             }
 
-            removeNoteById(id: string): Note {
+            removeNoteById(id: string): Note | undefined {
                 return this.removeNoteByQuery(note => note.metadata.id === id)
             }
 
@@ -594,13 +602,13 @@ namespace Notes {
                 })
             }
 
-            static async createAsync(screenid: number, lessonID?: number) {
+            static async createAsync(screenid: number, lessonID: number) {
                 const db = await getIndexedDB("NotesDatabase", Presentation.dbVersion, Presentation.setupDB)
                 const notesCollection = new Presentation(db, screenid, lessonID)
                 return notesCollection
             }
 
-            constructor(private readonly db: IDBDatabase, private readonly _screenid: number, private readonly _lessonID?: number) {
+            constructor(private readonly db: IDBDatabase, private readonly _screenid: number, private readonly _lessonID: number) {
                 super()
             }
 
@@ -765,5 +773,7 @@ namespace Notes {
         }
     }
 }
+
+export default Notes
 
 // PresentationNotesCollection.createAsync(892).then(collection => console.log(collection))
