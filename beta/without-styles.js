@@ -2141,6 +2141,10 @@ const getOptions = (app) => [
             }
         },
         onrender: function () {
+            if (isMobile()) {
+                this.disabled = true;
+                return;
+            }
             mouseTimer.addEventListener('timerEnd', () => {
                 setMouseVisible(false);
                 document.addEventListener('mousemove', () => setMouseVisible(true));
