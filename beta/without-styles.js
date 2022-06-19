@@ -436,6 +436,10 @@ class TabOpener extends CustomEventEmmiter {
     }
     findTabToOpen(toOpen) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (isMobile()) {
+                this.openURLinTab(this.generateURL(toOpen));
+                return;
+            }
             const tabs = yield this.getTabs();
             let nextIndex = 1000;
             tabs.forEach(tab => {
@@ -543,6 +547,7 @@ const SVGIcons = {
     <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>`,
     palette2: inSVG `<path d="M0 .5A.5.5 0 0 1 .5 0h5a.5.5 0 0 1 .5.5v5.277l4.147-4.131a.5.5 0 0 1 .707 0l3.535 3.536a.5.5 0 0 1 0 .708L10.261 10H15.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5H3a2.99 2.99 0 0 1-2.121-.879A2.99 2.99 0 0 1 0 13.044m6-.21 7.328-7.3-2.829-2.828L6 7.188v5.647zM4.5 13a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0zM15 15v-4H9.258l-4.015 4H15zM0 .5v12.495V.5z"/>
     <path d="M0 12.995V13a3.07 3.07 0 0 0 0-.005z"/>`,
+    cursor: inSVG `<path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52 2.25 8.184z"/>`,
 };
 const zoomSliderHTML = `
         <span class='custom-heading'>
@@ -559,6 +564,8 @@ const zoomSliderHTML = `
         </div>`;
 function toggleBodyClass(className, isOn) {
     let body = document.body;
+    if (typeof isOn === 'undefined')
+        isOn = !body.classList.contains(className);
     if (isOn)
         body.classList.add(className);
     else
@@ -762,341 +769,550 @@ function getIndexedDB(name, version, setupCb) {
     });
 }
 ///<reference path="common.ts" />
-///<reference path="Keyboard.ts" />
-///<reference path="Settings.ts" />
-///<reference path="CourseSidebar.ts" />
 ///<reference path="../App.ts" />
-const getOptions = (app) => [
-    {
-        name: "increaseFontSize",
-        type: SettingType.Checkbox,
-        desc: "Zwiększ wielkość czcionki",
-        icon: {
-            emoji: "🔎",
-            html: SVGIcons.zoomIn
-        },
-        onchange: function (state) {
-            if (state.value) {
-                this.parent.setValue("uniformFontSize", false);
-            }
-            toggleBodyClass("custom-script-increase-font-size" /* BODY_CLASS_NAMES.increaseFontSize */, state.value);
-        },
-        defaultValue: true,
-        key: 'f'
-    },
-    {
-        name: "increaseAnnotations",
-        icon: {
-            emoji: "📄",
-            html: SVGIcons.fileRichText
-        },
-        desc: "Zwiększ wielkość czcionki w przypisach",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-increase-annotations" /* BODY_CLASS_NAMES.increaseAnnotations */, state.value),
-        defaultValue: false,
-        key: 'a'
-    },
-    {
-        name: "uniformFontSize",
-        icon: {
-            emoji: "🔤",
-            html: SVGIcons.type
-        },
-        desc: "Ujednolicona wielkość czcionki",
-        type: SettingType.Checkbox,
-        onchange: function (state) {
-            if (state.value) {
-                this.parent.setValue("increaseFontSize", false);
-            }
-            toggleBodyClass("custom-script-uniform-font-size" /* BODY_CLASS_NAMES.uniformFontSize */, state.value);
-        },
-        defaultValue: false,
-        key: 'u'
-    },
-    {
-        name: "percentIncrease",
-        type: SettingType.Percent,
-        icon: {
-            emoji: "➕",
-            html: SVGIcons.zoomIn
-        },
-        desc: "Zmień powiększenie",
-        isInRange: nextValue => nextValue !== NaN && nextValue > 10 && nextValue < 300,
-        defaultValue: 110,
-        onchange: state => {
-            updateFontSize(state.value);
-            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
-            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
-            if (rangeInput) {
-                rangeInput.value = state.value.toString();
-                rangeInput.title = state.value.toString();
-            }
-            if (rangeLabel)
-                rangeLabel.innerText = `${state.value}%`;
-        },
-        onrender: function () {
-            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
-            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
-            if (rangeInput) {
-                rangeInput.value = this.value.toString();
-                rangeLabel.innerText = `${this.value}%`;
-                rangeInput.addEventListener('change', event => {
-                    const value = parseInt(rangeInput.value);
-                    this.value = value;
-                });
-                const oninput = () => {
-                    const value = rangeInput.value;
-                    updateFontSize(parseInt(value));
-                };
-                rangeInput.addEventListener('input', oninput);
-                this.addEventListener('input', oninput);
-            }
-            const increaseBy = (n) => {
-                this.value += n;
-            };
-            Keyboard.registerShortcut({
-                keys: ['-'],
-                callback: () => increaseBy(-5)
+class SearchConstructor extends CustomEventEmmiter {
+    constructor(app) {
+        super();
+        this.app = app;
+    }
+    getSearchURL(q) {
+        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
+    }
+    getSearchContainer(dissmisible = false) {
+        this.searchContainer = document.createElement('div');
+        this.searchContainer.className = `${"custom-script-search" /* CLASS_NAMES.searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
+        this.searchContainer.innerHTML = SearchConstructor.searchMenu;
+        this.searchResultsContainer = document.createElement('div');
+        this.searchResultsContainer.className = 'custom-search-results';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
+        this.searchContainer.append(this.searchResultsContainer);
+        this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
+        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
+            ev.preventDefault();
+            this.performSearch();
+        });
+        if (dissmisible) {
+            const closeBtn = document.createElement('div');
+            closeBtn.className = 'custom-script-summary-close';
+            closeBtn.innerHTML = SVGIcons.chevronUp;
+            this.searchContainer.prepend(closeBtn);
+            closeBtn.addEventListener('click', () => this.trigger('dissmiss'));
+            this.searchInput.addEventListener('keyup', ev => {
+                if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    this.trigger('dissmiss');
+                }
             });
-            Keyboard.registerShortcut({
-                keys: ['+', '='],
-                callback: () => increaseBy(5)
-            });
-        },
-        key: 'p'
-    },
-    {
-        type: SettingType.Divider
-    },
-    {
-        name: "hideChat",
-        icon: {
-            emoji: "💬",
-            html: SVGIcons.chat
-        },
-        desc: "Ukryj czat",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hide-chat" /* BODY_CLASS_NAMES.hideChat */, state.value),
-        defaultValue: false,
-        key: 'c'
-    },
-    {
-        name: "hideSlideNav",
-        icon: {
-            emoji: "↔️",
-            html: SVGIcons.code
-        },
-        desc: "Ukryj strzałki nawigacji na slajdach",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-slide-nav-chat" /* BODY_CLASS_NAMES.hideSlideNav */, state.value),
-    },
-    {
-        name: "showMainCourseSidebar",
-        icon: {
-            emoji: "📗",
-            html: SVGIcons.viewStack
-        },
-        desc: "Pokaż nawigację całego kursu w panelu bocznym",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => {
-            if (state.value) {
-                if (!app.courseSidebar) {
-                    setupSidebar();
-                    app.addEventListener('unloaded', () => app.courseSidebar.destroy());
-                }
-                app.addEventListener('loaded', setupSidebar);
-                app.courseSidebar.show();
-            }
-            else {
-                app.removeEventListener('loaded', setupSidebar);
-                if (app.courseSidebar)
-                    app.courseSidebar.hide();
-            }
-            function setupSidebar() {
-                app.courseSidebar = new CourseSidebar();
-                const sidenav = document.querySelector('aside.course-sidenav');
-                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
-                    app.courseSidebar.attach(sidenav);
-                }
-                else {
-                    app.setupObserveSidenav();
-                    app.addEventListener('sidenavOpened', opened => {
-                        if (opened) {
-                            const sidenav = document.querySelector('aside.course-sidenav');
-                            app.courseSidebar.attach(sidenav);
-                        }
-                    });
-                }
-                app.courseSidebar.addEventListener('urlChange', toOpen => {
-                    app.tabOpener.openSlide(toOpen);
-                });
-            }
-        },
-    },
-    {
-        type: SettingType.Divider
-    },
-    {
-        name: "keyboardControl",
-        icon: {
-            emoji: "⌨️",
-            html: SVGIcons.keyboard
-        },
-        desc: "Sterowanie klawiaturą",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (state.value) {
-                Keyboard.setupControl(app);
-            }
-            else {
-                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
-                Keyboard.disableControl();
-                if (app.slideObserver)
-                    app.slideObserver.disconnect();
-            }
-        },
-        defaultValue: !isMobile(),
-        key: 'k'
-    },
-    {
-        name: "changeTitle",
-        icon: {
-            emoji: "🆎",
-            html: SVGIcons.capitalT
-        },
-        desc: "Zmień tytuł karty",
-        type: SettingType.Checkbox,
-        onchange: state => {
-            if (!state.value) {
-                if (app.originalTitle)
-                    unsafeWindow.document.title = app.originalTitle;
-            }
-            app.updateTabTitle();
-        },
-        onrender: () => {
-            app.originalTitle = unsafeWindow.document.title;
-        },
-        defaultValue: !isMobile(),
-        key: 't'
-    },
-    {
-        name: "invertImages",
-        icon: {
-            emoji: "🔃",
-            html: SVGIcons.pallete
-        },
-        desc: "Odwróć kolory obrazów",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        onchange: state => toggleBodyClass("custom-script-invert-images" /* BODY_CLASS_NAMES.invertImages */, state.value),
-        key: 'i'
-    },
-    {
-        name: "changeTheme",
-        icon: {
-            emoji: "🖼️",
-            html: SVGIcons.palette2
-        },
-        enum: [
-            {
-                value: 'default',
-                desc: 'nie zmieniaj'
-            },
-            {
-                value: 'white',
-                desc: 'biały'
-            },
-            {
-                value: 'black',
-                desc: 'czarny'
-            },
-            {
-                value: 'image',
-                desc: 'obrazek'
-            },
-            {
-                value: 'custom',
-                desc: 'wybrany kolor...'
-            }
-        ],
-        desc: "Zmień domyślny motyw...",
-        type: SettingType.Enum,
-        defaultValue: "default",
-        onchange: function (state) {
-            app.setBackground();
-            const parent = this.parent;
-            console.log({ parent });
-            const customColorSett = parent.getSetting('customSlideshowColor');
-            console.log({ customColorSett });
-            customColorSett.disabled = state.value !== 'custom';
-        },
-        key: 'i'
-    },
-    {
-        type: SettingType.Color,
-        name: 'customSlideshowColor',
-        desc: 'Kolor slajdów',
-        defaultValue: '#ffffff',
-        icon: {
-            html: SVGIcons.pallete,
-            emoji: '🎨'
-        },
-        onchange: state => {
-            console.log('color chosen:', state.value);
-            setRootProperty('custom-slideshow-bg-color', state.value);
-            setRootProperty('custom-slideshow-fg-color', getForegroundColor(state.value));
         }
-    },
-    {
-        name: "smoothScroll",
-        icon: {
-            emoji: "↕️",
-            html: SVGIcons.chevronExpand
+        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
+        this.setupClearBtn();
+        return this.searchContainer;
+    }
+    setupClearBtn() {
+        const clearBtn = this.searchContainer.querySelector('.custom-clear-search');
+        this.clearBtnToggle = new ClassToggler('hidden', clearBtn);
+        this.clearBtnToggle.invert = true;
+        clearBtn.addEventListener('click', ev => {
+            ev.preventDefault();
+            this.clearSearch();
+        });
+        this.searchInput.addEventListener('input', ev => {
+            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length;
+            this.clearBtnToggle.state = showClearBtn;
+        });
+    }
+    clearSearch() {
+        this.searchInput.value = '';
+        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
+        this.clearBtnToggle.state = false;
+        this.searchInput.focus();
+        this.trigger('clear');
+    }
+    performSearch(query) {
+        if (!this.searchContainer)
+            return;
+        if (query)
+            this.searchInput.value = query;
+        const q = this.searchInput.value;
+        if (!q) {
+            this.clearSearch();
+            return;
+        }
+        this.searchContainer.scrollIntoView({ behavior: 'smooth' });
+        const interpretation = this.interpretQuery(q);
+        this.trigger('searchStart', interpretation);
+        this.searchResultsContainer.innerHTML = `
+            <div class='custom-search-result custom-loading'>
+                <div style="height: 2rem;width: 65%;"></div>
+                <div style="height: 1.6rem;width: 79%;"></div>
+            </div>`.repeat(2);
+        this.getSearchResponseHTML(interpretation).then(resp => {
+            if (this.searchResultsContainer) {
+                this.searchResultsContainer.innerHTML = '';
+                this.searchResultsContainer.append(...resp);
+                this.clearBtnToggle.state = true;
+            }
+            this.trigger('searchEnd');
+        });
+    }
+    interpretQuery(rawQuery) {
+        let query = rawQuery.replace(/"/g, '');
+        rawQuery = rawQuery.toLowerCase();
+        const quotesRegExp = /"([^"]+)"/g;
+        const hasntRegExp = /-\w+/g;
+        let mustContain = rawQuery.match(quotesRegExp);
+        let musntContain = rawQuery.match(hasntRegExp);
+        if (musntContain)
+            musntContain.forEach(toReplace => {
+                query.replace(`-${toReplace}`, '');
+            });
+        query = query.trim();
+        if (mustContain)
+            mustContain = mustContain.map(s => s.slice(1, -1));
+        if (musntContain)
+            musntContain = musntContain.map(s => s.slice(1));
+        return { query, rawQuery, mustContain, musntContain };
+    }
+    getSearchResponseHTML(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield this.searchRequest(q);
+            if (response.length) {
+                return response.map(el => {
+                    const link = document.createElement('a');
+                    link.innerHTML = `
+                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
+                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
+                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
+                    link.href = getHref(el);
+                    link.target = '_blank';
+                    link.className = 'custom-search-result';
+                    link.addEventListener('click', ev => {
+                        ev.preventDefault();
+                        this.app.tabOpener.openSlide({
+                            currentTab: -2,
+                            lessonID: el.context.lesson.id,
+                            screenID: el.context.screen.id,
+                            slide: el.context.slideshow.order_number
+                        });
+                    });
+                    return link;
+                });
+            }
+            const notFoundInfo = document.createElement('p');
+            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
+            notFoundInfo.style.padding = '0.5rem';
+            return [notFoundInfo];
+            function getHref(el) {
+                const fragm = {
+                    f1: el.context.lesson,
+                    f2: el.context.screen,
+                    f3: el.context.slideshow
+                };
+                if (Object.values(fragm).every(val => val)) {
+                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
+                    if (path.every(val => val)) {
+                        return [WNL_LESSON_LINK, ...path].join('/');
+                    }
+                }
+                if (el.id)
+                    return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id;
+                return '#';
+            }
+        });
+    }
+    searchRequest(q) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                url: this.getSearchURL(q.query),
+                method: 'GET',
+                responseType: "json",
+                onload: ({ response }) => {
+                    const entries = Object.entries(response);
+                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
+                    const parsed = results.map(el => {
+                        return {
+                            highlight: el.scout_metadata.highlight,
+                            details: el.snippet,
+                            context: el.context,
+                            id: el.id
+                        };
+                    });
+                    resolve(this.filterSearch(parsed, q));
+                },
+                onerror: reject
+            });
+        });
+    }
+    filterSearch(parsed, q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let filtered = parsed;
+            const hasSomePhrases = (result, phrases) => {
+                return phrases.map(toSearch => {
+                    return Object.values(result.highlight).some(highlighted => {
+                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
+                    });
+                });
+            };
+            if (q.mustContain) {
+                filtered = parsed.filter(result => {
+                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
+                });
+            }
+            if (q.musntContain) {
+                filtered = filtered.filter(result => {
+                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
+                });
+            }
+            filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID));
+            function sortUpSome(predicate) {
+                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
+            }
+            return (yield this.getTagsAsResults(q)).concat(filtered);
+        });
+    }
+    getTagsAsResults(q) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.app.notesCollection)
+                return [];
+            const tagColors = this.app.notesCollection.tags;
+            const tags = yield this.app.notesCollection.getAllTagsWithName(q.query);
+            return tags.map(tag => {
+                const record = tagColors.find(record => record.name === tag.content);
+                return {
+                    highlight: {
+                        "snippet.content": [
+                            `<div title='${tag.content}'
+                         style='background:${record.color};color:${getForegroundColor(record.color)}'
+                         class='custom-tag'>${tag.content}</div>`
+                        ]
+                    },
+                    details: {
+                        header: tag.presentationTitle,
+                        subheader: tag.slideTitle,
+                    },
+                    context: {
+                        screen: { id: tag.screenid },
+                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
+                        slideshow: {
+                            order_number: tag.slide
+                        }
+                    }
+                };
+            });
+        });
+    }
+    stripHTMLTags(s) {
+        const tagStripper = /<[^>]+>/g;
+        return s.toLowerCase().replace(tagStripper, '');
+    }
+}
+SearchConstructor.searchMenu = `
+        <form class="custom-search-input-container">
+            <div>
+                <input class="custom-search-result" placeholder="Szukaj...">
+                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
+            </div>
+            <a class='custom-search-submit'>${SVGIcons.search}</a>
+        </form>
+        `;
+SearchConstructor.searchInvitation = `
+        <p class="custom-search-invitation">
+            <span class='custom-script-heading'>
+                ${SVGIcons.search}
+                <span>Zacznij wyszukiwanie</span>
+            </span>
+        </p>`;
+SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
+///<reference path="common.ts" />
+///<reference path="CustomEventEmmiter.ts" />
+///<reference path="../App.ts" />
+class ResettingTimer extends CustomEventEmmiter {
+    constructor(time) {
+        super();
+        this.time = time;
+        this._listener = () => this.start();
+        // app.addEventListener('unloaded', () => this.timer && clearTimeout(this.timer))
+    }
+    start() {
+        clearTimeout(this.timer);
+        this.trigger('timerStart');
+        this.timer = setTimeout(() => {
+            this.trigger('timerEnd');
+        }, this.time);
+    }
+    get listener() {
+        return this._listener;
+    }
+    endListening() {
+        if (this.timer)
+            clearTimeout(this.timer);
+        this.trigger('endListening');
+    }
+}
+///<reference path="common.ts" />
+///<reference path="../App.ts" />
+///<reference path="Search.ts" />
+///<reference path="ResettingTimer.ts" />
+var Keyboard;
+(function (Keyboard) {
+    let keyboardShortcuts = [
+        {
+            keys: ['ArrowUp'],
+            callback: showImage
         },
-        desc: "Płynne przewijanie strzałkami",
-        type: SettingType.Checkbox,
-        defaultValue: false,
-        key: 's'
-    },
-    {
-        type: SettingType.Divider
-    },
-    {
-        name: "hideTools",
-        icon: {
-            emoji: "🛠️",
-            html: SVGIcons.tools
+        {
+            keys: ['ArrowDown', 'q', '0', 'Escape'],
+            callback: hideImage
         },
-        desc: "Ukryj narzędzia",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideTools" /* BODY_CLASS_NAMES.hideTools */, state.value),
-        defaultValue: false,
-    },
-    {
-        name: "hideTags",
-        icon: {
-            emoji: "🔖",
-            html: SVGIcons.tags
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: hideModal
         },
-        desc: "Ukryj listę tagów",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideTags" /* BODY_CLASS_NAMES.hideTags */, state.value),
-        defaultValue: false,
-    },
-    {
-        name: "hideBottomSearch",
-        icon: {
-            emoji: "🔎",
-            html: SVGIcons.search
+        {
+            keys: ['q', '0', 'Escape'],
+            callback: () => {
+                Toggles.optionsBtn.state = false;
+                Toggles.search.state = false;
+                Toggles.summary.state = false;
+            }
         },
-        desc: "Ukryj narzędzie wyszukiwania pod slajdem",
-        type: SettingType.Checkbox,
-        onchange: state => toggleBodyClass("custom-script-hideBottomSearch" /* BODY_CLASS_NAMES.hideBottomSearch */, state.value),
-        defaultValue: false,
-    },
-];
+        // {
+        //     keys: ['m'],
+        //     callback: () => toggleMouseHiding()
+        // },
+        {
+            keys: ['o'],
+            callback: () => Toggles.optionsBtn.toggle()
+        },
+        {
+            keys: ['s'],
+            callback: () => Toggles.optionsBtn.flash(3000)
+        },
+        {
+            keys: ['?', '/'],
+            callback: () => Toggles.search.toggle()
+        },
+        {
+            keys: ['l'],
+            callback: () => Toggles.summary.toggle()
+        },
+        {
+            keys: ['Enter'],
+            callback: () => {
+                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
+                if (quizVerifyBtn)
+                    quizVerifyBtn.click();
+            }
+        }
+    ];
+    function registerShortcut(shortcut) {
+        keyboardShortcuts.push(shortcut);
+    }
+    Keyboard.registerShortcut = registerShortcut;
+    function shortcutListener(event) {
+        const tagName = event.target.nodeName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+        keyboardShortcuts.forEach(shortcut => {
+            if (shortcut.keys.includes(event.key))
+                shortcut.callback(event);
+        });
+        const charCode = event.keyCode;
+        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
+            numericKeyPressed(event.key);
+    }
+    if (!isMobile()) {
+        document.addEventListener('fullscreenchange', ev => {
+            if (!document.fullscreenElement) {
+                if (document.querySelector('.o-referenceModal')) {
+                    hideModal();
+                    toggleFullscreen();
+                }
+                else if (Toggles.search.state) {
+                    Toggles.search.state = false;
+                    toggleFullscreen();
+                }
+                else if (Toggles.summary.state) {
+                    Toggles.summary.state = false;
+                    toggleFullscreen();
+                }
+            }
+        });
+    }
+    function setupControl(app) {
+        const slides = document.querySelectorAll('.slides .stack');
+        if (!slides.length)
+            return;
+        slides.forEach(slide => {
+            let counter = 1;
+            const icons = slide.querySelectorAll('.a-icon');
+            icons.forEach(icon => addSubToRef(icon, counter++));
+        });
+        observeSlides(app, addSubsToRefs);
+        // document.body.addEventListener('click', updateTabTitle)
+        // document.body.addEventListener('keyup', updateTabTitle)
+        document.body.addEventListener('keydown', event => {
+            if (event.key === ' ' || event.key === 'l') {
+                // event.preventDefault()
+                event.stopImmediatePropagation();
+            }
+            if (event.key === 'ArrowUp') {
+                scrollView(-60);
+                return false;
+            }
+            if (event.key === 'ArrowDown' || event.key === ' ') {
+                scrollView(60);
+                return false;
+            }
+        });
+        document.body.addEventListener('keyup', shortcutListener);
+    }
+    Keyboard.setupControl = setupControl;
+    function disableControl() {
+        document.body.removeEventListener('keyup', shortcutListener);
+    }
+    Keyboard.disableControl = disableControl;
+    function observeSlides(app, cb) {
+        //console.log('observeSlides')
+        app.slideObserver = new MutationObserver(cb);
+        app.slideObserver.observe(document.querySelector('div.slides'), {
+            childList: true,
+            subtree: true
+        });
+    }
+    function addSubsToRefs(mutations) {
+        //console.log('mutation observed')
+        let counter = 1;
+        mutations.forEach(mutation => {
+            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
+                //console.log('node added')
+                let ref = mutation.addedNodes[0];
+                if (ref.className && ref.className.includes('m-referenceTrigger')) {
+                    addSubToRef(ref, counter);
+                    counter++;
+                }
+            }
+        });
+    }
+    function addSubToRef(ref, counter) {
+        if (ref.className.includes('sub-id-'))
+            return;
+        const sub = document.createElement('sub');
+        sub.innerText = counter.toString();
+        sub.className = `small`;
+        ref.classList.add(`sub-id-${counter}`);
+        ref.appendChild(sub);
+    }
+    function scrollView(y) {
+        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
+        const options = { top: y, left: 0, behavior };
+        const views = [
+            document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */),
+            document.querySelector('.m-modal__content'),
+            document.querySelector('.wnl-comments')
+        ];
+        views.forEach(view => {
+            if (view)
+                view.scrollBy(options);
+        });
+    }
+    function showImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
+        if (fullscreenBtn)
+            fullscreenBtn.click();
+    }
+    function hideImage() {
+        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
+            return;
+        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function hideModal() {
+        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
+        if (exitBtn)
+            exitBtn.click();
+    }
+    function numericKeyPressed(key) {
+        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
+        if (quiz) {
+            const index = parseInt(key) - 1;
+            const answers = quiz.querySelectorAll('.quizAnswer');
+            if (index >= answers.length)
+                return;
+            answers[index].click();
+            return;
+        }
+        if (annotationImages.length > 0) {
+            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+        }
+        else {
+            const selector = `.present .a-icon.sub-id-${key}`;
+            const icon = document.querySelector(selector);
+            //console.log({ selector, icon })
+            if (icon)
+                icon.click();
+            setTimeout(() => {
+                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
+                let counter = 1;
+                annotationImages.forEach(image => {
+                    const btn = image.querySelector('.a-icon');
+                    btn.classList.add(`sub-id-${counter}`);
+                    const index = document.createElement('span');
+                    index.innerText = counter.toString();
+                    index.className = 'image-fullscreen-index';
+                    btn.appendChild(index);
+                    counter++;
+                });
+            }, 300);
+        }
+    }
+    let hideAfter = 5000;
+    let mouseTimer;
+    const mouseTimerReset = () => {
+        toggleMouseHidden(false);
+        clearTimeout(mouseTimer);
+        mouseTimer = setTimeout(() => {
+            toggleMouseHidden(true);
+        }, hideAfter);
+    };
+    let hideMouse = false;
+    function toggleMouseHiding(timeout = 5000, hide) {
+        hideAfter = timeout;
+        if (timeout < 0) {
+            toggleMouseHidden(hide);
+            return;
+        }
+        if (typeof hide !== 'undefined')
+            hideMouse = hide;
+        else
+            hideMouse = !hideMouse;
+        if (hideMouse) {
+            document.body.addEventListener('mousemove', mouseTimerReset);
+            mouseTimerReset();
+        }
+        else {
+            clearTimeout(mouseTimer);
+            document.body.removeEventListener('mousemove', mouseTimerReset);
+            toggleMouseHidden(false);
+        }
+    }
+    function toggleMouseHidden(mouseHidden) {
+        toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, mouseHidden);
+    }
+})(Keyboard || (Keyboard = {}));
 ///<reference path="CustomEventEmmiter.ts" />
 ///<reference path="../globals.d.ts" />
 var SettingType;
@@ -1607,6 +1823,389 @@ CourseSidebar.CONTAINER_HTML = `
         ${SVGIcons.chevronUp}
         <span>CAŁY KURS</span>
     </a>`;
+///<reference path="common.ts" />
+///<reference path="Keyboard.ts" />
+///<reference path="Settings.ts" />
+///<reference path="CourseSidebar.ts" />
+///<reference path="../App.ts" />
+const mouseTimer = new ResettingTimer(5000);
+const getOptions = (app) => [
+    {
+        name: "increaseFontSize",
+        type: SettingType.Checkbox,
+        desc: "Zwiększ wielkość czcionki",
+        icon: {
+            emoji: "🔎",
+            html: SVGIcons.zoomIn
+        },
+        onchange: function (state) {
+            if (state.value) {
+                this.parent.setValue("uniformFontSize", false);
+            }
+            toggleBodyClass("custom-script-increase-font-size" /* BODY_CLASS_NAMES.increaseFontSize */, state.value);
+        },
+        defaultValue: true,
+        key: 'f'
+    },
+    {
+        name: "increaseAnnotations",
+        icon: {
+            emoji: "📄",
+            html: SVGIcons.fileRichText
+        },
+        desc: "Zwiększ wielkość czcionki w przypisach",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-increase-annotations" /* BODY_CLASS_NAMES.increaseAnnotations */, state.value),
+        defaultValue: false,
+        key: 'a'
+    },
+    {
+        name: "uniformFontSize",
+        icon: {
+            emoji: "🔤",
+            html: SVGIcons.type
+        },
+        desc: "Ujednolicona wielkość czcionki",
+        type: SettingType.Checkbox,
+        onchange: function (state) {
+            if (state.value) {
+                this.parent.setValue("increaseFontSize", false);
+            }
+            toggleBodyClass("custom-script-uniform-font-size" /* BODY_CLASS_NAMES.uniformFontSize */, state.value);
+        },
+        defaultValue: false,
+        key: 'u'
+    },
+    {
+        name: "percentIncrease",
+        type: SettingType.Percent,
+        icon: {
+            emoji: "➕",
+            html: SVGIcons.zoomIn
+        },
+        desc: "Zmień powiększenie",
+        isInRange: nextValue => nextValue !== NaN && nextValue > 10 && nextValue < 300,
+        defaultValue: 110,
+        onchange: state => {
+            updateFontSize(state.value);
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
+            if (rangeInput) {
+                rangeInput.value = state.value.toString();
+                rangeInput.title = state.value.toString();
+            }
+            if (rangeLabel)
+                rangeLabel.innerText = `${state.value}%`;
+        },
+        onrender: function () {
+            const rangeInput = document.querySelector(`input.${"custom-script-font-size-input" /* CLASS_NAMES.fontSizeInput */}`);
+            const rangeLabel = document.querySelector(`.${"custom-script-font-size-label" /* CLASS_NAMES.fontSizeLabel */}`);
+            if (rangeInput) {
+                rangeInput.value = this.value.toString();
+                rangeLabel.innerText = `${this.value}%`;
+                rangeInput.addEventListener('change', event => {
+                    const value = parseInt(rangeInput.value);
+                    this.value = value;
+                });
+                const oninput = () => {
+                    const value = rangeInput.value;
+                    updateFontSize(parseInt(value));
+                };
+                rangeInput.addEventListener('input', oninput);
+                this.addEventListener('input', oninput);
+            }
+            const increaseBy = (n) => {
+                this.value += n;
+            };
+            Keyboard.registerShortcut({
+                keys: ['-'],
+                callback: () => increaseBy(-5)
+            });
+            Keyboard.registerShortcut({
+                keys: ['+', '='],
+                callback: () => increaseBy(5)
+            });
+        },
+        key: 'p'
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideChat",
+        icon: {
+            emoji: "💬",
+            html: SVGIcons.chat
+        },
+        desc: "Ukryj czat",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hide-chat" /* BODY_CLASS_NAMES.hideChat */, state.value),
+        defaultValue: false,
+        key: 'c'
+    },
+    {
+        name: "hideSlideNav",
+        icon: {
+            emoji: "↔️",
+            html: SVGIcons.code
+        },
+        desc: "Ukryj strzałki nawigacji na slajdach",
+        type: SettingType.Checkbox,
+        defaultValue: isMobile(),
+        onchange: state => toggleBodyClass("custom-script-slide-nav-chat" /* BODY_CLASS_NAMES.hideSlideNav */, state.value),
+    },
+    {
+        name: "showMainCourseSidebar",
+        icon: {
+            emoji: "📗",
+            html: SVGIcons.viewStack
+        },
+        desc: "Pokaż nawigację całego kursu w panelu bocznym",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                if (!app.courseSidebar) {
+                    setupSidebar();
+                    app.addEventListener('unloaded', () => app.courseSidebar.destroy());
+                }
+                app.addEventListener('loaded', setupSidebar);
+                app.courseSidebar.show();
+            }
+            else {
+                app.removeEventListener('loaded', setupSidebar);
+                if (app.courseSidebar)
+                    app.courseSidebar.hide();
+            }
+            function setupSidebar() {
+                app.courseSidebar = new CourseSidebar();
+                const sidenav = document.querySelector('aside.course-sidenav');
+                if (sidenav && !document.querySelector('.wnl-sidenav-detached')) {
+                    app.courseSidebar.attach(sidenav);
+                }
+                else {
+                    app.setupObserveSidenav();
+                    app.addEventListener('sidenavOpened', opened => {
+                        if (opened) {
+                            const sidenav = document.querySelector('aside.course-sidenav');
+                            app.courseSidebar.attach(sidenav);
+                        }
+                    });
+                }
+                app.courseSidebar.addEventListener('urlChange', toOpen => {
+                    app.tabOpener.openSlide(toOpen);
+                });
+            }
+        },
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "keyboardControl",
+        icon: {
+            emoji: "⌨️",
+            html: SVGIcons.keyboard
+        },
+        desc: "Sterowanie klawiaturą",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (state.value) {
+                Keyboard.setupControl(app);
+            }
+            else {
+                document.querySelectorAll('sub.small').forEach(sub => sub.remove());
+                Keyboard.disableControl();
+                if (app.slideObserver)
+                    app.slideObserver.disconnect();
+            }
+        },
+        defaultValue: !isMobile(),
+        key: 'k'
+    },
+    {
+        name: "changeTitle",
+        icon: {
+            emoji: "🆎",
+            html: SVGIcons.capitalT
+        },
+        desc: "Zmień tytuł karty",
+        type: SettingType.Checkbox,
+        onchange: state => {
+            if (!state.value) {
+                if (app.originalTitle)
+                    unsafeWindow.document.title = app.originalTitle;
+            }
+            app.updateTabTitle();
+        },
+        onrender: () => {
+            app.originalTitle = unsafeWindow.document.title;
+        },
+        defaultValue: !isMobile(),
+        key: 't'
+    },
+    {
+        name: "invertImages",
+        icon: {
+            emoji: "🔃",
+            html: SVGIcons.pallete
+        },
+        desc: "Odwróć kolory obrazów",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => toggleBodyClass("custom-script-invert-images" /* BODY_CLASS_NAMES.invertImages */, state.value),
+        key: 'i'
+    },
+    {
+        name: "changeTheme",
+        icon: {
+            emoji: "🖼️",
+            html: SVGIcons.palette2
+        },
+        enum: [
+            {
+                value: 'default',
+                desc: 'nie zmieniaj'
+            },
+            {
+                value: 'white',
+                desc: 'biały'
+            },
+            {
+                value: 'black',
+                desc: 'czarny'
+            },
+            {
+                value: 'image',
+                desc: 'obrazek'
+            },
+            {
+                value: 'custom',
+                desc: 'wybrany kolor...'
+            }
+        ],
+        desc: "Zmień domyślny motyw...",
+        type: SettingType.Enum,
+        defaultValue: "default",
+        onchange: function (state) {
+            app.setBackground();
+            const parent = this.parent;
+            console.log({ parent });
+            const customColorSett = parent.getSetting('customSlideshowColor');
+            console.log({ customColorSett });
+            customColorSett.disabled = state.value !== 'custom';
+        },
+        key: 'i'
+    },
+    {
+        type: SettingType.Color,
+        name: 'customSlideshowColor',
+        desc: 'Kolor slajdów',
+        defaultValue: '#ffffff',
+        icon: {
+            html: SVGIcons.pallete,
+            emoji: '🎨'
+        },
+        onchange: state => {
+            console.log('color chosen:', state.value);
+            setRootProperty('custom-slideshow-bg-color', state.value);
+            setRootProperty('custom-slideshow-fg-color', getForegroundColor(state.value));
+        }
+    },
+    {
+        name: "smoothScroll",
+        icon: {
+            emoji: "↕️",
+            html: SVGIcons.chevronExpand
+        },
+        desc: "Płynne przewijanie strzałkami",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        key: 's'
+    },
+    {
+        name: "hideCursor",
+        icon: {
+            emoji: "🖱️",
+            html: SVGIcons.cursor
+        },
+        desc: "Ukryj kursor (przy braku aktywności)",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                mouseTimer.start();
+            }
+            else {
+                mouseTimer.endListening();
+            }
+        },
+        onrender: function () {
+            mouseTimer.addEventListener('timerEnd', () => {
+                setMouseVisible(false);
+                document.addEventListener('mousemove', () => setMouseVisible(true));
+            });
+            mouseTimer.addEventListener('timerStart', () => setMouseVisible(true));
+            setupListening();
+            mouseTimer.addEventListener('endListening', () => {
+                document.removeEventListener('mousemove', mouseTimer.listener);
+                setMouseVisible(true);
+                setupListening();
+            });
+            Keyboard.registerShortcut({
+                keys: ['m'],
+                callback: () => {
+                    this.value = !this.value;
+                }
+            });
+            function setMouseVisible(visible) {
+                toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, !visible);
+            }
+            function setupListening() {
+                mouseTimer.addEventListener('timerStart', () => {
+                    document.addEventListener('mousemove', mouseTimer.listener);
+                    setMouseVisible(false);
+                }, true);
+            }
+        }
+    },
+    {
+        type: SettingType.Divider
+    },
+    {
+        name: "hideTools",
+        icon: {
+            emoji: "🛠️",
+            html: SVGIcons.tools
+        },
+        desc: "Ukryj narzędzia",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideTools" /* BODY_CLASS_NAMES.hideTools */, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideTags",
+        icon: {
+            emoji: "🔖",
+            html: SVGIcons.tags
+        },
+        desc: "Ukryj listę tagów",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideTags" /* BODY_CLASS_NAMES.hideTags */, state.value),
+        defaultValue: false,
+    },
+    {
+        name: "hideBottomSearch",
+        icon: {
+            emoji: "🔎",
+            html: SVGIcons.search
+        },
+        desc: "Ukryj narzędzie wyszukiwania pod slajdem",
+        type: SettingType.Checkbox,
+        onchange: state => toggleBodyClass("custom-script-hideBottomSearch" /* BODY_CLASS_NAMES.hideBottomSearch */, state.value),
+        defaultValue: false,
+    },
+];
 ///<reference path="common.ts" />
 var Notes;
 (function (Notes) {
@@ -2750,499 +3349,6 @@ function setupNotesBtns(app) {
     }
 }
 ///<reference path="common.ts" />
-///<reference path="../App.ts" />
-class SearchConstructor extends CustomEventEmmiter {
-    constructor(app) {
-        super();
-        this.app = app;
-    }
-    getSearchURL(q) {
-        return `https://lek.wiecejnizlek.pl/papi/v2/slides/.search?q=${encodeURIComponent(q)}&include=context,sections,slideshows.screens.lesson`;
-    }
-    getSearchContainer(dissmisible = false) {
-        this.searchContainer = document.createElement('div');
-        this.searchContainer.className = `${"custom-script-search" /* CLASS_NAMES.searchContainer */} ${dissmisible ? 'custom-script-hidden' : ''}`;
-        this.searchContainer.innerHTML = SearchConstructor.searchMenu;
-        this.searchResultsContainer = document.createElement('div');
-        this.searchResultsContainer.className = 'custom-search-results';
-        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
-        this.searchContainer.append(this.searchResultsContainer);
-        this.searchInput = this.searchContainer.querySelector('input.custom-search-result');
-        this.searchContainer.querySelector('form').addEventListener('submit', ev => {
-            ev.preventDefault();
-            this.performSearch();
-        });
-        if (dissmisible) {
-            const closeBtn = document.createElement('div');
-            closeBtn.className = 'custom-script-summary-close';
-            closeBtn.innerHTML = SVGIcons.chevronUp;
-            this.searchContainer.prepend(closeBtn);
-            closeBtn.addEventListener('click', () => this.trigger('dissmiss'));
-            this.searchInput.addEventListener('keyup', ev => {
-                if (ev.key === 'Escape') {
-                    ev.preventDefault();
-                    ev.stopImmediatePropagation();
-                    this.trigger('dissmiss');
-                }
-            });
-        }
-        this.searchContainer.querySelector('a.custom-search-submit').addEventListener('click', () => this.performSearch());
-        this.setupClearBtn();
-        return this.searchContainer;
-    }
-    setupClearBtn() {
-        const clearBtn = this.searchContainer.querySelector('.custom-clear-search');
-        this.clearBtnToggle = new ClassToggler('hidden', clearBtn);
-        this.clearBtnToggle.invert = true;
-        clearBtn.addEventListener('click', ev => {
-            ev.preventDefault();
-            this.clearSearch();
-        });
-        this.searchInput.addEventListener('input', ev => {
-            const showClearBtn = !!this.searchInput.value || !!this.searchResultsContainer.children.length;
-            this.clearBtnToggle.state = showClearBtn;
-        });
-    }
-    clearSearch() {
-        this.searchInput.value = '';
-        this.searchResultsContainer.innerHTML = SearchConstructor.searchInvitation;
-        this.clearBtnToggle.state = false;
-        this.searchInput.focus();
-        this.trigger('clear');
-    }
-    performSearch(query) {
-        if (!this.searchContainer)
-            return;
-        if (query)
-            this.searchInput.value = query;
-        const q = this.searchInput.value;
-        if (!q) {
-            this.clearSearch();
-            return;
-        }
-        this.searchContainer.scrollIntoView({ behavior: 'smooth' });
-        const interpretation = this.interpretQuery(q);
-        this.trigger('searchStart', interpretation);
-        this.searchResultsContainer.innerHTML = `
-            <div class='custom-search-result custom-loading'>
-                <div style="height: 2rem;width: 65%;"></div>
-                <div style="height: 1.6rem;width: 79%;"></div>
-            </div>`.repeat(2);
-        this.getSearchResponseHTML(interpretation).then(resp => {
-            if (this.searchResultsContainer) {
-                this.searchResultsContainer.innerHTML = '';
-                this.searchResultsContainer.append(...resp);
-                this.clearBtnToggle.state = true;
-            }
-            this.trigger('searchEnd');
-        });
-    }
-    interpretQuery(rawQuery) {
-        let query = rawQuery.replace(/"/g, '');
-        rawQuery = rawQuery.toLowerCase();
-        const quotesRegExp = /"([^"]+)"/g;
-        const hasntRegExp = /-\w+/g;
-        let mustContain = rawQuery.match(quotesRegExp);
-        let musntContain = rawQuery.match(hasntRegExp);
-        if (musntContain)
-            musntContain.forEach(toReplace => {
-                query.replace(`-${toReplace}`, '');
-            });
-        query = query.trim();
-        if (mustContain)
-            mustContain = mustContain.map(s => s.slice(1, -1));
-        if (musntContain)
-            musntContain = musntContain.map(s => s.slice(1));
-        return { query, rawQuery, mustContain, musntContain };
-    }
-    getSearchResponseHTML(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const response = yield this.searchRequest(q);
-            if (response.length) {
-                return response.map(el => {
-                    const link = document.createElement('a');
-                    link.innerHTML = `
-                <h5>${el.highlight['snippet.header'] || el.details.header}</h5>
-                <h6>${el.highlight['snippet.subheader'] || el.details.subheader}</h6>
-                <p>${el.highlight['snippet.content'] || el.details.content}</p>`;
-                    link.href = getHref(el);
-                    link.target = '_blank';
-                    link.className = 'custom-search-result';
-                    link.addEventListener('click', ev => {
-                        ev.preventDefault();
-                        this.app.tabOpener.openSlide({
-                            currentTab: -2,
-                            lessonID: el.context.lesson.id,
-                            screenID: el.context.screen.id,
-                            slide: el.context.slideshow.order_number
-                        });
-                    });
-                    return link;
-                });
-            }
-            const notFoundInfo = document.createElement('p');
-            notFoundInfo.innerHTML = `Nie znaleziono frazy <em>${q.rawQuery}</em> :(`;
-            notFoundInfo.style.padding = '0.5rem';
-            return [notFoundInfo];
-            function getHref(el) {
-                const fragm = {
-                    f1: el.context.lesson,
-                    f2: el.context.screen,
-                    f3: el.context.slideshow
-                };
-                if (Object.values(fragm).every(val => val)) {
-                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
-                    if (path.every(val => val)) {
-                        return [WNL_LESSON_LINK, ...path].join('/');
-                    }
-                }
-                if (el.id)
-                    return SearchConstructor.WNL_DYNAMIC_SLIDES + el.id;
-                return '#';
-            }
-        });
-    }
-    searchRequest(q) {
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                url: this.getSearchURL(q.query),
-                method: 'GET',
-                responseType: "json",
-                onload: ({ response }) => {
-                    const entries = Object.entries(response);
-                    const results = entries.filter(el => el[0].match(/^[0-9]+$/)).map(el => el[1]);
-                    const parsed = results.map(el => {
-                        return {
-                            highlight: el.scout_metadata.highlight,
-                            details: el.snippet,
-                            context: el.context,
-                            id: el.id
-                        };
-                    });
-                    resolve(this.filterSearch(parsed, q));
-                },
-                onerror: reject
-            });
-        });
-    }
-    filterSearch(parsed, q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let filtered = parsed;
-            const hasSomePhrases = (result, phrases) => {
-                return phrases.map(toSearch => {
-                    return Object.values(result.highlight).some(highlighted => {
-                        return highlighted.some(s => this.stripHTMLTags(s).includes(toSearch));
-                    });
-                });
-            };
-            if (q.mustContain) {
-                filtered = parsed.filter(result => {
-                    return hasSomePhrases(result, q.mustContain).every(includes => includes);
-                });
-            }
-            if (q.musntContain) {
-                filtered = filtered.filter(result => {
-                    return !hasSomePhrases(result, q.musntContain).some(includes => includes);
-                });
-            }
-            filtered.sort(sortUpSome(res => res.context.screen.id === this.app.presentationMetadata.screenID));
-            function sortUpSome(predicate) {
-                return (val1, val2) => predicate(val1) && !predicate(val2) ? -1 : 1;
-            }
-            return (yield this.getTagsAsResults(q)).concat(filtered);
-        });
-    }
-    getTagsAsResults(q) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.app.notesCollection)
-                return [];
-            const tagColors = this.app.notesCollection.tags;
-            const tags = yield this.app.notesCollection.getAllTagsWithName(q.query);
-            return tags.map(tag => {
-                const record = tagColors.find(record => record.name === tag.content);
-                return {
-                    highlight: {
-                        "snippet.content": [
-                            `<div title='${tag.content}'
-                         style='background:${record.color};color:${getForegroundColor(record.color)}'
-                         class='custom-tag'>${tag.content}</div>`
-                        ]
-                    },
-                    details: {
-                        header: tag.presentationTitle,
-                        subheader: tag.slideTitle,
-                    },
-                    context: {
-                        screen: { id: tag.screenid },
-                        lesson: { id: tag.lessonID, name: tag.presentationTitle },
-                        slideshow: {
-                            order_number: tag.slide
-                        }
-                    }
-                };
-            });
-        });
-    }
-    stripHTMLTags(s) {
-        const tagStripper = /<[^>]+>/g;
-        return s.toLowerCase().replace(tagStripper, '');
-    }
-}
-SearchConstructor.searchMenu = `
-        <form class="custom-search-input-container">
-            <div>
-                <input class="custom-search-result" placeholder="Szukaj...">
-                <a href='#' class="custom-clear-search hidden">${SVGIcons.removeCircle}</a>
-            </div>
-            <a class='custom-search-submit'>${SVGIcons.search}</a>
-        </form>
-        `;
-SearchConstructor.searchInvitation = `
-        <p class="custom-search-invitation">
-            <span class='custom-script-heading'>
-                ${SVGIcons.search}
-                <span>Zacznij wyszukiwanie</span>
-            </span>
-        </p>`;
-SearchConstructor.WNL_DYNAMIC_SLIDES = 'https://lek.wiecejnizlek.pl/app/dynamic/slides/';
-///<reference path="common.ts" />
-///<reference path="../App.ts" />
-///<reference path="Search.ts" />
-var Keyboard;
-(function (Keyboard) {
-    let keyboardShortcuts = [
-        {
-            keys: ['ArrowUp'],
-            callback: showImage
-        },
-        {
-            keys: ['ArrowDown', 'q', '0', 'Escape'],
-            callback: hideImage
-        },
-        {
-            keys: ['q', '0', 'Escape'],
-            callback: hideModal
-        },
-        {
-            keys: ['q', '0', 'Escape'],
-            callback: () => {
-                Toggles.optionsBtn.state = false;
-                Toggles.search.state = false;
-                Toggles.summary.state = false;
-            }
-        },
-        {
-            keys: ['m'],
-            callback: () => toggleMouseVisibility()
-        },
-        {
-            keys: ['o'],
-            callback: () => Toggles.optionsBtn.toggle()
-        },
-        {
-            keys: ['s'],
-            callback: () => Toggles.optionsBtn.flash(3000)
-        },
-        {
-            keys: ['?', '/'],
-            callback: () => Toggles.search.toggle()
-        },
-        {
-            keys: ['l'],
-            callback: () => Toggles.summary.toggle()
-        },
-        {
-            keys: ['Enter'],
-            callback: () => {
-                const quizVerifyBtn = document.querySelector('.o-quizQuestionReferenceModal__verify span');
-                if (quizVerifyBtn)
-                    quizVerifyBtn.click();
-            }
-        }
-    ];
-    function registerShortcut(shortcut) {
-        keyboardShortcuts.push(shortcut);
-    }
-    Keyboard.registerShortcut = registerShortcut;
-    function shortcutListener(event) {
-        const tagName = event.target.nodeName;
-        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.ctrlKey || event.altKey || event.metaKey) {
-            return;
-        }
-        keyboardShortcuts.forEach(shortcut => {
-            if (shortcut.keys.includes(event.key))
-                shortcut.callback(event);
-        });
-        const charCode = event.keyCode;
-        if ((charCode >= 48 && charCode <= 57) || (charCode >= 96 && charCode <= 105))
-            numericKeyPressed(event.key);
-    }
-    if (!isMobile()) {
-        document.addEventListener('fullscreenchange', ev => {
-            if (!document.fullscreenElement) {
-                if (document.querySelector('.o-referenceModal')) {
-                    hideModal();
-                    toggleFullscreen();
-                }
-                else if (Toggles.search.state) {
-                    Toggles.search.state = false;
-                    toggleFullscreen();
-                }
-                else if (Toggles.summary.state) {
-                    Toggles.summary.state = false;
-                    toggleFullscreen();
-                }
-            }
-        });
-    }
-    function setupControl(app) {
-        const slides = document.querySelectorAll('.slides .stack');
-        if (!slides.length)
-            return;
-        slides.forEach(slide => {
-            let counter = 1;
-            const icons = slide.querySelectorAll('.a-icon');
-            icons.forEach(icon => addSubToRef(icon, counter++));
-        });
-        observeSlides(app, addSubsToRefs);
-        // document.body.addEventListener('click', updateTabTitle)
-        // document.body.addEventListener('keyup', updateTabTitle)
-        document.body.addEventListener('keydown', event => {
-            if (event.key === ' ' || event.key === 'l') {
-                // event.preventDefault()
-                event.stopImmediatePropagation();
-            }
-            if (event.key === 'ArrowUp') {
-                scrollView(-60);
-                return false;
-            }
-            if (event.key === 'ArrowDown' || event.key === ' ') {
-                scrollView(60);
-                return false;
-            }
-        });
-        document.body.addEventListener('keyup', shortcutListener);
-    }
-    Keyboard.setupControl = setupControl;
-    function disableControl() {
-        document.body.removeEventListener('keyup', shortcutListener);
-    }
-    Keyboard.disableControl = disableControl;
-    function observeSlides(app, cb) {
-        //console.log('observeSlides')
-        app.slideObserver = new MutationObserver(cb);
-        app.slideObserver.observe(document.querySelector('div.slides'), {
-            childList: true,
-            subtree: true
-        });
-    }
-    function addSubsToRefs(mutations) {
-        //console.log('mutation observed')
-        let counter = 1;
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList' && mutation.addedNodes && mutation.addedNodes.length > 0) {
-                //console.log('node added')
-                let ref = mutation.addedNodes[0];
-                if (ref.className && ref.className.includes('m-referenceTrigger')) {
-                    addSubToRef(ref, counter);
-                    counter++;
-                }
-            }
-        });
-    }
-    function addSubToRef(ref, counter) {
-        if (ref.className.includes('sub-id-'))
-            return;
-        const sub = document.createElement('sub');
-        sub.innerText = counter.toString();
-        sub.className = `small`;
-        ref.classList.add(`sub-id-${counter}`);
-        ref.appendChild(sub);
-    }
-    function scrollView(y) {
-        const behavior = GM_getValue(`option_smoothScroll`) ? 'smooth' : 'auto';
-        const options = { top: y, left: 0, behavior };
-        const views = [
-            document.querySelector(".present .present" /* SELECTORS.currentSlideContainer */),
-            document.querySelector('.m-modal__content'),
-            document.querySelector('.wnl-comments')
-        ];
-        views.forEach(view => {
-            if (view)
-                view.scrollBy(options);
-        });
-    }
-    function showImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let fullscreenBtn = document.body.querySelector('.present .iv-image-fullscreen');
-        if (fullscreenBtn)
-            fullscreenBtn.click();
-    }
-    function hideImage() {
-        if (document.body.querySelector('.fullscreen-mode .wnl-comments'))
-            return;
-        let exitBtn = document.body.querySelector('.wnl-screen .iv-container-fullscreen .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-        exitBtn = document.body.querySelector('.wnl-screen .image-gallery-wrapper .iv-close');
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function hideModal() {
-        let exitBtn = document.body.querySelector(`.a-icon.m-modal__header__close`);
-        if (exitBtn)
-            exitBtn.click();
-    }
-    function numericKeyPressed(key) {
-        let annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-        const quiz = document.querySelector('.o-referenceModal .quizQuestion');
-        if (quiz) {
-            const index = parseInt(key) - 1;
-            const answers = quiz.querySelectorAll('.quizAnswer');
-            if (index >= answers.length)
-                return;
-            answers[index].click();
-            return;
-        }
-        if (annotationImages.length > 0) {
-            const selector = `.m-imageFullscreenWrapper .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-        }
-        else {
-            const selector = `.present .a-icon.sub-id-${key}`;
-            const icon = document.querySelector(selector);
-            //console.log({ selector, icon })
-            if (icon)
-                icon.click();
-            setTimeout(() => {
-                annotationImages = document.querySelectorAll('.m-imageFullscreenWrapper');
-                let counter = 1;
-                annotationImages.forEach(image => {
-                    const btn = image.querySelector('.a-icon');
-                    btn.classList.add(`sub-id-${counter}`);
-                    const index = document.createElement('span');
-                    index.innerText = counter.toString();
-                    index.className = 'image-fullscreen-index';
-                    btn.appendChild(index);
-                    counter++;
-                });
-            }, 300);
-        }
-    }
-    let mouseVisible = true;
-    function toggleMouseVisibility(visible) {
-        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible;
-        //console.log({ mouseVisible, visible })
-        toggleBodyClass("custom-script-hide-cursor" /* BODY_CLASS_NAMES.hideCursor */, !mouseVisible);
-        if (!mouseVisible)
-            document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true });
-    }
-})(Keyboard || (Keyboard = {}));
-///<reference path="common.ts" />
 ///<reference path="ChapterMetadata.ts" />
 ///<reference path="../App.ts" />
 const slideshowOptionsBtn = `
@@ -3401,10 +3507,6 @@ class App extends CustomEventEmmiter {
             Keyboard.setupControl(this);
         addChapterInfo(this);
         addSlideOptions(this);
-        // if (this.tools && this.tools.getValue('useNotes')) {
-        //     this.notesRendering.loadNotes()
-        //     this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
-        // }
         this.addEventListener('slideChange', () => this.updateTabTitle());
         this._loaded = true;
         this.trigger('loaded');
