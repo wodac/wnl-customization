@@ -326,7 +326,7 @@ a.custom-script-option {
         justify-content: center;
     }
 
-    .reveal-scope .reveal .sl-block {
+    .reveal-scope .reveal .sl-block:not([data-block-type]) {
         position: unset !important;
     }
 }
