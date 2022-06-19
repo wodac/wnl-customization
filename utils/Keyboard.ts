@@ -1,6 +1,7 @@
 ///<reference path="common.ts" />
 ///<reference path="../App.ts" />
 ///<reference path="Search.ts" />
+///<reference path="ResettingTimer.ts" />
 namespace Keyboard {
     type KeyboardShortcut = {
         keys: string[]
@@ -28,10 +29,10 @@ namespace Keyboard {
                 Toggles.summary.state = false
             }
         },
-        {
-            keys: ['m'],
-            callback: () => toggleMouseVisibility()
-        },
+        // {
+        //     keys: ['m'],
+        //     callback: () => toggleMouseHiding()
+        // },
         {
             keys: ['o'],
             callback: () => Toggles.optionsBtn.toggle()
@@ -219,11 +220,37 @@ namespace Keyboard {
         }
     }
 
-    let mouseVisible = true
-    function toggleMouseVisibility(visible?: boolean) {
-        mouseVisible = typeof visible === 'undefined' ? !mouseVisible : visible
-        //console.log({ mouseVisible, visible })
-        toggleBodyClass(BODY_CLASS_NAMES.hideCursor, !mouseVisible)
-        if (!mouseVisible) document.body.addEventListener('mousemove', () => toggleMouseVisibility(true), { once: true })
+    let hideAfter = 5000
+    let mouseTimer: NodeJS.Timeout
+    const mouseTimerReset = () => {
+        toggleMouseHidden(false)
+        clearTimeout(mouseTimer)
+        mouseTimer = setTimeout(() => {
+            toggleMouseHidden(true)
+        }, hideAfter)
+    }
+    let hideMouse = false
+    function toggleMouseHiding(timeout = 5000, hide?: boolean) {
+        hideAfter = timeout
+        if (timeout < 0) {
+            toggleMouseHidden(hide)
+            return
+        }
+
+        if (typeof hide !== 'undefined') hideMouse = hide
+        else hideMouse = !hideMouse
+
+        if (hideMouse) {
+            document.body.addEventListener('mousemove', mouseTimerReset)
+            mouseTimerReset()
+        } else {
+            clearTimeout(mouseTimer)
+            document.body.removeEventListener('mousemove', mouseTimerReset)
+            toggleMouseHidden(false)
+        }
+    }
+
+    function toggleMouseHidden(mouseHidden?: boolean) {
+        toggleBodyClass(BODY_CLASS_NAMES.hideCursor, mouseHidden)
     }
 }

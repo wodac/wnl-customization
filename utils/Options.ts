@@ -1,12 +1,15 @@
-type Themes = 'default' | 'white' | 'black' | 'image' | 'custom'
-
-type ThemeEnum = EnumOption<Themes>
-
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />
 ///<reference path="Settings.ts" />
 ///<reference path="CourseSidebar.ts" />
 ///<reference path="../App.ts" />
+
+type Themes = 'default' | 'white' | 'black' | 'image' | 'custom'
+
+type ThemeEnum = EnumOption<Themes>
+
+const mouseTimer = new ResettingTimer(5000)
+
 const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
     {
         name: "increaseFontSize",
@@ -128,7 +131,7 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         },
         desc: "Ukryj strzałki nawigacji na slajdach",
         type: SettingType.Checkbox,
-        defaultValue: false,
+        defaultValue: isMobile(),
         onchange: state => toggleBodyClass(BODY_CLASS_NAMES.hideSlideNav, state.value),
     },
     {
@@ -295,6 +298,54 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
         type: SettingType.Checkbox,
         defaultValue: false,
         key: 's'
+    },
+    {
+        name: "hideCursor",
+        icon: {
+            emoji: "🖱️",
+            html: SVGIcons.cursor
+        },
+        desc: "Ukryj kursor (przy braku aktywności)",
+        type: SettingType.Checkbox,
+        defaultValue: false,
+        onchange: state => {
+            if (state.value) {
+                mouseTimer.start()
+            } else {
+                mouseTimer.endListening()
+            }
+        },
+        onrender: function () {
+            mouseTimer.addEventListener('timerEnd', () => {
+                setMouseVisible(false)
+                document.addEventListener('mousemove', () => setMouseVisible(true))
+            })
+            mouseTimer.addEventListener('timerStart', () => setMouseVisible(true))
+            setupListening()
+            mouseTimer.addEventListener('endListening', () => {
+                document.removeEventListener('mousemove', mouseTimer.listener)
+                setMouseVisible(true)
+                setupListening()
+            })
+            
+            Keyboard.registerShortcut({
+                keys: ['m'],
+                callback: () => {
+                    this.value = !this.value
+                }
+            })
+
+            
+            function setMouseVisible(visible: boolean) {
+                toggleBodyClass(BODY_CLASS_NAMES.hideCursor, !visible)
+            }
+            function setupListening() {
+                mouseTimer.addEventListener('timerStart', () => {
+                    document.addEventListener('mousemove', mouseTimer.listener)
+                    setMouseVisible(false)
+                }, true)
+            }
+        }
     },
     {
         type: SettingType.Divider

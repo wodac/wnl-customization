@@ -82,11 +82,6 @@ class App extends CustomEventEmmiter<AppEvents> {
 
         addSlideOptions(this)
 
-        // if (this.tools && this.tools.getValue('useNotes')) {
-        //     this.notesRendering.loadNotes()
-        //     this.addEventListener('slideChange', current => this.notesRendering.renderNotes(current))
-        // }
-
         this.addEventListener('slideChange', () => this.updateTabTitle())
 
         this._loaded = true
