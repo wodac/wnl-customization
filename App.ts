@@ -102,7 +102,8 @@ class App extends CustomEventEmmiter<AppEvents> {
         const backgrounds = {
             image: "image-custom-background",
             white: "white-custom-background",
-            black: "dark-custom-background"
+            black: "dark-custom-background",
+            custom: "custom-script-background-color"
         }
         const theme = this.options.getValue('changeTheme')
         if (theme === 'default') return

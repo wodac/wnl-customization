@@ -1,4 +1,4 @@
-type Themes = 'default' | 'white' | 'black' | 'image'
+type Themes = 'default' | 'white' | 'black' | 'image' | 'custom'
 
 type ThemeEnum = EnumOption<Themes>
 
@@ -232,7 +232,7 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
     {
         name: "changeTheme",
         icon: {
-            emoji: "🔃",
+            emoji: "🖼️",
             html: SVGIcons.palette2
         },
         enum: [
@@ -251,16 +251,40 @@ const getOptions: (app: App) => (SettingInitAny)[] = (app) => [
             {
                 value: 'image',
                 desc: 'obrazek'
+            },
+            {
+                value: 'custom',
+                desc: 'wybrany kolor...'
             }
         ],
         desc: "Zmień domyślny motyw...",
         type: SettingType.Enum,
         defaultValue: "default",
-        onchange: state => {
+        onchange: function (state) {
             app.setBackground()
+            const parent = this.parent
+            console.log({parent})
+            const customColorSett = parent.getSetting('customSlideshowColor')
+            console.log({customColorSett})
+            customColorSett.disabled = state.value !== 'custom'
         },
         key: 'i'
     } as EnumSettingInit<ThemeEnum, Themes>,
+    {
+        type: SettingType.Color,
+        name: 'customSlideshowColor',
+        desc: 'Kolor slajdów',
+        defaultValue: '#ffffff',
+        icon: {
+            html: SVGIcons.pallete,
+            emoji: '🎨'
+        },
+        onchange: state => {
+            console.log('color chosen:', state.value)
+            setRootProperty('custom-slideshow-bg-color', state.value)
+            setRootProperty('custom-slideshow-fg-color', getForegroundColor(state.value))            
+        }
+    },
     {
         name: "smoothScroll",
         icon: {

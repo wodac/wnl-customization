@@ -116,9 +116,12 @@ function getRandomElement<T>(a: T[]) {
 
 const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93
 const root = unsafeWindow.document.querySelector(":root") as HTMLElement
+const setRootProperty = (name: string, value: string) => {    
+    root.style.setProperty(`--${name}`, value)
+}
 const updateFontSize = (fontSize: number) => {
-    root.style.setProperty("--uniform-font-size", `${getUniformFontSize(fontSize)}em`)
-    root.style.setProperty("--scaled-font-size", `${fontSize}%`)
+    setRootProperty("uniform-font-size", `${getUniformFontSize(fontSize)}em`)
+    setRootProperty("scaled-font-size", `${fontSize}%`)
 }
 
 function isMobile() {

@@ -50,6 +50,7 @@ class CustomEventEmmiter<Events extends EventsInterface> {
                     listener.bind(this)(event)
                 } catch (err) {
                     console.error(
+                        err,
                         'triggering', eventName,
                         `with data`, event,
                         'on', this,

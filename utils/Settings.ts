@@ -14,7 +14,8 @@ type SettingEvents<T> = {
 }
 
 enum SettingType {
-    Checkbox, Percent, Integer, Button, Divider, Enum
+    Checkbox, Percent, Integer, 
+    Button, Divider, Enum, Color
 }
 
 interface SettingInit<T> {
@@ -34,7 +35,7 @@ interface SettingInit<T> {
     onchange?: (this: SettingElement<T>, event: SettingEvents<T>["change"]) => any
 }
 
-type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<undefined> | DividerInit | EnumSettingInit<any, string>
+type SettingInitAny = SettingInit<boolean> | SettingInit<number> | SettingInit<Color> | SettingInit<undefined> | DividerInit | EnumSettingInit<any, string>
 
 class Setting<T> extends CustomEventEmmiter<SettingEvents<T>> {
     name: string
@@ -140,6 +141,10 @@ interface CheckboxSettingInit extends SettingInit<boolean> {
 
 interface PercentSettingInit extends SettingInit<number> {
     type: SettingType.Percent
+}
+
+interface ColorSettingInit extends SettingInit<Color> {
+    type: SettingType.Color
 }
 
 interface IntegerSettingInit extends SettingInit<number> {
@@ -345,6 +350,48 @@ class NumberSetting extends SettingElement<number> {
     }
 }
 
+type Color = `#${string}`
+
+class ColorSetting extends SettingElement<Color> {
+    element: HTMLElement
+    input: HTMLInputElement
+
+    constructor(options: ColorSettingInit, parent: Settings) {
+        super(options, parent)
+        this.addEventListener('tmMenuClicked', () => {
+            /// todo
+            this.input.click()
+        })
+    }
+
+    getHTML() {
+        return `
+            ${this.getIconHTML()}
+            <label>${this.options.desc}</label>
+            <input type='color' name='${this.name}' />`
+    }
+
+    render() {
+        this.element = document.createElement('div')
+        this.element.innerHTML = this.getHTML()
+        this.element.classList.add('custom-script-setting')
+        this.input = this.element.querySelector('input')
+        this.input.value = this.value.toString()
+        this.addEventListener('change', ({ value }) => this.input.value = value.toString())
+        this.input.addEventListener('change', (ev) => this.value = this.input.value as Color)
+        this.input.addEventListener(
+            'input', 
+            (ev) => this.trigger('input', { value: this.input.value as Color })
+        )
+        this.trigger('rendered')
+        return this.element
+    }
+
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc + ` (${this.value})`
+    }
+}
+
 class EnumSetting<Key extends string> 
 extends SettingElement<Key> {
     element: HTMLElement
@@ -432,6 +479,8 @@ class Settings extends CustomEventEmmiter<SettingsEvents> {
             sett = new NumberSetting((setting as any), this)
         } else if (setting.type === SettingType.Enum) {
             sett = new EnumSetting((setting as EnumSettingInit<any, string>), this)
+        } else if (setting.type === SettingType.Color) {
+            sett = new ColorSetting(setting as ColorSettingInit, this)
         }
         if (!sett) return
         this.settings.push(sett)

@@ -59,6 +59,21 @@ a.custom-script-option {
     font-size: var(--uniform-font-size) !important;
 }
 
+.reveal.reveal-viewport.has-vertical-slides.has-horizontal-slides.custom-script-background-color {
+    background: var(--custom-slideshow-bg-color)!important;
+    color: var(--custom-slideshow-fg-color)!important;
+}
+
+.custom-script-setting input[type="color"] {    
+    appearance: none;
+    border: 0;
+    padding: 0;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: transparent;
+}
+
 @media screen and (orientation:landscape) {
     section.stack.present section {
         overflow-y: auto;

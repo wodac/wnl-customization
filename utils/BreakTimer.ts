@@ -11,12 +11,13 @@ class BreakTimer {
             alert('Pora na przerwę 🔔');
         }, 1000 * 60 * this.app.tools.getValue('breakTime'));
     }
+    private listener = () => this.start()
     endListening() {
-        this.app.presentationMetadata.removeEventListener('slideChange', this.start);
+        this.app.presentationMetadata.removeEventListener('slideChange', this.listener);
         if (this.timer)
             clearTimeout(this.timer);
     }
     startListening() {
-        this.app.presentationMetadata.addEventListener('slideChange', this.start);
+        this.app.presentationMetadata.addEventListener('slideChange', this.listener);
     }
 }
