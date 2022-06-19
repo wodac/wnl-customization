@@ -77,6 +77,10 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
     }
 
     private async findTabToOpen(toOpen: SlideToOpen) {
+        if (isMobile()) {
+            this.openURLinTab(this.generateURL(toOpen))
+            return
+        }
         const tabs = await this.getTabs()
         let nextIndex = 1000
         tabs.forEach(tab => {
