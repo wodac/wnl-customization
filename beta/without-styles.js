@@ -63,7 +63,7 @@ class CustomEventEmmiter {
                     listener.bind(this)(event);
                 }
                 catch (err) {
-                    console.error('triggering', eventName, `with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`);
+                    console.error(err, 'triggering', eventName, `with data`, event, 'on', this, 'with callback', listener, `(${listener.toString()})`);
                 }
             });
         }, 0);
@@ -588,9 +588,12 @@ function getRandomElement(a) {
 }
 const getUniformFontSize = fontSize => (fontSize - 100) * 0.01 + 0.93;
 const root = unsafeWindow.document.querySelector(":root");
+const setRootProperty = (name, value) => {
+    root.style.setProperty(`--${name}`, value);
+};
 const updateFontSize = (fontSize) => {
-    root.style.setProperty("--uniform-font-size", `${getUniformFontSize(fontSize)}em`);
-    root.style.setProperty("--scaled-font-size", `${fontSize}%`);
+    setRootProperty("uniform-font-size", `${getUniformFontSize(fontSize)}em`);
+    setRootProperty("scaled-font-size", `${fontSize}%`);
 };
 function isMobile() {
     return screen.width < 980;
@@ -993,7 +996,7 @@ const getOptions = (app) => [
     {
         name: "changeTheme",
         icon: {
-            emoji: "🔃",
+            emoji: "🖼️",
             html: SVGIcons.palette2
         },
         enum: [
@@ -1012,15 +1015,39 @@ const getOptions = (app) => [
             {
                 value: 'image',
                 desc: 'obrazek'
+            },
+            {
+                value: 'custom',
+                desc: 'wybrany kolor...'
             }
         ],
         desc: "Zmień domyślny motyw...",
         type: SettingType.Enum,
         defaultValue: "default",
-        onchange: state => {
+        onchange: function (state) {
             app.setBackground();
+            const parent = this.parent;
+            console.log({ parent });
+            const customColorSett = parent.getSetting('customSlideshowColor');
+            console.log({ customColorSett });
+            customColorSett.disabled = state.value !== 'custom';
         },
         key: 'i'
+    },
+    {
+        type: SettingType.Color,
+        name: 'customSlideshowColor',
+        desc: 'Kolor slajdów',
+        defaultValue: '#ffffff',
+        icon: {
+            html: SVGIcons.pallete,
+            emoji: '🎨'
+        },
+        onchange: state => {
+            console.log('color chosen:', state.value);
+            setRootProperty('custom-slideshow-bg-color', state.value);
+            setRootProperty('custom-slideshow-fg-color', getForegroundColor(state.value));
+        }
     },
     {
         name: "smoothScroll",
@@ -1080,6 +1107,7 @@ var SettingType;
     SettingType[SettingType["Button"] = 3] = "Button";
     SettingType[SettingType["Divider"] = 4] = "Divider";
     SettingType[SettingType["Enum"] = 5] = "Enum";
+    SettingType[SettingType["Color"] = 6] = "Color";
 })(SettingType || (SettingType = {}));
 class Setting extends CustomEventEmmiter {
     constructor(options, parent) {
@@ -1309,6 +1337,36 @@ class NumberSetting extends SettingElement {
         return this.getIconEmoji() + this.options.desc + ` (${this.value}${percentSymb})`;
     }
 }
+class ColorSetting extends SettingElement {
+    constructor(options, parent) {
+        super(options, parent);
+        this.addEventListener('tmMenuClicked', () => {
+            /// todo
+            this.input.click();
+        });
+    }
+    getHTML() {
+        return `
+            ${this.getIconHTML()}
+            <label>${this.options.desc}</label>
+            <input type='color' name='${this.name}' />`;
+    }
+    render() {
+        this.element = document.createElement('div');
+        this.element.innerHTML = this.getHTML();
+        this.element.classList.add('custom-script-setting');
+        this.input = this.element.querySelector('input');
+        this.input.value = this.value.toString();
+        this.addEventListener('change', ({ value }) => this.input.value = value.toString());
+        this.input.addEventListener('change', (ev) => this.value = this.input.value);
+        this.input.addEventListener('input', (ev) => this.trigger('input', { value: this.input.value }));
+        this.trigger('rendered');
+        return this.element;
+    }
+    renderSimple() {
+        return this.getIconEmoji() + this.options.desc + ` (${this.value})`;
+    }
+}
 class EnumSetting extends SettingElement {
     constructor(options, parent) {
         super(options, parent);
@@ -1382,6 +1440,9 @@ class Settings extends CustomEventEmmiter {
         }
         else if (setting.type === SettingType.Enum) {
             sett = new EnumSetting(setting, this);
+        }
+        else if (setting.type === SettingType.Color) {
+            sett = new ColorSetting(setting, this);
         }
         if (!sett)
             return;
@@ -2185,6 +2246,7 @@ var Notes;
 class BreakTimer {
     constructor(app) {
         this.app = app;
+        this.listener = () => this.start();
         app.addEventListener('unloaded', () => this.timer && clearTimeout(this.timer));
     }
     start() {
@@ -2195,12 +2257,12 @@ class BreakTimer {
         }, 1000 * 60 * this.app.tools.getValue('breakTime'));
     }
     endListening() {
-        this.app.presentationMetadata.removeEventListener('slideChange', this.start);
+        this.app.presentationMetadata.removeEventListener('slideChange', this.listener);
         if (this.timer)
             clearTimeout(this.timer);
     }
     startListening() {
-        this.app.presentationMetadata.addEventListener('slideChange', this.start);
+        this.app.presentationMetadata.addEventListener('slideChange', this.listener);
     }
 }
 ///<reference path="common.ts" />
@@ -3355,7 +3417,8 @@ class App extends CustomEventEmmiter {
         const backgrounds = {
             image: "image-custom-background",
             white: "white-custom-background",
-            black: "dark-custom-background"
+            black: "dark-custom-background",
+            custom: "custom-script-background-color"
         };
         const theme = this.options.getValue('changeTheme');
         if (theme === 'default')
