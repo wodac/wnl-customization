@@ -103,6 +103,7 @@ class TabOpener extends CustomEventEmmiter<TabOpenerEvents> {
 
     openSlide(toOpen: Omit<SlideToOpen, "currentTab"> & { currentTab?: number }) {
         if (toOpen) {
+            console.table(toOpen)
             if (typeof toOpen.currentTab !== 'number') {
                 toOpen.currentTab = TabOpenerIndexes.findTab
             }

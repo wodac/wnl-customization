@@ -12,14 +12,16 @@ class CourseSidebar extends ExternalFragment<{
     collapseToggler: ClassToggler
     changeURLInterval
     lastURLUpdate: number
+    goBackToggle: ClassToggler
 
     constructor() {
-        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div')
+        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav')
         this.prepareContainer()
         this.addEventListener(
             'loaded',
             el => {
                 if (!el) return
+                this.goBackToggle.state = false
                 this.container.append(el)
             }
         )
@@ -27,19 +29,26 @@ class CourseSidebar extends ExternalFragment<{
     }
 
     static CONTAINER_HTML = `
-    <a>
+    <a class='custom-expand'>
         ${SVGIcons.chevronUp}
         <span>CAŁY KURS</span>
+    </a>
+    <a class='custom-go-back hidden'>
+        ${SVGIcons.arrowLeftCircle}
+        <span>WRÓĆ</span>
     </a>`
 
     private setupOpenLinks() {
         this.lastURLUpdate = Date.now()
         const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/
         this.addEventListener('iframeURLChange', newURL => {
+            this.goBackToggle.state = true
             const now = Date.now()
             console.log({now})
             if (now - this.lastURLUpdate < 500) return
+            this.lastURLUpdate = now
             const matching = urlRegExp.exec(newURL)
+            console.table(matching)
             if (!matching) return
             this.trigger('urlChange', {
                 url: newURL,
@@ -47,7 +56,8 @@ class CourseSidebar extends ExternalFragment<{
                 screenID: parseInt(matching[2]),
                 slide: parseInt(matching[3]),
             })
-            this.load()
+            console.log('reloading sidebar...')
+            // this.load()
         })
     }
 
@@ -56,8 +66,14 @@ class CourseSidebar extends ExternalFragment<{
         this.container.innerHTML = CourseSidebar.CONTAINER_HTML
         this.container.classList.add('custom-main-nav-container')
         this.collapseToggler = new ClassToggler('active', this.container)
-        this.container.querySelector('a').addEventListener(
+        this.container.querySelector('a.custom-expand').addEventListener(
             'click', () => this.collapseToggler.toggle()
+        )
+        const goBackBtn = this.container.querySelector('a.custom-go-back')
+        this.goBackToggle = new ClassToggler('hidden', goBackBtn)
+        this.goBackToggle.invert = true
+        goBackBtn.addEventListener(
+            'click', () => this.load()
         )
         // sidenav.prepend(this.container)
     }
