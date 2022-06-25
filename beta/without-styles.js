@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WnL customization (beta)
 // @namespace    http://tampermonkey.net/
-// @version      1.10.6b
+// @version      1.10.7b
 // @description  NIEOFICJALNY asystent WnL
 // @author       wodac
 // @updateURL    https://wodac.github.io/wnl-customization/beta/wnl-customization.user.js
@@ -460,6 +460,7 @@ class TabOpener extends CustomEventEmmiter {
     }
     openSlide(toOpen) {
         if (toOpen) {
+            console.table(toOpen);
             if (typeof toOpen.currentTab !== 'number') {
                 toOpen.currentTab = TabOpenerIndexes.findTab;
             }
@@ -548,6 +549,7 @@ const SVGIcons = {
     palette2: inSVG `<path d="M0 .5A.5.5 0 0 1 .5 0h5a.5.5 0 0 1 .5.5v5.277l4.147-4.131a.5.5 0 0 1 .707 0l3.535 3.536a.5.5 0 0 1 0 .708L10.261 10H15.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5H3a2.99 2.99 0 0 1-2.121-.879A2.99 2.99 0 0 1 0 13.044m6-.21 7.328-7.3-2.829-2.828L6 7.188v5.647zM4.5 13a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0zM15 15v-4H9.258l-4.015 4H15zM0 .5v12.495V.5z"/>
     <path d="M0 12.995V13a3.07 3.07 0 0 0 0-.005z"/>`,
     cursor: inSVG `<path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52 2.25 8.184z"/>`,
+    arrowLeftCircle: inSVG `<path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-4.5-.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5z"/>`,
 };
 const zoomSliderHTML = `
         <span class='custom-heading'>
@@ -1767,11 +1769,12 @@ class ExternalFragment extends CustomEventEmmiter {
 ///<reference path="../globals.d.ts" />
 class CourseSidebar extends ExternalFragment {
     constructor() {
-        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav>div');
+        super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav');
         this.prepareContainer();
         this.addEventListener('loaded', el => {
             if (!el)
                 return;
+            this.goBackToggle.state = false;
             this.container.append(el);
         });
         this.setupOpenLinks();
@@ -1780,11 +1783,14 @@ class CourseSidebar extends ExternalFragment {
         this.lastURLUpdate = Date.now();
         const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/;
         this.addEventListener('iframeURLChange', newURL => {
+            this.goBackToggle.state = true;
             const now = Date.now();
             console.log({ now });
             if (now - this.lastURLUpdate < 500)
                 return;
+            this.lastURLUpdate = now;
             const matching = urlRegExp.exec(newURL);
+            console.table(matching);
             if (!matching)
                 return;
             this.trigger('urlChange', {
@@ -1793,7 +1799,8 @@ class CourseSidebar extends ExternalFragment {
                 screenID: parseInt(matching[2]),
                 slide: parseInt(matching[3]),
             });
-            this.load();
+            console.log('reloading sidebar...');
+            // this.load()
         });
     }
     prepareContainer() {
@@ -1801,7 +1808,11 @@ class CourseSidebar extends ExternalFragment {
         this.container.innerHTML = CourseSidebar.CONTAINER_HTML;
         this.container.classList.add('custom-main-nav-container');
         this.collapseToggler = new ClassToggler('active', this.container);
-        this.container.querySelector('a').addEventListener('click', () => this.collapseToggler.toggle());
+        this.container.querySelector('a.custom-expand').addEventListener('click', () => this.collapseToggler.toggle());
+        const goBackBtn = this.container.querySelector('a.custom-go-back');
+        this.goBackToggle = new ClassToggler('hidden', goBackBtn);
+        this.goBackToggle.invert = true;
+        goBackBtn.addEventListener('click', () => this.load());
         // sidenav.prepend(this.container)
     }
     attach(parent) {
@@ -1819,9 +1830,13 @@ class CourseSidebar extends ExternalFragment {
     }
 }
 CourseSidebar.CONTAINER_HTML = `
-    <a>
+    <a class='custom-expand'>
         ${SVGIcons.chevronUp}
         <span>CAŁY KURS</span>
+    </a>
+    <a class='custom-go-back hidden'>
+        ${SVGIcons.arrowLeftCircle}
+        <span>WRÓĆ</span>
     </a>`;
 ///<reference path="common.ts" />
 ///<reference path="Keyboard.ts" />

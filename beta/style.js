@@ -744,9 +744,13 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     display: flex !important;
 }
 
-.custom-main-nav-container>a svg {
+.custom-main-nav-container>a.custom-expand svg {
     transition: transform 0.5s;
     transform: rotateX(180deg);
+}
+
+.custom-main-nav-container>a.hidden {
+    display: none;
 }
 
 .custom-main-nav-container>a {
@@ -759,7 +763,7 @@ div.custom-tag:not(.editing):hover .custom-change-color {
     font-size: 11px;
 }
 
-.custom-main-nav-container.active>a svg {
+.custom-main-nav-container.active>a.custom-expand svg {
     transform: none;
 }
 
@@ -776,12 +780,18 @@ div.custom-tag:not(.editing):hover .custom-change-color {
 
 .custom-main-nav-container.active {
     height: 100%;
+    overflow: auto;
+}
+
+.custom-main-nav-container .course-sidenav {
+    width: 100%;
 }
 
 .custom-main-nav-container {
     transition: height 0.6s;
     height: 3.3rem;
     padding-bottom: 3.3rem;
+    overflow: hidden;
 }
 
 span.custom-heading {
