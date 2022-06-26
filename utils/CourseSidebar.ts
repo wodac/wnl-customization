@@ -13,6 +13,7 @@ class CourseSidebar extends ExternalFragment<{
     changeURLInterval
     lastURLUpdate: number
     goBackToggle: ClassToggler
+    urlChangeTime = 1200
 
     constructor() {
         super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav')
@@ -45,7 +46,7 @@ class CourseSidebar extends ExternalFragment<{
             this.goBackToggle.state = true
             const now = Date.now()
             console.log({now})
-            if (now - this.lastURLUpdate < 500) return
+            if (now - this.lastURLUpdate < this.urlChangeTime) return
             this.lastURLUpdate = now
             const matching = urlRegExp.exec(newURL)
             console.table(matching)
