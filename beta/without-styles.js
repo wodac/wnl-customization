@@ -1770,6 +1770,7 @@ class ExternalFragment extends CustomEventEmmiter {
 class CourseSidebar extends ExternalFragment {
     constructor() {
         super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav');
+        this.urlChangeTime = 1200;
         this.prepareContainer();
         this.addEventListener('loaded', el => {
             if (!el)
@@ -1786,7 +1787,7 @@ class CourseSidebar extends ExternalFragment {
             this.goBackToggle.state = true;
             const now = Date.now();
             console.log({ now });
-            if (now - this.lastURLUpdate < 500)
+            if (now - this.lastURLUpdate < this.urlChangeTime)
                 return;
             this.lastURLUpdate = now;
             const matching = urlRegExp.exec(newURL);
