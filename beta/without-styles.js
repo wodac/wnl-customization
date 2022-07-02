@@ -895,7 +895,7 @@ class SearchConstructor extends CustomEventEmmiter {
                             currentTab: -2,
                             lessonID: el.context.lesson.id,
                             screenID: el.context.screen.id,
-                            slide: el.context.slideshow.order_number
+                            slide: el.context.slideshow.order_number + 1
                         });
                     });
                     return link;
@@ -912,7 +912,7 @@ class SearchConstructor extends CustomEventEmmiter {
                     f3: el.context.slideshow
                 };
                 if (Object.values(fragm).every(val => val)) {
-                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number];
+                    const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number + 1];
                     if (path.every(val => val)) {
                         return [WNL_LESSON_LINK, ...path].join('/');
                     }
@@ -1706,12 +1706,15 @@ class ExternalFragment extends CustomEventEmmiter {
         super();
         this.initialURL = initialURL;
         this.selector = selector;
+        this.LoadingHTML = `
+    <p>Ładowanie...</p>`;
         this.iframe = document.createElement('iframe');
         this.iframe.width = '1300';
         this.iframe.height = '800';
         this.iframe.style.position = 'absolute';
         this.iframe.style.bottom = '100vh';
         document.body.append(this.iframe);
+        this.createContainer();
         this.load();
     }
     load() {
@@ -1719,14 +1722,23 @@ class ExternalFragment extends CustomEventEmmiter {
             clearInterval(this.interval);
         if (this.element)
             this.element.remove();
+        this.elementContainer.classList.add('loading');
+        this.elementContainer.innerHTML = this.LoadingHTML.repeat(4);
         this.iframe.src = this.initialURL;
         this.triesLeft = 20;
         this.iframe.addEventListener('load', (ev) => __awaiter(this, void 0, void 0, function* () {
             this.element = yield this.getElement();
+            this.elementContainer.classList.remove('loading');
+            this.elementContainer.innerHTML = '';
+            this.elementContainer.append(this.element);
             this.setupURLChangeDetection();
-            this.trigger('loaded', this.element);
+            this.trigger('loaded', this.elementContainer);
         }), { once: true });
         this.childWindow = this.iframe.contentWindow;
+    }
+    createContainer() {
+        this.elementContainer = document.createElement('div');
+        this.elementContainer.classList.add('loading');
     }
     getElement() {
         this.iframe.hidden = false;
@@ -1772,6 +1784,20 @@ class CourseSidebar extends ExternalFragment {
         super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav');
         this.urlChangeTime = 1200;
         this.lessonOpened = false;
+        this.LoadingHTML = `
+    <div class="navigation-group__toggle">
+        <div class="navigation-group__item">
+            <div class="a-icon navigation-group__itemIcon -x-small">
+                <svg data-icon="angle-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="svg-inline--fa fa-angle-down">
+                    <path fill="currentColor" d="M360.5 217.5l-152 143.1C203.9 365.8 197.9 368 192 368s-11.88-2.188-16.5-6.562L23.5 217.5C13.87 208.3 13.47 193.1 22.56 183.5C31.69 173.8 46.94 173.5 56.5 182.6L192 310.9l135.5-128.4c9.562-9.094 24.75-8.75 33.94 .9375C370.5 193.1 370.1 208.3 360.5 217.5z" class="">
+                    </path>
+                </svg>
+            </div> 
+            <span class="sidenav-item-content custom-loading">
+                <div style='width: 70%; height: 1.5rem; display: inline-block;'></div>
+            </span>
+        </div>
+    </div>`;
         this.prepareContainer();
         this.addEventListener('loaded', el => {
             if (!el)
@@ -1833,6 +1859,7 @@ class CourseSidebar extends ExternalFragment {
         super.destroy();
     }
 }
+CourseSidebar.URLChangeTime = 1000;
 CourseSidebar.CONTAINER_HTML = `
     <a class='custom-expand'>
         ${SVGIcons.chevronUp}
