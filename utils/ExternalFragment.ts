@@ -14,6 +14,10 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
     triesLeft: number
     url: string
     interval: NodeJS.Timer
+    elementContainer: HTMLDivElement
+
+    protected LoadingHTML = `
+    <p>Ładowanie...</p>`
 
     constructor(private initialURL: string, private selector: string) {
         super()
@@ -23,23 +27,34 @@ class ExternalFragment<Events extends Omit<EventsInterface, "loaded" | "iframeUR
         this.iframe.style.position = 'absolute'
         this.iframe.style.bottom = '100vh'
         document.body.append(this.iframe)
+        this.createContainer()
         this.load()
     }
 
     load() {
         if (this.interval) clearInterval(this.interval)
         if (this.element) this.element.remove()
+        this.elementContainer.classList.add('loading')
+        this.elementContainer.innerHTML = this.LoadingHTML.repeat(4)
         this.iframe.src = this.initialURL
         this.triesLeft = 20
         this.iframe.addEventListener('load', async (ev) => {
             this.element = await this.getElement()
+            this.elementContainer.classList.remove('loading')
+            this.elementContainer.innerHTML = ''
+            this.elementContainer.append(this.element)
             this.setupURLChangeDetection()
-            this.trigger('loaded', this.element)
+            this.trigger('loaded', this.elementContainer)
         }, { once: true })
         this.childWindow = this.iframe.contentWindow
     }
 
-    getElement() {        
+    createContainer() {
+        this.elementContainer = document.createElement('div')
+        this.elementContainer.classList.add('loading')
+    }
+
+    getElement() {
         this.iframe.hidden = false
         return new Promise<HTMLElement | null>(
             resolve => {

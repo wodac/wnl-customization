@@ -14,6 +14,8 @@ class CourseSidebar extends ExternalFragment<{
     lastURLUpdate: number
     goBackToggle: ClassToggler
 
+    static readonly URLChangeTime = 1000
+
     constructor() {
         super('https://lek.wiecejnizlek.pl/app/courses/1/', '.course-sidenav')
         this.prepareContainer()
@@ -38,6 +40,21 @@ class CourseSidebar extends ExternalFragment<{
         <span>WRÓĆ</span>
     </a>`
 
+    protected readonly LoadingHTML = `
+    <div class="navigation-group__toggle">
+        <div class="navigation-group__item">
+            <div class="a-icon navigation-group__itemIcon -x-small">
+                <svg data-icon="angle-down" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" class="svg-inline--fa fa-angle-down">
+                    <path fill="currentColor" d="M360.5 217.5l-152 143.1C203.9 365.8 197.9 368 192 368s-11.88-2.188-16.5-6.562L23.5 217.5C13.87 208.3 13.47 193.1 22.56 183.5C31.69 173.8 46.94 173.5 56.5 182.6L192 310.9l135.5-128.4c9.562-9.094 24.75-8.75 33.94 .9375C370.5 193.1 370.1 208.3 360.5 217.5z" class="">
+                    </path>
+                </svg>
+            </div> 
+            <span class="sidenav-item-content custom-loading">
+                <div style='width: 70%; height: 1.5rem; display: inline-block;'></div>
+            </span>
+        </div>
+    </div>`
+
     private setupOpenLinks() {
         this.lastURLUpdate = Date.now()
         const urlRegExp = /lek.wiecejnizlek.pl\/app\/courses\/1\/lessons\/([0-9]+)\/([0-9]+)\/([0-9]+)/
@@ -45,7 +62,7 @@ class CourseSidebar extends ExternalFragment<{
             this.goBackToggle.state = true
             const now = Date.now()
             console.log({now})
-            if (now - this.lastURLUpdate < 500) return
+            if (now - this.lastURLUpdate < CourseSidebar.URLChangeTime) return
             this.lastURLUpdate = now
             const matching = urlRegExp.exec(newURL)
             console.table(matching)

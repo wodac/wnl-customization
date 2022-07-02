@@ -161,7 +161,7 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                         currentTab: -2,
                         lessonID: el.context.lesson.id,
                         screenID: el.context.screen.id,
-                        slide: el.context.slideshow.order_number
+                        slide: el.context.slideshow.order_number + 1
                     })
                 })
                 return link
@@ -179,7 +179,7 @@ class SearchConstructor extends CustomEventEmmiter<SearchEvents> {
                 f3: el.context.slideshow
             }
             if (Object.values(fragm).every(val => val)) {
-                const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number]
+                const path = [fragm.f1.id, fragm.f2.id, fragm.f3.order_number + 1]
                 if (path.every(val => val)) {
                     return [WNL_LESSON_LINK, ...path].join('/')
                 }

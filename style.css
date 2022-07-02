@@ -294,7 +294,7 @@ p.custom-search-invitation {
     opacity: 0.3;
 }
 
-.custom-search-result.custom-loading>div {
+.custom-loading>div {
     background: linear-gradient(314deg, #707070, #ffffff);
     background-size: 400% 400%;
     margin: 0.4rem 0;
@@ -783,6 +783,22 @@ div.custom-tag:not(.editing):hover .custom-change-color {
 
 .custom-main-nav-container .course-sidenav {
     width: 100%;
+}
+
+.custom-main-nav-container .loading .navigation-group__toggle {
+    opacity: 0.8;
+}
+
+.custom-main-nav-container .loading .navigation-group__toggle:nth-child(2) {
+    opacity: 0.6;
+}
+
+.custom-main-nav-container .loading .navigation-group__toggle:nth-child(3) {
+    opacity: 0.3;
+}
+
+.custom-main-nav-container .loading .navigation-group__toggle:nth-child(4) {
+    opacity: 0.1;
 }
 
 .custom-main-nav-container {
