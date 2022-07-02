@@ -13,6 +13,8 @@ class CourseSidebar extends ExternalFragment<{
     changeURLInterval
     lastURLUpdate: number
     goBackToggle: ClassToggler
+    urlChangeTime = 1200
+    lessonOpened = false
 
     static readonly URLChangeTime = 1000
 
@@ -23,6 +25,7 @@ class CourseSidebar extends ExternalFragment<{
             'loaded',
             el => {
                 if (!el) return
+                this.lessonOpened = false
                 this.goBackToggle.state = false
                 this.container.append(el)
             }
@@ -62,19 +65,21 @@ class CourseSidebar extends ExternalFragment<{
             this.goBackToggle.state = true
             const now = Date.now()
             console.log({now})
-            if (now - this.lastURLUpdate < CourseSidebar.URLChangeTime) return
+            // if (now - this.lastURLUpdate < this.urlChangeTime) return
             this.lastURLUpdate = now
             const matching = urlRegExp.exec(newURL)
             console.table(matching)
             if (!matching) return
+            if (!this.lessonOpened) {
+              this.lessonOpened = true
+              return
+            }
             this.trigger('urlChange', {
                 url: newURL,
                 lessonID: parseInt(matching[1]),
                 screenID: parseInt(matching[2]),
                 slide: parseInt(matching[3]),
             })
-            console.log('reloading sidebar...')
-            // this.load()
         })
     }
 
